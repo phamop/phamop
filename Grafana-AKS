@@ -205,3 +205,4 @@ After deployment:
 5. **Scaling**: Configure horizontal pod autoscaling for Grafana if needed
 
 This approach provides a secure, automated way to deploy Grafana on AKS with all credentials managed through Azure Key Vault and deployment automated through Azure DevOps.
+# http://k8s.anjikeesari.com/helmchart/6-install-grafana/#step-6-access-grafana-dashboard-locally
