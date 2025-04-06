@@ -1,0 +1,381 @@
+# Azure Monitor Insights and Grafana with AKS and Azure DevOps Pipeline - Detailed Walkthrough
+
+This comprehensive guide covers setting up monitoring for Azure Kubernetes Service (AKS) using Azure Monitor Insights and Grafana, along with deployment via Azure DevOps pipelines using Helm charts.
+
+## Table of Contents
+1. [Prerequisites](#prerequisites)
+2. [Architecture Overview](#architecture-overview)
+3. [Setting Up Azure Monitor for AKS](#setting-up-azure-monitor-for-aks)
+4. [Configuring Grafana with AKS](#configuring-grafana-with-aks)
+5. [Creating Helm Charts for Your Application](#creating-helm-charts-for-your-application)
+6. [Setting Up Azure DevOps Pipeline](#setting-up-azure-devops-pipeline)
+7. [Monitoring and Alerting Configuration](#monitoring-and-alerting-configuration)
+8. [Best Practices](#best-practices)
+9. [Troubleshooting](#troubleshooting)
+
+## Prerequisites
+
+- Azure subscription with contributor access
+- AKS cluster deployed
+- Azure DevOps organization and project
+- Basic knowledge of Kubernetes, Helm, and Azure services
+- kubectl and helm CLI installed locally
+- Azure CLI installed
+
+## Architecture Overview
+
+```
+Azure DevOps Pipeline
+       │
+       │ (CI/CD)
+       ▼
+AKS Cluster (Deploys via Helm)
+       │
+       ├── Azure Monitor Insights (Metrics, Logs)
+       │       │
+       │       └── Log Analytics Workspace
+       │
+       └── Grafana (Visualization)
+               │
+               └── Azure Monitor Data Source
+```
+
+## Setting Up Azure Monitor for AKS
+
+### 1. Enable Azure Monitor for Containers
+
+```bash
+# Enable monitoring for an existing AKS cluster
+az aks enable-addons -a monitoring -n <cluster-name> -g <resource-group> --workspace-resource-id <log-analytics-workspace-resource-id>
+
+# If you need to create a new Log Analytics workspace
+az monitor log-analytics workspace create -g <resource-group> -n <workspace-name>
+```
+
+### 2. Verify Monitoring Installation
+
+```bash
+# Check if the omsagent pods are running
+kubectl get pods -n kube-system | grep omsagent
+```
+
+### 3. Access Monitoring Data
+
+1. Navigate to your AKS cluster in Azure Portal
+2. Select "Insights" under Monitoring section
+3. Explore:
+   - Cluster health
+   - Node metrics
+   - Controller metrics
+   - Container metrics
+   - Logs
+
+### 4. Configure Custom Metrics
+
+Create a ConfigMap to scrape additional metrics:
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: container-azm-ms-agentconfig
+  namespace: kube-system
+data:
+  prometheus-data-collection-settings: |-
+    [prometheus_data_collection_settings.cluster]
+    interval = "1m"
+    monitor_kubernetes_pods = true
+    monitor_kubernetes_services = true
+```
+
+Apply the ConfigMap:
+```bash
+kubectl apply -f monitoring-config.yaml
+```
+
+## Configuring Grafana with AKS
+
+### 1. Deploy Grafana to AKS
+
+Create a values.yaml file for Grafana Helm chart:
+
+```yaml
+persistence:
+  enabled: true
+  storageClassName: "default"
+  accessModes:
+    - ReadWriteOnce
+  size: 10Gi
+
+adminUser: admin
+adminPassword: <your-secure-password>
+
+service:
+  type: LoadBalancer
+  port: 80
+  targetPort: 3000
+```
+
+Install Grafana using Helm:
+
+```bash
+helm repo add grafana https://grafana.github.io/helm-charts
+helm install grafana grafana/grafana -f values.yaml
+```
+
+### 2. Configure Azure Monitor Data Source
+
+1. Get the Grafana external IP:
+   ```bash
+   kubectl get svc grafana
+   ```
+2. Access Grafana UI at http://<EXTERNAL-IP>
+3. Navigate to Configuration > Data Sources
+4. Add "Azure Monitor" data source
+5. Configure with Azure AD authentication:
+   - Create an Azure AD Application for Grafana
+   - Grant "Monitoring Reader" role to the application
+
+### 3. Import Kubernetes Dashboards
+
+1. In Grafana, click "+" > Import
+2. Use dashboard IDs from Grafana.com:
+   - 10956 - Kubernetes cluster monitoring (via Azure Monitor)
+   - 12180 - Kubernetes Azure Monitor Containers
+3. Configure the dashboards to use your Azure Monitor data source
+
+## Creating Helm Charts for Your Application
+
+### 1. Scaffold Helm Chart
+
+```bash
+helm create myapp
+```
+
+### 2. Structure Your Chart
+
+```
+myapp/
+├── Chart.yaml
+├── charts/
+├── templates/
+│   ├── deployment.yaml
+│   ├── service.yaml
+│   ├── ingress.yaml
+│   ├── hpa.yaml
+│   └── servicemonitor.yaml (for Prometheus metrics)
+├── values.yaml
+└── README.md
+```
+
+### 3. Add Monitoring Sidecar (Optional)
+
+In your deployment.yaml, add a sidecar for application metrics:
+
+```yaml
+- name: prometheus-exporter
+  image: prom/prometheus-exporter:latest
+  ports:
+    - containerPort: 9113
+  args:
+    - "--collector.some-metric"
+```
+
+### 4. Add ServiceMonitor for Prometheus
+
+Create servicemonitor.yaml:
+
+```yaml
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: myapp-monitor
+spec:
+  selector:
+    matchLabels:
+      app: myapp
+  endpoints:
+  - port: web
+    interval: 30s
+    path: /metrics
+```
+
+### 5. Package the Chart
+
+```bash
+helm package myapp
+```
+
+## Setting Up Azure DevOps Pipeline
+
+### 1. Create Azure DevOps Pipeline
+
+Create a new pipeline (YAML) with these stages:
+
+```yaml
+trigger:
+- main
+
+resources:
+- repo: self
+
+variables:
+  imageRepository: 'myapp'
+  dockerfilePath: '**/Dockerfile'
+  tag: '$(Build.BuildId)'
+  azureSubscription: '<your-service-connection>'
+  aksClusterName: '<cluster-name>'
+  resourceGroup: '<resource-group>'
+  namespace: 'default'
+
+stages:
+- stage: Build
+  displayName: Build and push
+  jobs:
+  - job: Build
+    displayName: Build
+    pool:
+      vmImage: 'ubuntu-latest'
+    steps:
+    - task: Docker@2
+      displayName: Build and push image
+      inputs:
+        command: buildAndPush
+        repository: $(imageRepository)
+        dockerfile: $(dockerfilePath)
+        containerRegistry: '<your-acr-name>'
+        tags: $(tag)
+        
+- stage: Deploy
+  displayName: Deploy to AKS
+  dependsOn: Build
+  jobs:
+  - deployment: Deploy
+    environment: 'aks-production'
+    pool:
+      vmImage: 'ubuntu-latest'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: KubernetesManifest@0
+            displayName: Create imagePullSecret
+            inputs:
+              action: createSecret
+              secretName: 'acr-auth'
+              namespace: $(namespace)
+              dockerRegistryEndpoint: '<your-acr-service-connection>'
+              
+          - task: HelmDeploy@0
+            displayName: Helm deploy
+            inputs:
+              connectionType: 'Azure Resource Manager'
+              azureSubscription: $(azureSubscription)
+              azureResourceGroup: $(resourceGroup)
+              kubernetesCluster: $(aksClusterName)
+              namespace: $(namespace)
+              command: 'upgrade'
+              chartType: 'FilePath'
+              chartPath: 'charts/myapp'
+              releaseName: 'myapp'
+              overrideValues: 'image.tag=$(tag)'
+              install: true
+              
+          - task: Kubernetes@1
+            displayName: Verify deployment
+            inputs:
+              command: 'get'
+              arguments: 'pods -n $(namespace)'
+              kubectlOutput: 'default'
+```
+
+### 2. Set Up Service Connections
+
+1. Create Azure Resource Manager service connection to your subscription
+2. Create Docker Registry service connection to your ACR
+3. Grant Azure DevOps service principal access to your AKS cluster
+
+### 3. Configure Pipeline Variables
+
+Add these variables to your pipeline:
+- `ACR_NAME`: Your Azure Container Registry name
+- `HELM_VERSION`: Specific Helm version (e.g., 3.5.0)
+
+## Monitoring and Alerting Configuration
+
+### 1. Azure Monitor Alerts
+
+1. Navigate to Azure Monitor > Alerts
+2. Create alert rules for:
+   - Node CPU > 80% for 5 minutes
+   - Pod restarts > 5 in 1 hour
+   - Memory pressure > 90%
+3. Configure action groups for notifications (Email, SMS, Webhooks)
+
+### 2. Grafana Alerts
+
+1. In Grafana, navigate to Alert > Notification channels
+2. Add channels (Email, Slack, PagerDuty)
+3. Create dashboard alerts:
+   - Set thresholds on key panels
+   - Configure alert rules with conditions
+
+### 3. Custom Application Metrics
+
+1. Instrument your application with Prometheus client
+2. Expose metrics endpoint (/metrics)
+3. Configure Azure Monitor to scrape these metrics
+4. Create custom dashboards in Grafana
+
+## Best Practices
+
+1. **Monitoring**:
+   - Use Azure Monitor for infrastructure metrics
+   - Use Grafana for custom visualization and dashboards
+   - Implement distributed tracing for microservices
+
+2. **AKS**:
+   - Enable cluster auto-scaling
+   - Configure pod resource requests/limits
+   - Use network policies for security
+
+3. **Azure DevOps**:
+   - Implement multi-stage pipelines
+   - Use approvals for production deployments
+   - Scan images for vulnerabilities in pipeline
+
+4. **Helm**:
+   - Version your charts properly
+   - Use Helm secrets for sensitive values
+   - Implement rollback strategies
+
+## Troubleshooting
+
+### Common Issues and Solutions
+
+1. **Azure Monitor not collecting data**:
+   - Verify omsagent pods are running
+   - Check Log Analytics workspace connection
+   - Validate network policies allow monitoring traffic
+
+2. **Grafana authentication problems**:
+   - Verify Azure AD application permissions
+   - Check service principal credentials
+   - Ensure correct permissions in Azure Monitor
+
+3. **Helm deployment failures**:
+   - Check `helm get manifest <release>` for deployed resources
+   - Use `helm rollback` if needed
+   - Verify Kubernetes resource quotas
+
+4. **Pipeline failures**:
+   - Check service principal permissions
+   - Validate image tags and chart versions
+   - Review pipeline logs for detailed errors
+
+5. **Missing metrics in Grafana**:
+   - Verify data source configuration
+   - Check if metrics exist in Azure Monitor
+   - Validate Prometheus scraping configuration
+
+This walkthrough provides a comprehensive approach to implementing monitoring for AKS with Azure Monitor and Grafana, along with a robust CI/CD pipeline using Azure DevOps and Helm. Adjust configurations based on your specific requirements and scale.
