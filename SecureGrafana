@@ -1,0 +1,341 @@
+# Azure Monitor Insights for Grafana on AKS with Azure Key Vault Integration
+
+This walkthrough provides a comprehensive guide to implementing Azure Monitor Insights metrics in Grafana for an existing Azure Kubernetes Service (AKS) cluster, using Azure Key Vault for secrets management without Istio or Azure DevOps pipelines.
+
+## Prerequisites
+
+- Existing AKS cluster
+- Azure subscription with contributor access
+- kubectl configured to access your AKS cluster
+- Helm installed locally
+- Azure CLI installed
+
+## Step 1: Set Up Azure Key Vault
+
+### 1.1 Create Azure Key Vault
+```bash
+RESOURCE_GROUP="your-resource-group"
+LOCATION="eastus"
+KEY_VAULT_NAME="grafana-secrets-$(date +%s)"
+
+az keyvault create \
+  --name $KEY_VAULT_NAME \
+  --resource-group $RESOURCE_GROUP \
+  --location $LOCATION
+```
+
+### 1.2 Store Grafana Secrets in Key Vault
+```bash
+# Store Grafana admin credentials
+az keyvault secret set \
+  --vault-name $KEY_VAULT_NAME \
+  --name "grafana-admin-user" \
+  --value "admin"
+
+az keyvault secret set \
+  --vault-name $KEY_VAULT_NAME \
+  --name "grafana-admin-password" \
+  --value "StrongPassword123!"
+
+# Store Azure Monitor credentials
+az keyvault secret set \
+  --vault-name $KEY_VAULT_NAME \
+  --name "azure-monitor-client-id" \
+  --value "<your-service-principal-client-id>"
+
+az keyvault secret set \
+  --vault-name $KEY_VAULT_NAME \
+  --name "azure-monitor-client-secret" \
+  --value "<your-service-principal-secret>"
+
+az keyvault secret set \
+  --vault-name $KEY_VAULT_NAME \
+  --name "azure-monitor-tenant-id" \
+  --value "<your-tenant-id>"
+
+az keyvault secret set \
+  --vault-name $KEY_VAULT_NAME \
+  --name "azure-monitor-subscription-id" \
+  --value "<your-subscription-id>"
+```
+
+## Step 2: Configure AKS to Access Key Vault
+
+### 2.1 Enable AKS to Access Key Vault
+```bash
+AKS_NAME="your-aks-cluster"
+AKS_RESOURCE_GROUP="your-aks-resource-group"
+
+# Get AKS managed identity
+CLIENT_ID=$(az aks show --resource-group $AKS_RESOURCE_GROUP --name $AKS_NAME --query "identityProfile.kubeletidentity.clientId" -o tsv)
+
+# Assign Key Vault access policy
+az keyvault set-policy \
+  --name $KEY_VAULT_NAME \
+  --resource-group $RESOURCE_GROUP \
+  --object-id $CLIENT_ID \
+  --secret-permissions get list
+```
+
+### 2.2 Install CSI Secrets Store Provider
+```bash
+helm repo add csi-secrets-store-provider-azure https://azure.github.io/secrets-store-csi-driver-provider-azure/charts
+
+helm install csi-secrets-store-provider-azure/csi-secrets-store-provider-azure \
+  --generate-name \
+  --namespace kube-system
+```
+
+## Step 3: Deploy Grafana with Azure Monitor Integration
+
+### 3.1 Create Namespace
+```bash
+kubectl create namespace monitoring
+```
+
+### 3.2 Create SecretProviderClass for Grafana
+Create `grafana-secret-provider.yaml`:
+```yaml
+apiVersion: secrets-store.csi.x-k8s.io/v1
+kind: SecretProviderClass
+metadata:
+  name: grafana-secrets
+  namespace: monitoring
+spec:
+  provider: azure
+  parameters:
+    usePodIdentity: "false"
+    useVMManagedIdentity: "true"
+    userAssignedIdentityID: ""
+    keyvaultName: "grafana-secrets-123456789" # Replace with your key vault name
+    objects: |
+      array:
+        - |
+          objectName: grafana-admin-user
+          objectType: secret
+        - |
+          objectName: grafana-admin-password
+          objectType: secret
+        - |
+          objectName: azure-monitor-client-id
+          objectType: secret
+        - |
+          objectName: azure-monitor-client-secret
+          objectType: secret
+        - |
+          objectName: azure-monitor-tenant-id
+          objectType: secret
+        - |
+          objectName: azure-monitor-subscription-id
+          objectType: secret
+    tenantId: "<your-tenant-id>"
+```
+
+Apply the configuration:
+```bash
+kubectl apply -f grafana-secret-provider.yaml
+```
+
+### 3.3 Create Custom Helm Values File
+Create `grafana-values.yaml`:
+```yaml
+# Grafana configuration
+grafana.ini:
+  security:
+    admin_user: ${GRAFANA_ADMIN_USER}
+    admin_password: ${GRAFANA_ADMIN_PASSWORD}
+
+# Enable persistence
+persistence:
+  enabled: true
+  type: pvc
+  size: 10Gi
+
+# Configure sidecar for Azure Monitor
+sidecar:
+  datasources:
+    enabled: true
+    label: grafana_datasource
+    defaultDatasourceEnabled: true
+
+# Configure init container to fetch secrets
+initContainers:
+  - name: init-secrets
+    image: mcr.microsoft.com/azure-cli
+    command: ["sh", "-c", "echo 'Secrets will be mounted via CSI driver'"]
+    volumeMounts:
+      - name: secrets-store-inline
+        mountPath: "/mnt/secrets-store"
+        readOnly: true
+
+# Mount secrets from Azure Key Vault
+volumes:
+  - name: secrets-store-inline
+    csi:
+      driver: secrets-store.csi.k8s.io
+      readOnly: true
+      volumeAttributes:
+        secretProviderClass: "grafana-secrets"
+
+envFrom:
+  - secretRef:
+      name: grafana-secrets-env
+
+# Azure Monitor plugin
+plugins:
+  - grafana-azure-monitor-datasource
+```
+
+### 3.4 Create Kubernetes Secret for Environment Variables
+Create `grafana-secrets-env.yaml`:
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: grafana-secrets-env
+  namespace: monitoring
+type: Opaque
+stringData:
+  GRAFANA_ADMIN_USER: $(cat /mnt/secrets-store/grafana-admin-user)
+  GRAFANA_ADMIN_PASSWORD: $(cat /mnt/secrets-store/grafana-admin-password)
+  AZURE_CLIENT_ID: $(cat /mnt/secrets-store/azure-monitor-client-id)
+  AZURE_CLIENT_SECRET: $(cat /mnt/secrets-store/azure-monitor-client-secret)
+  AZURE_TENANT_ID: $(cat /mnt/secrets-store/azure-monitor-tenant-id)
+  AZURE_SUBSCRIPTION_ID: $(cat /mnt/secrets-store/azure-monitor-subscription-id)
+```
+
+Apply the secret:
+```bash
+kubectl apply -f grafana-secrets-env.yaml
+```
+
+### 3.5 Install Grafana with Helm
+```bash
+helm repo add grafana https://grafana.github.io/helm-charts
+helm repo update
+
+helm install grafana grafana/grafana \
+  --namespace monitoring \
+  --values grafana-values.yaml \
+  --set service.type=LoadBalancer
+```
+
+## Step 4: Configure Azure Monitor Data Source
+
+### 4.1 Create Data Source Configuration
+Create `azure-monitor-datasource.yaml`:
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-azure-monitor-datasource
+  namespace: monitoring
+  labels:
+    grafana_datasource: "1"
+data:
+  azure-monitor-datasource.yaml: |-
+    apiVersion: 1
+    datasources:
+    - name: AzureMonitor
+      type: grafana-azure-monitor-datasource
+      access: proxy
+      orgId: 1
+      url: /api/datasources/proxy/1
+      jsonData:
+        subscriptionId: ${AZURE_SUBSCRIPTION_ID}
+        cloudName: azuremonitor
+        azureAuthType: clientsecret
+        tenantId: ${AZURE_TENANT_ID}
+        clientId: ${AZURE_CLIENT_ID}
+      secureJsonData:
+        clientSecret: ${AZURE_CLIENT_SECRET}
+      editable: true
+```
+
+Apply the configuration:
+```bash
+kubectl apply -f azure-monitor-datasource.yaml
+```
+
+## Step 5: Access Grafana and Verify Configuration
+
+### 5.1 Get Grafana Load Balancer IP
+```bash
+kubectl get svc -n monitoring grafana -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
+```
+
+### 5.2 Login to Grafana
+- Open the Load Balancer IP in your browser
+- Use the admin credentials stored in Key Vault
+- Navigate to Configuration > Data Sources and verify Azure Monitor is configured
+
+## Step 6: Create Custom Dashboards for AKS Metrics
+
+### 6.1 Create AKS Monitoring Dashboard
+Create `aks-dashboard.json` with your desired metrics. Example metrics to include:
+- Node CPU/Memory usage
+- Pod count per namespace
+- Container restarts
+- Network in/out
+- Disk I/O
+
+Import this dashboard through the Grafana UI.
+
+## Step 7: (Optional) Set Up Alerts
+
+Configure Grafana alerts based on your AKS metrics thresholds:
+- High CPU/Memory usage
+- Pod crash loops
+- Node pressure conditions
+
+## Step 8: (Optional) Set Up Custom Metrics with CRDs
+
+### 8.1 Create Custom Metrics CRD
+Create `custom-metrics-apiservice.yaml`:
+```yaml
+apiVersion: apiregistration.k8s.io/v1
+kind: APIService
+metadata:
+  name: v1beta1.custom.metrics.k8s.io
+spec:
+  service:
+    name: custom-metrics-stackdriver-adapter
+    namespace: monitoring
+  group: custom.metrics.k8s.io
+  version: v1beta1
+  insecureSkipTLSVerify: true
+  groupPriorityMinimum: 100
+  versionPriority: 100
+```
+
+Apply the CRD:
+```bash
+kubectl apply -f custom-metrics-apiservice.yaml
+```
+
+## Maintenance and Updates
+
+To update Grafana or its configuration:
+```bash
+helm upgrade grafana grafana/grafana \
+  --namespace monitoring \
+  --values grafana-values.yaml
+```
+
+## Troubleshooting
+
+Common issues and solutions:
+1. **Secrets not mounting**: Verify the Key Vault access policy and SecretProviderClass configuration
+2. **Azure Monitor connection issues**: Check service principal permissions in Azure AD
+3. **Grafana login problems**: Verify the secrets in Key Vault and the environment variables
+
+## Cleanup
+
+To remove all resources:
+```bash
+helm uninstall grafana -n monitoring
+kubectl delete namespace monitoring
+az keyvault delete --name $KEY_VAULT_NAME --resource-group $RESOURCE_GROUP
+```
+
+This implementation provides a secure way to monitor your AKS cluster using Grafana with Azure Monitor metrics, leveraging Azure Key Vault for secret management without requiring Istio or Azure DevOps pipelines.
