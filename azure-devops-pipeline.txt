@@ -1,0 +1,731 @@
+trigger:
+- main
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  resourceGroup: 'your-resource-group'
+  aksClusterName: 'your-cluster-name'
+  keyVaultName: 'your-keyvault-name'
+  charts:
+    grafana:
+      name: grafana
+      repoURL: https://grafana.github.io/helm-charts
+      chartName: grafana
+      chartVersion: 6.50.0
+      valuesFile: deploy/grafana-values.yaml
+      namespace: monitoring
+    prometheus:
+      name: prometheus
+      repoURL: https://prometheus-community.github.io/helm-charts
+      chartName: prometheus
+      chartVersion: 19.0.0
+      valuesFile: deploy/prometheus-values.yaml
+      namespace: monitoring
+
+stages:
+- stage: DeployMonitoring
+  displayName: 'Deploy Monitoring Stack'
+  jobs:
+  - job: DeployHelm
+    steps:
+    - task: AzureCLI@2
+      displayName: 'Login to Azure'
+      inputs:
+        azureSubscription: 'your-azure-subscription'
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          az account show
+          
+    - task: AzureCLI@2
+      displayName: 'Get AKS Credentials'
+      inputs:
+        azureSubscription: 'your-azure-subscription'
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          az aks get-credentials --resource-group $(resourceGroup) --name $(aksClusterName)
+          
+    - task: AzureKeyVault@2
+      displayName: 'Get secrets from Key Vault'
+      inputs:
+        azureSubscription: 'your-azure-subscription'
+        KeyVaultName: $(keyVaultName)
+        SecretsFilter: 'grafana-admin-password,azure-monitor-app-id,azure-monitor-app-secret'
+        
+    - task: KubectlInstaller@0
+      displayName: 'Install kubectl'
+      
+    - task: HelmInstaller@1
+      displayName: 'Install Helm'
+      inputs:
+        helmVersionToInstall: 'latest'
+        
+    - script: |
+        # Create namespaces if they don't exist
+        kubectl create namespace monitoring --dry-run=client -o yaml | kubectl apply -f -
+        
+        # Add Helm repos
+        helm repo add grafana https://grafana.github.io/helm-charts
+        helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+        helm repo update
+        
+        # Deploy the Secret Provider Class
+        cat <<EOF > secret-provider.yaml
+        apiVersion: secrets-store.csi.x-k8s.io/v1
+        kind: SecretProviderClass
+        metadata:
+          name: azure-kvs-grafana
+          namespace: monitoring
+        spec:
+          provider: azure
+          parameters:
+            usePodIdentity: "true"
+            keyvaultName: $(keyVaultName)
+            objects: |
+              array:
+                - |
+                  objectName: grafana-admin-password
+                  objectType: secret
+                  objectVersion: ""
+                - |
+                  objectName: azure-monitor-app-id
+                  objectType: secret
+                  objectVersion: ""
+                - |
+                  objectName: azure-monitor-app-secret
+                  objectType: secret
+                  objectVersion: ""
+            tenantId: $(az account show --query tenantId -o tsv)
+        EOF
+        kubectl apply -f secret-provider.yaml
+        
+        # Create Azure credentials secret for Grafana
+        kubectl create secret generic grafana-azure-credentials \
+          --namespace monitoring \
+          --from-literal=GF_SECURITY_ADMIN_PASSWORD='$(grafana-admin-password)' \
+          --from-literal=GF_AUTH_AZURE_MONITOR_CLIENT_ID='$(azure-monitor-app-id)' \
+          --from-literal=GF_AUTH_AZURE_MONITOR_CLIENT_SECRET='$(azure-monitor-app-secret)' \
+          --from-literal=GF_AUTH_AZURE_MONITOR_TENANT_ID="$(az account show --query tenantId -o tsv)" \
+          --dry-run=client -o yaml | kubectl apply -f -
+      displayName: 'Setup Kubernetes Resources'
+      
+    - script: |
+        # Deploy Prometheus
+        helm upgrade --install prometheus prometheus-community/prometheus \
+          --version $(charts.prometheus.chartVersion) \
+          --namespace monitoring \
+          --values $(charts.prometheus.valuesFile)
+      displayName: 'Deploy Prometheus'
+      
+    - script: |
+        # Deploy Grafana
+        helm upgrade --install grafana grafana/grafana \
+          --version $(charts.grafana.chartVersion) \
+          --namespace monitoring \
+          --values $(charts.grafana.valuesFile)
+      displayName: 'Deploy Grafana'
+      
+    - script: |
+        # Wait for deployments to be ready
+        kubectl rollout status deployment/prometheus-server -n monitoring
+        kubectl rollout status deployment/grafana -n monitoring
+        
+        # Get Grafana load balancer IP
+        echo "Grafana URL: http://$(kubectl get svc grafana -n monitoring -o jsonpath='{.status.loadBalancer.ingress[0].ip}')"
+      displayName: 'Verify Deployments'
+
+
+
+
+
+####################################
+
+
+# Azure Monitor Insights and Grafana for AKS 1.30.3
+
+I'll provide a detailed walkthrough for setting up monitoring on your AKS 1.30.3 cluster using Azure Monitor Insights and Grafana, leveraging Azure Key Vault for secrets management and implementing with Helm charts through DevOps pipelines.
+
+## Azure Monitor Setup
+
+### 1. Enable Container Insights on AKS
+
+```bash
+# Get your AKS cluster resource ID
+AKS_CLUSTER_ID=$(az aks show --resource-group your-resource-group --name your-cluster-name --query id -o tsv)
+
+# Enable Container Insights
+az monitor diagnostics create --resource $AKS_CLUSTER_ID --name ContainerInsights \
+  --workspace your-log-analytics-workspace-id \
+  --logs '[{"category":"kube-apiserver","enabled":true},{"category":"kube-controller-manager","enabled":true},{"category":"kube-scheduler","enabled":true},{"category":"cluster-autoscaler","enabled":true}]'
+```
+
+### 2. Configure Azure Monitor Agent
+
+```bash
+# Use helm to deploy Azure Monitor agent
+az aks enable-addons --resource-group your-resource-group --name your-cluster-name --addons monitoring
+```
+
+## Grafana Setup with Azure Key Vault Integration
+
+### 1. Create Helm Values File for Grafana
+
+First, create a values file (`grafana-values.yaml`) for your Grafana deployment:
+
+```yaml
+persistence:
+  enabled: true
+  size: 10Gi
+
+plugins:
+  - grafana-azure-monitor-datasource
+  - grafana-kubernetes-app
+
+podAnnotations:
+  azure.workload.identity/use: "true"
+
+extraEnvFrom:
+  - secretRef:
+      name: grafana-azure-credentials
+
+service:
+  type: LoadBalancer
+
+grafana.ini:
+  server:
+    domain: your-grafana-domain.com
+    root_url: https://your-grafana-domain.com
+  auth:
+    disable_login_form: false
+```
+
+### 2. Set Up Azure Key Vault and Workload Identity
+
+```bash
+# Create managed identity for Grafana
+az identity create --resource-group your-resource-group --name grafana-identity
+
+# Get the client ID of the managed identity
+IDENTITY_CLIENT_ID=$(az identity show --resource-group your-resource-group --name grafana-identity --query clientId -o tsv)
+
+# Configure Key Vault access policy
+az keyvault set-policy --name your-keyvault-name \
+  --secret-permissions get list \
+  --spn $IDENTITY_CLIENT_ID
+
+# Create a Kubernetes service account for Grafana
+kubectl create namespace monitoring
+cat <<EOF | kubectl apply -f -
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: grafana-sa
+  namespace: monitoring
+  annotations:
+    azure.workload.identity/client-id: $IDENTITY_CLIENT_ID
+EOF
+
+# Create Azure Workload Identity binding
+az aks pod-identity add --resource-group your-resource-group \
+  --cluster-name your-cluster-name \
+  --namespace monitoring \
+  --name grafana-identity \
+  --identity-resource-id $(az identity show --resource-group your-resource-group --name grafana-identity --query id -o tsv)
+```
+
+### 3. Store Secrets in Azure Key Vault
+
+```bash
+# Store Grafana admin password in Key Vault
+az keyvault secret set --vault-name your-keyvault-name \
+  --name grafana-admin-password \
+  --value "SecurePassword123!"
+
+# Store Azure Monitor API credentials
+az keyvault secret set --vault-name your-keyvault-name \
+  --name azure-monitor-app-id \
+  --value "your-app-id"
+
+az keyvault secret set --vault-name your-keyvault-name \
+  --name azure-monitor-app-secret \
+  --value "your-app-secret"
+```
+
+### 4. Create Kubernetes Secret Provider Configuration
+
+```yaml
+apiVersion: secrets-store.csi.x-k8s.io/v1
+kind: SecretProviderClass
+metadata:
+  name: azure-kvs-grafana
+  namespace: monitoring
+spec:
+  provider: azure
+  parameters:
+    usePodIdentity: "true"
+    keyvaultName: your-keyvault-name
+    objects: |
+      array:
+        - |
+          objectName: grafana-admin-password
+          objectType: secret
+          objectVersion: ""
+        - |
+          objectName: azure-monitor-app-id
+          objectType: secret
+          objectVersion: ""
+        - |
+          objectName: azure-monitor-app-secret
+          objectType: secret
+          objectVersion: ""
+    tenantId: your-tenant-id
+```
+
+### 5. Create Grafana Kubernetes Secrets from Key Vault
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: grafana-azure-credentials
+  namespace: monitoring
+  labels:
+    app: grafana
+type: Opaque
+stringData:
+  GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
+  GF_AUTH_AZURE_MONITOR_CLIENT_ID: ${AZURE_MONITOR_APP_ID}
+  GF_AUTH_AZURE_MONITOR_CLIENT_SECRET: ${AZURE_MONITOR_APP_SECRET}
+  GF_AUTH_AZURE_MONITOR_TENANT_ID: your-tenant-id
+```
+
+## Azure DevOps Pipeline for Deployment
+
+### 1. Create Azure DevOps Pipeline YAML
+
+```yaml
+trigger:
+- main
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  resourceGroup: 'your-resource-group'
+  aksClusterName: 'your-cluster-name'
+  keyVaultName: 'your-keyvault-name'
+  charts:
+    grafana:
+      name: grafana
+      repoURL: https://grafana.github.io/helm-charts
+      chartName: grafana
+      chartVersion: 6.50.0
+      valuesFile: deploy/grafana-values.yaml
+      namespace: monitoring
+    prometheus:
+      name: prometheus
+      repoURL: https://prometheus-community.github.io/helm-charts
+      chartName: prometheus
+      chartVersion: 19.0.0
+      valuesFile: deploy/prometheus-values.yaml
+      namespace: monitoring
+
+stages:
+- stage: DeployMonitoring
+  displayName: 'Deploy Monitoring Stack'
+  jobs:
+  - job: DeployHelm
+    steps:
+    - task: AzureCLI@2
+      displayName: 'Login to Azure'
+      inputs:
+        azureSubscription: 'your-azure-subscription'
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          az account show
+          
+    - task: AzureCLI@2
+      displayName: 'Get AKS Credentials'
+      inputs:
+        azureSubscription: 'your-azure-subscription'
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          az aks get-credentials --resource-group $(resourceGroup) --name $(aksClusterName)
+          
+    - task: AzureKeyVault@2
+      displayName: 'Get secrets from Key Vault'
+      inputs:
+        azureSubscription: 'your-azure-subscription'
+        KeyVaultName: $(keyVaultName)
+        SecretsFilter: 'grafana-admin-password,azure-monitor-app-id,azure-monitor-app-secret'
+        
+    - task: KubectlInstaller@0
+      displayName: 'Install kubectl'
+      
+    - task: HelmInstaller@1
+      displayName: 'Install Helm'
+      inputs:
+        helmVersionToInstall: 'latest'
+        
+    - script: |
+        # Create namespaces if they don't exist
+        kubectl create namespace monitoring --dry-run=client -o yaml | kubectl apply -f -
+        
+        # Add Helm repos
+        helm repo add grafana https://grafana.github.io/helm-charts
+        helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+        helm repo update
+        
+        # Deploy the Secret Provider Class
+        cat <<EOF > secret-provider.yaml
+        apiVersion: secrets-store.csi.x-k8s.io/v1
+        kind: SecretProviderClass
+        metadata:
+          name: azure-kvs-grafana
+          namespace: monitoring
+        spec:
+          provider: azure
+          parameters:
+            usePodIdentity: "true"
+            keyvaultName: $(keyVaultName)
+            objects: |
+              array:
+                - |
+                  objectName: grafana-admin-password
+                  objectType: secret
+                  objectVersion: ""
+                - |
+                  objectName: azure-monitor-app-id
+                  objectType: secret
+                  objectVersion: ""
+                - |
+                  objectName: azure-monitor-app-secret
+                  objectType: secret
+                  objectVersion: ""
+            tenantId: $(az account show --query tenantId -o tsv)
+        EOF
+        kubectl apply -f secret-provider.yaml
+        
+        # Create Azure credentials secret for Grafana
+        kubectl create secret generic grafana-azure-credentials \
+          --namespace monitoring \
+          --from-literal=GF_SECURITY_ADMIN_PASSWORD='$(grafana-admin-password)' \
+          --from-literal=GF_AUTH_AZURE_MONITOR_CLIENT_ID='$(azure-monitor-app-id)' \
+          --from-literal=GF_AUTH_AZURE_MONITOR_CLIENT_SECRET='$(azure-monitor-app-secret)' \
+          --from-literal=GF_AUTH_AZURE_MONITOR_TENANT_ID="$(az account show --query tenantId -o tsv)" \
+          --dry-run=client -o yaml | kubectl apply -f -
+      displayName: 'Setup Kubernetes Resources'
+      
+    - script: |
+        # Deploy Prometheus
+        helm upgrade --install prometheus prometheus-community/prometheus \
+          --version $(charts.prometheus.chartVersion) \
+          --namespace monitoring \
+          --values $(charts.prometheus.valuesFile)
+      displayName: 'Deploy Prometheus'
+      
+    - script: |
+        # Deploy Grafana
+        helm upgrade --install grafana grafana/grafana \
+          --version $(charts.grafana.chartVersion) \
+          --namespace monitoring \
+          --values $(charts.grafana.valuesFile)
+      displayName: 'Deploy Grafana'
+      
+    - script: |
+        # Wait for deployments to be ready
+        kubectl rollout status deployment/prometheus-server -n monitoring
+        kubectl rollout status deployment/grafana -n monitoring
+        
+        # Get Grafana load balancer IP
+        echo "Grafana URL: http://$(kubectl get svc grafana -n monitoring -o jsonpath='{.status.loadBalancer.ingress[0].ip}')"
+      displayName: 'Verify Deployments'
+
+```
+
+### 2. Create Prometheus Values File
+
+Create `prometheus-values.yaml` for Prometheus configuration:
+
+```yaml
+server:
+  persistentVolume:
+    size: 50Gi
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 2048Mi
+    requests:
+      cpu: 500m
+      memory: 1024Mi
+
+alertmanager:
+  enabled: true
+  persistentVolume:
+    size: 10Gi
+
+nodeExporter:
+  enabled: true
+
+kubeStateMetrics:
+  enabled: true
+```
+
+## Custom Resource Definitions (CRDs)
+
+### 1. ServiceMonitor CRD for Prometheus
+
+Create a ServiceMonitor configuration to monitor your applications:
+
+```yaml
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: app-monitor
+  namespace: monitoring
+  labels:
+    release: prometheus
+spec:
+  selector:
+    matchLabels:
+      app: your-application
+  namespaceSelector:
+    matchNames:
+      - your-app-namespace
+  endpoints:
+  - port: metrics
+    interval: 15s
+    path: /metrics
+```
+
+### 2. Grafana Dashboard CRD
+
+Create a custom Grafana dashboard configuration:
+
+```yaml
+apiVersion: integreatly.org/v1alpha1
+kind: GrafanaDashboard
+metadata:
+  name: kubernetes-cluster-dashboard
+  namespace: monitoring
+spec:
+  json: |
+    {
+      "annotations": {
+        "list": []
+      },
+      "editable": true,
+      "fiscalYearStartMonth": 0,
+      "graphTooltip": 0,
+      "id": 1,
+      "links": [],
+      "liveNow": false,
+      "panels": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "drawStyle": "line",
+                "fillOpacity": 0,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 0
+          },
+          "id": 1,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "single",
+              "sort": "none"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "PBFA97CFB590B2093"
+              },
+              "editorMode": "code",
+              "expr": "sum(rate(container_cpu_usage_seconds_total{namespace!=\"kube-system\"}[5m])) by (namespace)",
+              "legendFormat": "{{namespace}}",
+              "range": true,
+              "refId": "A"
+            }
+          ],
+          "title": "CPU Usage by Namespace",
+          "type": "timeseries"
+        }
+      ],
+      "refresh": "",
+      "schemaVersion": 38,
+      "style": "dark",
+      "tags": [],
+      "templating": {
+        "list": []
+      },
+      "time": {
+        "from": "now-6h",
+        "to": "now"
+      },
+      "timepicker": {},
+      "timezone": "",
+      "title": "Kubernetes Cluster Overview",
+      "uid": "kubernetes-cluster-overview",
+      "version": 1,
+      "weekStart": ""
+    }
+```
+
+## Configure Azure Monitor Data Source in Grafana
+
+After deploying Grafana, set up Azure Monitor as a data source:
+
+1. Log in to Grafana using the admin credentials
+2. Navigate to Configuration > Data Sources > Add data source
+3. Select "Azure Monitor"
+4. Configure Azure Monitor data source settings:
+   - Authentication Type: App Registration
+   - Directory (tenant) ID: Your Azure AD tenant ID
+   - Application ID: Retrieved from Key Vault secret
+   - Client Secret: Retrieved from Key Vault secret
+   - Default Subscription: Your Azure subscription ID
+
+## Integration with Azure Log Analytics
+
+Create a custom query for Azure Monitor logs:
+
+```
+// Kubernetes container logs for critical errors
+let timeRange = 1h;
+KubePodInventory
+| where TimeGenerated > ago(timeRange)
+| where ClusterName == "your-cluster-name"
+| distinct ContainerID, ContainerName, PodName, Namespace
+| join
+(
+    ContainerLog
+    | where TimeGenerated > ago(timeRange)
+    | where LogEntry contains "error" or LogEntry contains "Error" or LogEntry contains "ERROR"
+)
+on ContainerID
+| project TimeGenerated, Namespace, PodName, ContainerName, LogEntry
+| order by TimeGenerated desc
+```
+
+## Integration with Azure Application Insights
+
+To monitor applications deployed on your AKS cluster:
+
+1. Create an Application Insights resource in Azure
+2. Add the Application Insights SDK to your applications
+3. Configure Kubernetes pods with the Application Insights instrumentation key
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: your-app
+spec:
+  template:
+    metadata:
+      labels:
+        app: your-app
+    spec:
+      containers:
+      - name: your-app
+        image: your-app-image
+        env:
+        - name: APPLICATIONINSIGHTS_CONNECTION_STRING
+          valueFrom:
+            secretKeyRef:
+              name: application-insights-secret
+              key: connection-string
+```
+
+## Troubleshooting Tips
+
+1. **Check Azure Monitor Agent pods**:
+   ```bash
+   kubectl get pods -n kube-system | grep omsagent
+   ```
+
+2. **Verify Prometheus targets**:
+   ```bash
+   kubectl port-forward svc/prometheus-server 9090:80 -n monitoring
+   ```
+   Then access http://localhost:9090/targets in your browser
+
+3. **Check Grafana logs**:
+   ```bash
+   kubectl logs -l app.kubernetes.io/name=grafana -n monitoring
+   ```
+
+4. **Verify Azure Key Vault integration**:
+   ```bash
+   kubectl describe pod -l app.kubernetes.io/name=grafana -n monitoring
+   ```
+
+This walkthrough provides a comprehensive approach to implement Azure Monitor Insights and Grafana on your AKS 1.30.3 cluster with Azure Key Vault integration, deployed via Azure DevOps pipelines using Helm charts and custom resource definitions.
