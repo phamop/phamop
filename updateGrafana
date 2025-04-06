@@ -1,0 +1,239 @@
+# Azure Monitor Insights Metrics for Grafana on AKS 1.30.3: Detailed Walkthrough
+
+This guide provides a comprehensive walkthrough for integrating Azure Monitor Insights metrics with Grafana on an existing AKS cluster (version 1.30.3) that uses Azure Key Vault but doesn't have Istio or Azure DevOps pipelines.
+
+## Prerequisites
+
+- Existing AKS cluster (v1.30.3)
+- Azure Key Vault configured for secrets management
+- kubectl configured with cluster admin access
+- Helm (v3.x) installed locally
+- Azure CLI installed and logged in
+- Grafana instance (can be deployed in AKS or external)
+
+## Step 1: Set Up Azure Monitor for Containers
+
+### Enable Azure Monitor on your AKS cluster
+
+```bash
+# Get your AKS resource ID
+AKS_RESOURCE_ID=$(az aks show --resource-group <your-resource-group> --name <your-aks-name> --query id -o tsv)
+
+# Enable Azure Monitor
+az aks enable-addons --resource-group <your-resource-group> --name <your-aks-name> --addons monitoring --workspace-resource-id <your-log-analytics-workspace-id>
+```
+
+### Verify Azure Monitor deployment
+
+```bash
+kubectl get pods -n kube-system | grep omsagent
+```
+
+You should see `omsagent` pods running.
+
+## Step 2: Set Up Managed Identity for Grafana
+
+### Create a managed identity
+
+```bash
+az identity create --name grafana-identity --resource-group <your-resource-group>
+```
+
+### Get identity details
+
+```bash
+IDENTITY_CLIENT_ID=$(az identity show --name grafana-identity --resource-group <your-resource-group> --query clientId -o tsv)
+IDENTITY_RESOURCE_ID=$(az identity show --name grafana-identity --resource-group <your-resource-group> --query id -o tsv)
+```
+
+### Assign monitoring reader role
+
+```bash
+az role assignment create --assignee $IDENTITY_CLIENT_ID --role "Monitoring Reader" --scope $AKS_RESOURCE_ID
+```
+
+## Step 3: Store Credentials in Azure Key Vault
+
+```bash
+# Store client ID in Key Vault
+az keyvault secret set --vault-name <your-key-vault-name> --name "grafana-identity-client-id" --value $IDENTITY_CLIENT_ID
+
+# Store tenant ID (get it from your Azure account)
+TENANT_ID=$(az account show --query tenantId -o tsv)
+az keyvault secret set --vault-name <your-key-vault-name> --name "grafana-tenant-id" --value $TENANT_ID
+
+# Store subscription ID
+SUBSCRIPTION_ID=$(az account show --query id -o tsv)
+az keyvault secret set --vault-name <your-key-vault-name> --name "grafana-subscription-id" --value $SUBSCRIPTION_ID
+```
+
+## Step 4: Deploy Grafana with Helm
+
+### Add Grafana Helm repository
+
+```bash
+helm repo add grafana https://grafana.github.io/helm-charts
+helm repo update
+```
+
+### Create values file for Grafana (grafana-values.yaml)
+
+```yaml
+# grafana-values.yaml
+serviceAccount:
+  create: true
+  name: grafana-service-account
+  annotations:
+    azure.workload.identity/client-id: "$IDENTITY_CLIENT_ID"
+
+podAnnotations:
+  azure.workload.identity/use: "true"
+
+grafana.ini:
+  auth.azuread:
+    enabled: true
+    allow_sign_up: true
+    client_id: "$CLIENT_ID"
+    client_secret: "$CLIENT_SECRET"
+    auth_url: https://login.microsoftonline.com/$TENANT_ID/oauth2/v2.0/authorize
+    token_url: https://login.microsoftonline.com/$TENANT_ID/oauth2/v2.0/token
+    allowed_domains:
+    - yourdomain.com
+    scopes: openid email profile
+
+service:
+  type: LoadBalancer
+
+persistence:
+  enabled: true
+
+plugins:
+  - grafana-azure-monitor-datasource
+```
+
+### Install Grafana
+
+```bash
+helm install grafana grafana/grafana -f grafana-values.yaml --namespace monitoring --create-namespace
+```
+
+## Step 5: Configure Azure Monitor Data Source in Grafana
+
+### Get Grafana admin password
+
+```bash
+kubectl get secret --namespace monitoring grafana -o jsonpath="{.data.admin-password}" | base64 --decode ; echo
+```
+
+### Access Grafana UI
+
+```bash
+# Get the external IP
+kubectl get svc -n monitoring grafana
+```
+
+Navigate to the Grafana UI and log in with admin and the password from above.
+
+### Add Azure Monitor data source
+
+1. Go to Configuration > Data Sources
+2. Click "Add data source"
+3. Select "Azure Monitor"
+4. Configure with these settings:
+   - Authentication: Azure AD Workload Identity
+   - Subscription ID: Your Azure subscription ID
+   - Tenant ID: Your Azure AD tenant ID
+   - Client ID: The managed identity client ID
+5. Click "Save & Test"
+
+## Step 6: Import Kubernetes Dashboards
+
+1. In Grafana, go to "+" > Import
+2. Use these dashboard IDs to import standard Kubernetes dashboards:
+   - 12180: Kubernetes Cluster (Azure Monitor)
+   - 12181: Kubernetes Node (Azure Monitor)
+   - 12182: Kubernetes Namespace (Azure Monitor)
+   - 12183: Kubernetes Workload (Azure Monitor)
+   - 12184: Kubernetes Pod (Azure Monitor)
+
+## Step 7: Configure Custom Metrics (Optional)
+
+### Create custom metrics configuration
+
+```yaml
+# custom-metrics-config.yaml
+azureMonitor:
+  enabled: true
+  metricAnnotations:
+    enabled: true
+  metricLabels:
+    enabled: true
+```
+
+### Apply configuration
+
+```bash
+kubectl apply -f custom-metrics-config.yaml
+```
+
+## Step 8: Set Up Alerts (Optional)
+
+### Configure alert rules in Grafana
+
+1. Go to Alerting > Alert rules
+2. Create new rule
+3. Set up queries using Azure Monitor metrics
+4. Configure notification channels (Email, Slack, etc.)
+
+## Step 9: Verify Metrics Flow
+
+### Check metrics in Grafana
+
+1. Open any of the imported dashboards
+2. Verify you see data for:
+   - Cluster CPU/Memory usage
+   - Node metrics
+   - Pod metrics
+   - Namespace resource usage
+
+## Troubleshooting
+
+### Common issues and solutions
+
+1. **No data in Grafana**:
+   - Verify Azure Monitor add-on is properly installed
+   - Check omsagent pods are running
+   - Verify managed identity has correct permissions
+
+2. **Authentication errors**:
+   - Verify workload identity is properly configured
+   - Check client ID and tenant ID are correct
+   - Ensure "Monitoring Reader" role is assigned
+
+3. **Missing metrics**:
+   - Check if metrics are available in Azure Monitor directly
+   - Verify custom metrics configuration if using custom metrics
+
+## Maintenance
+
+### Update Grafana
+
+```bash
+helm repo update
+helm upgrade grafana grafana/grafana -f grafana-values.yaml --namespace monitoring
+```
+
+### Update Azure Monitor add-on
+
+```bash
+az aks update --resource-group <your-resource-group> --name <your-aks-name> --enable-addons monitoring
+```
+
+## Security Considerations
+
+1. Use network policies to restrict Grafana access
+2. Regularly rotate managed identity credentials
+3. Enable Grafana authentication (Azure AD integration recommended)
+4. Restrict access to Azure Key Vault secrets
+
+This setup provides comprehensive monitoring of your AKS cluster using Azure Monitor metrics visualized in Grafana, without requiring Istio or Azure DevOps pipelines. The Helm chart deployment ensures maintainability, and Azure Key Vault integration provides secure secret management.
