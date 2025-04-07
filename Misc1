@@ -1,0 +1,140 @@
+# Creating an Azure AD Application for Grafana Integration
+
+Here's a complete guide to create an Azure AD application for Grafana with the necessary permissions to access Azure Monitor metrics:
+
+## Step 1: Create the Azure AD Application
+
+```bash
+# Create the application registration
+GRAFANA_APP_NAME="Grafana-Azure-Monitor"
+APP_ID=$(az ad app create \
+  --display-name "$GRAFANA_APP_NAME" \
+  --query appId \
+  --output tsv)
+
+echo "Application created with ID: $APP_ID"
+```
+
+## Step 2: Create a Service Principal
+
+```bash
+# Create service principal for the application
+SP_ID=$(az ad sp create --id "$APP_ID" --query id --output tsv)
+echo "Service Principal created with ID: $SP_ID"
+```
+
+## Step 3: Create Client Secret
+
+```bash
+# Create client secret (valid for 1 year)
+CLIENT_SECRET=$(az ad app credential reset \
+  --id "$APP_ID" \
+  --years 1 \
+  --query password \
+  --output tsv)
+
+echo "Client Secret: $CLIENT_SECRET"
+```
+
+## Step 4: Assign Required Permissions
+
+```bash
+# Get your Azure subscription ID
+SUBSCRIPTION_ID=$(az account show --query id --output tsv)
+
+# Assign Monitoring Reader role at subscription level
+az role assignment create \
+  --assignee "$APP_ID" \
+  --role "Monitoring Reader" \
+  --scope "/subscriptions/$SUBSCRIPTION_ID"
+
+# Assign Reader role at subscription level (if needed)
+az role assignment create \
+  --assignee "$APP_ID" \
+  --role "Reader" \
+  --scope "/subscriptions/$SUBSCRIPTION_ID"
+```
+
+## Step 5: Store Credentials in Azure Key Vault
+
+```bash
+KEY_VAULT_NAME="Goodvault"
+
+# Store client ID
+az keyvault secret set \
+  --vault-name "$KEY_VAULT_NAME" \
+  --name "grafana-azure-client-id" \
+  --value "$APP_ID"
+
+# Store client secret
+az keyvault secret set \
+  --vault-name "$KEY_VAULT_NAME" \
+  --name "grafana-azure-client-secret" \
+  --value "$CLIENT_SECRET"
+
+# Store tenant ID (same as directory ID)
+TENANT_ID=$(az account show --query tenantId --output tsv)
+az keyvault secret set \
+  --vault-name "$KEY_VAULT_NAME" \
+  --name "grafana-azure-tenant-id" \
+  --value "$TENANT_ID"
+
+# Store subscription ID
+az keyvault secret set \
+  --vault-name "$KEY_VAULT_NAME" \
+  --name "grafana-azure-subscription-id" \
+  --value "$SUBSCRIPTION_ID"
+```
+
+## Step 6: Configure API Permissions (Optional)
+
+If you need additional permissions:
+
+```bash
+# Add Azure Active Directory Graph API permissions
+az ad app permission add \
+  --id "$APP_ID" \
+  --api 00000002-0000-0000-c000-000000000000 \
+  --api-permissions 311a71cc-e848-46a1-bdf8-97ff7156d8e6=Scope
+
+# Grant admin consent
+az ad app permission admin-consent --id "$APP_ID"
+```
+
+## Step 7: Verify the Application
+
+```bash
+# Check application registration
+az ad app show --id "$APP_ID"
+
+# Check service principal
+az ad sp show --id "$APP_ID"
+
+# Check role assignments
+az role assignment list --assignee "$APP_ID"
+```
+
+## Step 8: Configure Grafana with These Values
+
+Use these values in your Grafana configuration:
+
+- **Azure AD Tenant ID**: `$TENANT_ID`
+- **Client ID**: `$APP_ID`
+- **Client Secret**: `$CLIENT_SECRET`
+- **Subscription ID**: `$SUBSCRIPTION_ID`
+
+## Security Recommendations
+
+1. **Secret Rotation**: Set a reminder to rotate the client secret before expiration
+2. **Least Privilege**: Only assign necessary permissions (Monitoring Reader is typically sufficient)
+3. **Audit Logs**: Monitor the application's activity in Azure AD logs
+4. **Certificate Authentication**: Consider using certificates instead of client secrets for production
+
+## Troubleshooting
+
+If you encounter issues:
+- Verify the service principal exists: `az ad sp show --id $APP_ID`
+- Check role assignments: `az role assignment list --assignee $APP_ID`
+- Validate the secret: `az keyvault secret show --name grafana-azure-client-secret --vault-name $KEY_VAULT_NAME`
+
+This setup provides Grafana with the necessary permissions to read monitoring data from Azure Monitor while following security best practices.
