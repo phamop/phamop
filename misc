@@ -1,0 +1,1 @@
+az ad sp list --filter "displayName eq 'Azure Monitor'" --query "[].{Name:displayName, ObjectId:objectId, AppId:appId}" --output table
