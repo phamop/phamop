@@ -1,0 +1,994 @@
+# Azure Monitor Insights Integration with Grafana for AKS
+
+I'll provide a detailed walkthrough for integrating Azure Monitor Insights metrics with Grafana on your existing AKS cluster using Azure Key Vault for secrets management and implementing CI/CD pipelines with Azure DevOps.
+
+## High-Level Architecture Overview
+
+1. Azure Monitor Insights collects metrics from your AKS cluster
+2. Grafana connects to Azure Monitor as a data source
+3. Azure Key Vault "Goodvault" stores necessary credentials
+4. All components deployed in the EDDERP namespace
+5. CI/CD managed through Azure DevOps pipelines using Helm charts
+
+## Step 1: Retrieve Required Azure Information
+
+First, let's get the required Azure information for the Grafana integration:
+
+```bash
+# Login to Azure
+az login
+
+# Get Tenant ID
+TENANT_ID=$(az account show --query tenantId -o tsv)
+echo "Tenant ID: $TENANT_ID"
+
+# Get Subscription ID
+SUBSCRIPTION_ID=$(az account show --query id -o tsv)
+echo "Subscription ID: $SUBSCRIPTION_ID"
+
+# Get AKS details
+AKS_RESOURCE_GROUP="your-resource-group"
+AKS_NAME="your-aks-cluster"
+
+# Get workspace details for Azure Monitor
+WORKSPACE_ID=$(az aks show -g $AKS_RESOURCE_GROUP -n $AKS_NAME --query addonProfiles.omsagent.config.logAnalyticsWorkspaceResourceID -o tsv)
+echo "Log Analytics Workspace ID: $WORKSPACE_ID"
+```
+
+## Step 2: Create a Service Principal for Grafana
+
+Create a service principal that Grafana will use to access Azure Monitor:
+
+```bash
+# Create service principal with Monitoring Reader role
+SP_NAME="grafana-azure-monitor-sp"
+az ad sp create-for-rbac --name $SP_NAME --role "Monitoring Reader" --scopes /subscriptions/$SUBSCRIPTION_ID --query "{clientId:appId,clientSecret:password,tenantId:tenant}" -o json > grafana-sp-credentials.json
+
+# Extract values
+CLIENT_ID=$(cat grafana-sp-credentials.json | jq -r .clientId)
+CLIENT_SECRET=$(cat grafana-sp-credentials.json | jq -r .clientSecret)
+```
+
+## Step 3: Store Credentials in Azure Key Vault
+
+Store the required credentials in your existing Azure Key Vault "Goodvault":
+
+```bash
+# Store credentials in Key Vault
+KEY_VAULT_NAME="Goodvault"
+
+az keyvault secret set --vault-name $KEY_VAULT_NAME --name "grafana-azure-tenant-id" --value "$TENANT_ID"
+az keyvault secret set --vault-name $KEY_VAULT_NAME --name "grafana-azure-client-id" --value "$CLIENT_ID"
+az keyvault secret set --vault-name $KEY_VAULT_NAME --name "grafana-azure-client-secret" --value "$CLIENT_SECRET"
+az keyvault secret set --vault-name $KEY_VAULT_NAME --name "grafana-azure-subscription-id" --value "$SUBSCRIPTION_ID"
+az keyvault secret set --vault-name $KEY_VAULT_NAME --name "grafana-admin-username" --value "admin"
+az keyvault secret set --vault-name $KEY_VAULT_NAME --name "grafana-admin-password" --value "$(openssl rand -base64 16)"
+```
+
+## Step 4: Configure AKS to Access Key Vault
+
+Enable your AKS cluster to access Key Vault using the CSI driver:
+
+```bash
+# Enable Secret Store CSI Driver on AKS
+az aks enable-addons --addons azure-keyvault-secrets-provider --name $AKS_NAME --resource-group $AKS_RESOURCE_GROUP
+
+# Get the managed identity ID
+IDENTITY_CLIENT_ID=$(az aks show -g $AKS_RESOURCE_GROUP -n $AKS_NAME --query addonProfiles.azureKeyvaultSecretsProvider.identity.clientId -o tsv)
+
+# Assign permissions to the Key Vault
+az keyvault set-policy --name $KEY_VAULT_NAME --spn $IDENTITY_CLIENT_ID --secret-permissions get list
+```
+
+## Step 5: Create Helm Charts for Grafana Deployment
+
+Let's create the necessary Helm charts for Grafana. First, create a directory structure:
+
+```bash
+mkdir -p grafana-helm-chart/templates
+cd grafana-helm-chart
+
+# Create Chart.yaml
+cat > Chart.yaml << 'EOF'
+apiVersion: v2
+name: grafana-azure-monitor
+description: Grafana deployment with Azure Monitor Insights integration
+version: 0.1.0
+appVersion: "1.0.0"
+EOF
+
+# Create values.yaml
+cat > values.yaml << 'EOF'
+namespace: EDDERP
+
+grafana:
+  image: grafana/grafana:latest
+  replicas: 1
+  adminUser:
+    existingSecret: grafana-admin-credentials
+    usernameKey: username
+    passwordKey: password
+  
+keyvault:
+  name: Goodvault
+  tenantIdSecretName: grafana-azure-tenant-id
+  clientIdSecretName: grafana-azure-client-id
+  clientSecretSecretName: grafana-azure-client-secret
+  subscriptionIdSecretName: grafana-azure-subscription-id
+
+persistence:
+  enabled: true
+  storageClassName: default
+  size: 10Gi
+EOF
+
+# Create Secret Provider Class template
+cat > templates/secretproviderclass.yaml << 'EOF'
+apiVersion: secrets-store.csi.x-k8s.io/v1
+kind: SecretProviderClass
+metadata:
+  name: azure-kvs-grafana
+  namespace: {{ .Values.namespace }}
+spec:
+  provider: azure
+  parameters:
+    usePodIdentity: "false"
+    useVMManagedIdentity: "true"
+    userAssignedIdentityID: ""
+    keyvaultName: {{ .Values.keyvault.name }}
+    objects: |
+      array:
+        - |
+          objectName: {{ .Values.keyvault.tenantIdSecretName }}
+          objectType: secret
+          objectVersion: ""
+        - |
+          objectName: {{ .Values.keyvault.clientIdSecretName }}
+          objectType: secret
+          objectVersion: ""
+        - |
+          objectName: {{ .Values.keyvault.clientSecretSecretName }}
+          objectType: secret
+          objectVersion: ""
+        - |
+          objectName: {{ .Values.keyvault.subscriptionIdSecretName }}
+          objectType: secret
+          objectVersion: ""
+        - |
+          objectName: grafana-admin-username
+          objectType: secret
+          objectVersion: ""
+        - |
+          objectName: grafana-admin-password
+          objectType: secret
+          objectVersion: ""
+    tenantId: $(AZURE_TENANT_ID)
+  secretObjects:
+    - secretName: azure-monitor-credentials
+      type: Opaque
+      data:
+        - objectName: {{ .Values.keyvault.tenantIdSecretName }}
+          key: tenant-id
+        - objectName: {{ .Values.keyvault.clientIdSecretName }}
+          key: client-id
+        - objectName: {{ .Values.keyvault.clientSecretSecretName }}
+          key: client-secret
+        - objectName: {{ .Values.keyvault.subscriptionIdSecretName }}
+          key: subscription-id
+    - secretName: grafana-admin-credentials
+      type: Opaque
+      data:
+        - objectName: grafana-admin-username
+          key: username
+        - objectName: grafana-admin-password
+          key: password
+EOF
+
+# Create Grafana Deployment template
+cat > templates/deployment.yaml << 'EOF'
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grafana
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: grafana
+spec:
+  replicas: {{ .Values.grafana.replicas }}
+  selector:
+    matchLabels:
+      app: grafana
+  template:
+    metadata:
+      labels:
+        app: grafana
+    spec:
+      volumes:
+        - name: grafana-storage
+          persistentVolumeClaim:
+            claimName: grafana-pvc
+        - name: secrets-store-inline
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: azure-kvs-grafana
+        - name: grafana-datasources
+          configMap:
+            name: grafana-datasources
+        - name: grafana-dashboards-config
+          configMap:
+            name: grafana-dashboards-config
+      containers:
+        - name: grafana
+          image: {{ .Values.grafana.image }}
+          ports:
+            - containerPort: 3000
+              name: http
+          volumeMounts:
+            - name: grafana-storage
+              mountPath: /var/lib/grafana
+            - name: secrets-store-inline
+              mountPath: /mnt/secrets-store
+              readOnly: true
+            - name: grafana-datasources
+              mountPath: /etc/grafana/provisioning/datasources
+            - name: grafana-dashboards-config
+              mountPath: /etc/grafana/provisioning/dashboards
+          env:
+            - name: GF_SECURITY_ADMIN_USER
+              valueFrom:
+                secretKeyRef:
+                  name: grafana-admin-credentials
+                  key: username
+            - name: GF_SECURITY_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: grafana-admin-credentials
+                  key: password
+            - name: GF_PATHS_DATA
+              value: /var/lib/grafana
+            - name: GF_PATHS_LOGS
+              value: /var/log/grafana
+EOF
+
+# Create PVC for Grafana storage
+cat > templates/pvc.yaml << 'EOF'
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: grafana-pvc
+  namespace: {{ .Values.namespace }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: {{ .Values.persistence.storageClassName }}
+  resources:
+    requests:
+      storage: {{ .Values.persistence.size }}
+EOF
+
+# Create Service for Grafana
+cat > templates/service.yaml << 'EOF'
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: grafana
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: 3000
+      protocol: TCP
+      name: http
+  selector:
+    app: grafana
+EOF
+
+# Create ConfigMap for Azure Monitor DataSource
+cat > templates/datasource-configmap.yaml << 'EOF'
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-datasources
+  namespace: {{ .Values.namespace }}
+data:
+  datasources.yaml: |
+    apiVersion: 1
+    datasources:
+      - name: Azure Monitor
+        type: grafana-azure-monitor-datasource
+        access: proxy
+        jsonData:
+          azureAuthType: clientsecret
+          cloudName: azuremonitor
+          subscriptionId: ${AZURE_SUBSCRIPTION_ID}
+          tenantId: ${AZURE_TENANT_ID}
+          clientId: ${AZURE_CLIENT_ID}
+        secureJsonData:
+          clientSecret: ${AZURE_CLIENT_SECRET}
+        version: 1
+        editable: true
+EOF
+
+# Create ConfigMap for Dashboard provider
+cat > templates/dashboard-configmap.yaml << 'EOF'
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboards-config
+  namespace: {{ .Values.namespace }}
+data:
+  dashboards.yaml: |
+    apiVersion: 1
+    providers:
+      - name: 'default'
+        orgId: 1
+        folder: ''
+        type: file
+        disableDeletion: false
+        editable: true
+        options:
+          path: /var/lib/grafana/dashboards
+EOF
+
+# Create namespace template
+cat > templates/namespace.yaml << 'EOF'
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .Values.namespace }}
+EOF
+
+```
+
+## Step 6: Create Azure DevOps Pipelines
+
+Let's create separate pipelines for Grafana deployment and Azure Monitor integration:
+
+```yaml
+# Pipeline for Grafana Deployment
+# File: grafana-deployment-pipeline.yaml
+trigger:
+  branches:
+    include:
+      - main
+  paths:
+    include:
+      - grafana-helm-chart/**
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  resourceGroup: 'your-resource-group'
+  aksName: 'your-aks-cluster'
+  namespace: 'EDDERP'
+
+stages:
+- stage: DeployGrafana
+  displayName: 'Deploy Grafana'
+  jobs:
+  - job: Deploy
+    steps:
+    - task: HelmInstaller@1
+      displayName: 'Install Helm'
+      inputs:
+        helmVersionToInstall: 'latest'
+    
+    - task: AzureCLI@2
+      displayName: 'Azure Login and Get AKS Credentials'
+      inputs:
+        azureSubscription: 'your-azure-service-connection'
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          az aks get-credentials --resource-group $(resourceGroup) --name $(aksName) --overwrite-existing
+    
+    - task: HelmDeploy@0
+      displayName: 'Deploy Grafana using Helm'
+      inputs:
+        connectionType: 'None'
+        namespace: $(namespace)
+        command: 'upgrade'
+        chartType: 'FilePath'
+        chartPath: './grafana-helm-chart'
+        releaseName: 'grafana'
+        install: true
+        waitForExecution: true
+        arguments: '--create-namespace --debug'
+
+# Pipeline for Azure Monitor Insights Integration with Grafana
+# File: azure-monitor-grafana-integration-pipeline.yaml
+trigger:
+  branches:
+    include:
+      - main
+  paths:
+    include:
+      - azure-monitor-config/**
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  resourceGroup: 'your-resource-group'
+  aksName: 'your-aks-cluster'
+  namespace: 'EDDERP'
+  keyVaultName: 'Goodvault'
+
+stages:
+- stage: ConfigureAzureMonitor
+  displayName: 'Configure Azure Monitor Integration'
+  jobs:
+  - job: Configure
+    steps:
+    - task: AzureCLI@2
+      displayName: 'Azure Login and Set Environment'
+      inputs:
+        azureSubscription: 'your-azure-service-connection'
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          # Get AKS credentials
+          az aks get-credentials --resource-group $(resourceGroup) --name $(aksName) --overwrite-existing
+          
+          # Get Azure Monitor workspace information
+          WORKSPACE_ID=$(az aks show -g $(resourceGroup) -n $(aksName) --query addonProfiles.omsagent.config.logAnalyticsWorkspaceResourceID -o tsv)
+          echo "Log Analytics Workspace ID: $WORKSPACE_ID"
+          
+          # Validate the service principal exists for Grafana
+          CLIENT_ID=$(az keyvault secret show --vault-name $(keyVaultName) --name "grafana-azure-client-id" --query value -o tsv)
+          echo "Validated Client ID exists in KeyVault"
+          
+          # Create or update ConfigMap with Azure Monitor dashboard templates
+          kubectl create configmap azure-monitor-dashboards --from-file=./azure-monitor-config/dashboards/ -n $(namespace) --dry-run=client -o yaml | kubectl apply -f -
+    
+    - task: KubernetesManifest@0
+      displayName: 'Apply dashboard import job'
+      inputs:
+        action: 'deploy'
+        namespace: $(namespace)
+        manifests: './azure-monitor-config/dashboard-import-job.yaml'
+
+```
+
+## Step 7: Create Custom Resource Definitions (CRDs) for Grafana
+
+Let's create CRDs for Grafana dashboards and data sources to automate their deployment:
+
+```yaml
+# File: grafana-crds.yaml
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: grafanadashboards.grafana.k8s.edderp.com
+spec:
+  group: grafana.k8s.edderp.com
+  names:
+    kind: GrafanaDashboard
+    listKind: GrafanaDashboardList
+    plural: grafanadashboards
+    singular: grafanadashboard
+    shortNames:
+      - gfdash
+  scope: Namespaced
+  versions:
+    - name: v1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                json:
+                  type: string
+                folder:
+                  type: string
+                datasource:
+                  type: string
+              required:
+                - json
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: grafanadatasources.grafana.k8s.edderp.com
+spec:
+  group: grafana.k8s.edderp.com
+  names:
+    kind: GrafanaDataSource
+    listKind: GrafanaDataSourceList
+    plural: grafanadatasources
+    singular: grafanadatasource
+    shortNames:
+      - gfds
+  scope: Namespaced
+  versions:
+    - name: v1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                name:
+                  type: string
+                type:
+                  type: string
+                access:
+                  type: string
+                url:
+                  type: string
+                jsonData:
+                  type: object
+                  x-kubernetes-preserve-unknown-fields: true
+                secureJsonData:
+                  type: object
+                  x-kubernetes-preserve-unknown-fields: true
+              required:
+                - name
+                - type
+
+```
+
+## Step 8: Create an Example Azure Monitor Dashboard for AKS
+
+Let's create a simple Azure Monitor dashboard for AKS using the custom resources:
+
+```yaml
+# File: azure-monitor-aks-dashboard.yaml
+apiVersion: grafana.k8s.edderp.com/v1
+kind: GrafanaDashboard
+metadata:
+  name: azure-monitor-aks-dashboard
+  namespace: EDDERP
+spec:
+  folder: "Azure Monitor"
+  datasource: "Azure Monitor"
+  json: |
+    {
+      "annotations": {
+        "list": []
+      },
+      "editable": true,
+      "fiscalYearStartMonth": 0,
+      "graphTooltip": 0,
+      "id": null,
+      "links": [],
+      "liveNow": false,
+      "panels": [
+        {
+          "datasource": {
+            "type": "grafana-azure-monitor-datasource",
+            "uid": "${DS_AZURE_MONITOR}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "drawStyle": "line",
+                "fillOpacity": 10,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "never",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              },
+              "unit": "percent"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 0
+          },
+          "id": 1,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "single",
+              "sort": "none"
+            }
+          },
+          "targets": [
+            {
+              "azureMonitor": {
+                "aggregation": "Average",
+                "dimensionFilters": [],
+                "metricName": "cpuUsagePercentage",
+                "metricNamespace": "Microsoft.ContainerService/managedClusters",
+                "resourceGroup": "${RESOURCE_GROUP}",
+                "resourceName": "${AKS_NAME}",
+                "timeGrain": "auto"
+              },
+              "datasource": {
+                "type": "grafana-azure-monitor-datasource",
+                "uid": "${DS_AZURE_MONITOR}"
+              },
+              "refId": "A"
+            }
+          ],
+          "title": "CPU Usage",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "grafana-azure-monitor-datasource",
+            "uid": "${DS_AZURE_MONITOR}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "drawStyle": "line",
+                "fillOpacity": 10,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "never",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              },
+              "unit": "percent"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 0
+          },
+          "id": 2,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "single",
+              "sort": "none"
+            }
+          },
+          "targets": [
+            {
+              "azureMonitor": {
+                "aggregation": "Average",
+                "dimensionFilters": [],
+                "metricName": "memoryWorkingSetPercentage",
+                "metricNamespace": "Microsoft.ContainerService/managedClusters",
+                "resourceGroup": "${RESOURCE_GROUP}",
+                "resourceName": "${AKS_NAME}",
+                "timeGrain": "auto"
+              },
+              "datasource": {
+                "type": "grafana-azure-monitor-datasource",
+                "uid": "${DS_AZURE_MONITOR}"
+              },
+              "refId": "A"
+            }
+          ],
+          "title": "Memory Usage",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "grafana-azure-monitor-datasource",
+            "uid": "${DS_AZURE_MONITOR}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "drawStyle": "line",
+                "fillOpacity": 10,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "never",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 8
+          },
+          "id": 3,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "single",
+              "sort": "none"
+            }
+          },
+          "targets": [
+            {
+              "azureMonitor": {
+                "aggregation": "Total",
+                "dimensionFilters": [],
+                "metricName": "podCount",
+                "metricNamespace": "Microsoft.ContainerService/managedClusters",
+                "resourceGroup": "${RESOURCE_GROUP}",
+                "resourceName": "${AKS_NAME}",
+                "timeGrain": "auto"
+              },
+              "datasource": {
+                "type": "grafana-azure-monitor-datasource",
+                "uid": "${DS_AZURE_MONITOR}"
+              },
+              "refId": "A"
+            }
+          ],
+          "title": "Pod Count",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "grafana-azure-monitor-datasource",
+            "uid": "${DS_AZURE_MONITOR}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "drawStyle": "line",
+                "fillOpacity": 10,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "never",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 8
+          },
+          "id": 4,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "single",
+              "sort": "none"
+            }
+          },
+          "targets": [
+            {
+              "azureMonitor": {
+                "aggregation": "Total",
+                "dimensionFilters": [],
+                "metricName": "nodeCount",
+                "metricNamespace": "Microsoft.ContainerService/managedClusters",
+                "resourceGroup": "${RESOURCE_GROUP}",
+                "resourceName": "${AKS_NAME}",
+                "timeGrain": "auto"
+              },
+              "datasource": {
+                "type": "grafana-azure-monitor-datasource",
+                "uid": "${DS_AZURE_MONITOR}"
+              },
+              "refId": "A"
+            }
+          ],
+          "title": "Node Count",
+          "type": "timeseries"
+        }
+      ],
+      "refresh": "5m",
+      "schemaVersion": 38,
+      "style": "dark",
+      "tags": [
+        "azure-monitor",
+        "aks",
+        "kubernetes"
+      ],
+      "templating": {
+        "list": [
+          {
+            "current": {
+              "selected": false,
+              "text": "Default",
+              "value": "Default"
+            },
+            "hide": 0,
+            "includeAll": false,
+            "multi": false,
+            "name": "DS_AZURE_MONITOR",
+            "options": [],
+            "query": "grafana-azure-monitor-datasource",
+            "queryValue": "",
+            "refresh": 1,
+            "regex": "",
+            "skipUrlSync": false,
+            "type": "datasource"
+          },
+          {
+            "current": {},
+            "datasource": {
+              "type": "grafana-azure-monitor-datasource",
+              
+```
