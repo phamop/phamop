@@ -1,0 +1,477 @@
+# Azure Monitor Insights Integration with Grafana on AKS: Comprehensive Walkthrough
+
+This guide provides a detailed implementation plan for integrating Azure Monitor Insights metrics with Grafana on an existing AKS cluster, using existing Azure Key Vaults for secrets management, without Istio, and using Helm charts with separate pipelines for different components.
+
+## Prerequisites
+
+- Existing AKS cluster
+- Existing Azure Monitor workspace with enabled Insights
+- Existing Azure Key Vault (Goodvault) with appropriate permissions
+- Azure CLI and kubectl installed
+- Helm installed
+- Grafana license (if using enterprise features)
+
+## Architecture Overview
+
+```
+Azure Monitor Insights → Grafana (AKS) ← Azure Key Vault (secrets)
+                          ↑
+Dashboard Pipeline → Alert Pipeline → Integration Pipeline
+```
+
+## Part 1: Setup Azure Monitor Data Source for Grafana
+
+### 1.1 Create Azure AD Application for Grafana
+
+```bash
+# Register an Azure AD application
+az ad app create --display-name "Grafana-Azure-Monitor-Reader" \
+  --reply-urls "http://localhost:3000/login/generic_oauth" \
+  --required-resource-accesses @manifest.json
+
+# Create service principal
+az ad sp create --id <app-id-from-previous-step>
+
+# Get client secret (store this in Key Vault)
+az ad app credential reset --id <app-id> --append
+```
+
+Example manifest.json:
+```json
+{
+  "resourceAppId": "00000003-0000-0000-c000-000000000000",
+  "resourceAccess": [
+    {
+      "id": "7ab1d382-f21e-4acd-a863-ba3e13f7da61",
+      "type": "Role"
+    }
+  ]
+}
+```
+
+### 1.2 Assign Monitoring Reader Role
+
+```bash
+# Get your Azure subscription ID
+subscriptionId=$(az account show --query id -o tsv)
+
+# Assign Monitoring Reader role to the service principal
+az role assignment create --assignee <service-principal-id> \
+  --role "Monitoring Reader" \
+  --scope "/subscriptions/$subscriptionId"
+```
+
+### 1.3 Store Credentials in Azure Key Vault
+
+```bash
+# Store client ID
+az keyvault secret set --vault-name Goodvault \
+  --name "grafana-azure-client-id" \
+  --value "<client-id>"
+
+# Store client secret
+az keyvault secret set --vault-name Goodvault \
+  --name "grafana-azure-client-secret" \
+  --value "<client-secret>"
+
+# Store tenant ID
+az keyvault secret set --vault-name Goodvault \
+  --name "grafana-azure-tenant-id" \
+  --value "<tenant-id>"
+
+# Store subscription ID
+az keyvault secret set --vault-name Goodvault \
+  --name "grafana-azure-subscription-id" \
+  --value "$subscriptionId"
+```
+
+## Part 2: Helm Chart Configuration for Grafana
+
+### 2.1 Create Helm Chart Structure
+
+```
+grafana-aks/
+├── Chart.yaml
+├── values.yaml
+├── templates/
+│   ├── deployment.yaml
+│   ├── service.yaml
+│   ├── ingress.yaml
+│   ├── configmap.yaml
+│   ├── secrets.yaml
+│   └── serviceaccount.yaml
+└── crds/
+    └── grafana-dashboard-crd.yaml
+```
+
+### 2.2 Key Configuration Files
+
+**values.yaml:**
+```yaml
+image:
+  repository: grafana/grafana
+  tag: 9.0.0
+  pullPolicy: IfNotPresent
+
+service:
+  type: LoadBalancer
+  port: 3000
+  annotations: {}
+
+ingress:
+  enabled: true
+  annotations:
+    kubernetes.io/ingress.class: nginx
+  hosts:
+    - host: grafana.yourdomain.com
+      paths:
+        - path: /
+          pathType: Prefix
+
+persistence:
+  enabled: true
+  storageClassName: default
+  accessModes:
+    - ReadWriteOnce
+  size: 10Gi
+
+env:
+  GF_AUTH_GENERIC_OAUTH_ENABLED: "true"
+  GF_AUTH_GENERIC_OAUTH_NAME: "Azure AD"
+  GF_AUTH_GENERIC_OAUTH_CLIENT_ID: "$__file{/etc/grafana/secrets/azure/client_id}"
+  GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET: "$__file{/etc/grafana/secrets/azure/client_secret}"
+  GF_AUTH_GENERIC_OAUTH_SCOPES: "openid email profile"
+  GF_AUTH_GENERIC_OAUTH_AUTH_URL: "https://login.microsoftonline.com/$__file{/etc/grafana/secrets/azure/tenant_id}/oauth2/authorize"
+  GF_AUTH_GENERIC_OAUTH_TOKEN_URL: "https://login.microsoftonline.com/$__file{/etc/grafana/secrets/azure/tenant_id}/oauth2/token"
+
+datasources:
+  datasources.yaml:
+    apiVersion: 1
+    datasources:
+    - name: AzureMonitor
+      type: grafana-azure-monitor-datasource
+      orgId: 1
+      typeLogoUrl: public/plugins/grafana-azure-monitor-datasource/img/logo.svg
+      access: proxy
+      url: /api/datasources/proxy/1
+      jsonData:
+        subscriptionId: "$__file{/etc/grafana/secrets/azure/subscription_id}"
+        cloudName: azuremonitor
+        azureAuthType: clientsecret
+        tenantId: "$__file{/etc/grafana/secrets/azure/tenant_id}"
+        clientId: "$__file{/etc/grafana/secrets/azure/client_id}"
+      secureJsonData:
+        clientSecret: "$__file{/etc/grafana/secrets/azure/client_secret}"
+      version: 1
+      editable: true
+```
+
+**templates/secrets.yaml:**
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: grafana-azure-secrets
+type: Opaque
+stringData:
+  client_id: |
+    {{ .Values.azure.clientId }}
+  client_secret: |
+    {{ .Values.azure.clientSecret }}
+  tenant_id: |
+    {{ .Values.azure.tenantId }}
+  subscription_id: |
+    {{ .Values.azure.subscriptionId }}
+```
+
+## Part 3: Pipeline Implementation
+
+### 3.1 Grafana Creation Pipeline
+
+Create a file `grafana-creation-pipeline.yaml`:
+
+```yaml
+trigger:
+  branches:
+    include:
+      - main
+  paths:
+    include:
+      - 'grafana-aks/*'
+
+variables:
+  - group: 'grafana-aks-config'
+  - name: 'namespace'
+    value: 'monitoring'
+
+stages:
+- stage: DeployGrafana
+  jobs:
+  - job: Deploy
+    steps:
+    - task: AzureCLI@2
+      inputs:
+        azureSubscription: 'your-azure-service-connection'
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          # Get secrets from Key Vault
+          clientId=$(az keyvault secret show --vault-name Goodvault --name grafana-azure-client-id --query value -o tsv)
+          clientSecret=$(az keyvault secret show --vault-name Goodvault --name grafana-azure-client-secret --query value -o tsv)
+          tenantId=$(az keyvault secret show --vault-name Goodvault --name grafana-azure-tenant-id --query value -o tsv)
+          subscriptionId=$(az keyvault secret show --vault-name Goodvault --name grafana-azure-subscription-id --query value -o tsv)
+          
+          # Helm install/upgrade
+          helm upgrade --install grafana grafana-aks/ \
+            --namespace $(namespace) \
+            --set azure.clientId="$clientId" \
+            --set azure.clientSecret="$clientSecret" \
+            --set azure.tenantId="$tenantId" \
+            --set azure.subscriptionId="$subscriptionId" \
+            --values grafana-aks/values.yaml
+```
+
+### 3.2 Azure Monitor Integration Pipeline
+
+Create `azure-monitor-integration-pipeline.yaml`:
+
+```yaml
+trigger:
+  branches:
+    include:
+      - main
+  paths:
+    include:
+      - 'azure-monitor-config/*'
+
+variables:
+  - group: 'azure-monitor-config'
+  - name: 'namespace'
+    value: 'monitoring'
+
+stages:
+- stage: ConfigureAzureMonitor
+  jobs:
+  - job: Configure
+    steps:
+    - task: KubernetesManifest@0
+      inputs:
+        action: 'deploy'
+        namespace: '$(namespace)'
+        manifests: |
+          azure-monitor-config/azure-monitor-configmap.yaml
+          azure-monitor-config/azure-monitor-dashboards.yaml
+        strategy: 'kubectl'
+```
+
+### 3.3 Alert and Dashboard Pipeline
+
+Create `alert-dashboard-pipeline.yaml`:
+
+```yaml
+trigger:
+  branches:
+    include:
+      - main
+  paths:
+    include:
+      - 'dashboards/*'
+      - 'alerts/*'
+
+variables:
+  - group: 'grafana-alerts-config'
+  - name: 'namespace'
+    value: 'monitoring'
+
+stages:
+- stage: DeployDashboardsAndAlerts
+  jobs:
+  - job: Deploy
+    steps:
+    - task: KubernetesManifest@0
+      inputs:
+        action: 'deploy'
+        namespace: '$(namespace)'
+        manifests: |
+          dashboards/*.yaml
+          alerts/*.yaml
+        strategy: 'kubectl'
+```
+
+## Part 4: CRD for Grafana Dashboards
+
+Create `grafana-dashboard-crd.yaml` in the crds directory:
+
+```yaml
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: grafanadashboards.integreatly.org
+spec:
+  group: integreatly.org
+  names:
+    kind: GrafanaDashboard
+    listKind: GrafanaDashboardList
+    plural: grafanadashboards
+    singular: grafanadashboard
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        properties:
+          spec:
+            properties:
+              json:
+                type: string
+              name:
+                type: string
+            required:
+            - json
+            type: object
+        type: object
+    served: true
+    storage: true
+```
+
+## Part 5: Example Dashboard Definition
+
+Create `dashboards/azure-monitor-dashboard.yaml`:
+
+```yaml
+apiVersion: integreatly.org/v1alpha1
+kind: GrafanaDashboard
+metadata:
+  name: azure-monitor-overview
+  labels:
+    app: grafana
+spec:
+  json: |
+    {
+      "title": "Azure Monitor Overview",
+      "tags": ["azure", "monitor"],
+      "timezone": "browser",
+      "panels": [
+        {
+          "title": "CPU Usage",
+          "type": "graph",
+          "datasource": "AzureMonitor",
+          "targets": [
+            {
+              "refId": "A",
+              "queryType": "Azure Monitor",
+              "azureMonitor": {
+                "aggregation": "Average",
+                "metricName": "Percentage CPU",
+                "metricNamespace": "Microsoft.Compute/virtualMachines",
+                "resourceGroup": "your-resource-group",
+                "resourceName": "your-vm-name",
+                "timeGrain": "auto"
+              }
+            }
+          ]
+        }
+      ]
+    }
+```
+
+## Part 6: Alert Definition
+
+Create `alerts/aks-cpu-alert.yaml`:
+
+```yaml
+apiVersion: integreatly.org/v1alpha1
+kind: GrafanaAlert
+metadata:
+  name: aks-high-cpu-alert
+spec:
+  name: "AKS High CPU Usage"
+  message: "CPU usage is high on AKS cluster"
+  conditions:
+    - {
+        "evaluator": {
+          "params": [90],
+          "type": "gt"
+        },
+        "operator": {
+          "type": "and"
+        },
+        "query": {
+          "params": ["A", "5m", "now"]
+        },
+        "reducer": {
+          "params": [],
+          "type": "avg"
+        },
+        "type": "query"
+      }
+  frequency: "1m"
+  handler: 1
+  severity: "critical"
+  notifications:
+    - uid: "email-notification-channel"
+```
+
+## Part 7: Deployment Steps
+
+1. **Apply CRDs:**
+   ```bash
+   kubectl apply -f grafana-aks/crds/grafana-dashboard-crd.yaml
+   ```
+
+2. **Create Namespace:**
+   ```bash
+   kubectl create namespace monitoring
+   ```
+
+3. **Run Pipelines in Order:**
+   - Grafana Creation Pipeline
+   - Azure Monitor Integration Pipeline
+   - Alert and Dashboard Pipeline
+
+4. **Verify Deployment:**
+   ```bash
+   kubectl get pods -n monitoring
+   kubectl get svc -n monitoring
+   ```
+
+## Part 8: Accessing Grafana
+
+1. Get the external IP:
+   ```bash
+   kubectl get svc grafana -n monitoring
+   ```
+
+2. Access Grafana at `http://<external-ip>:3000`
+
+3. Log in with Azure AD credentials
+
+## Monitoring and Maintenance
+
+1. **Set up Azure Monitor Alerts for Grafana:**
+   - Monitor Grafana pod health
+   - Set up alerts for high resource usage
+
+2. **Backup Strategy:**
+   - Regular backups of Grafana database
+   - Version control for dashboards and alerts
+
+3. **Scaling:**
+   - Configure horizontal pod autoscaling for Grafana
+   - Monitor performance and adjust resources as needed
+
+## Troubleshooting
+
+1. **Authentication Issues:**
+   - Verify Azure AD application permissions
+   - Check client secret expiration
+
+2. **Data Not Showing:**
+   - Verify Azure Monitor permissions
+   - Check datasource configuration in Grafana
+
+3. **Dashboard Errors:**
+   - Validate JSON in dashboard definitions
+   - Check CRD installation
+
+This comprehensive implementation provides a secure, scalable solution for integrating Azure Monitor Insights with Grafana on AKS, leveraging existing Azure Key Vault for secrets management and using Helm charts with separate pipelines for better maintainability.
