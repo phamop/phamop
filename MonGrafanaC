@@ -1,0 +1,951 @@
+# Azure Monitor Insights with Grafana on AKS Implementation Guide
+
+I'll walk you through implementing Azure Monitor Insights metrics for Grafana on an existing AKS cluster using your existing Azure KeyVault (Goodvault) for secrets management. This solution will use Helm charts without Istio and will include separate CI/CD pipelines.
+
+## Architecture Overview
+
+Here's what we'll implement:
+1. Grafana deployment on AKS using Helm
+2. Azure Monitor integration with Grafana
+3. Secret management using Azure KeyVault
+4. CI/CD pipelines for:
+   - Grafana deployment
+   - Azure Monitor integration
+   - Dashboards and alerts
+
+## Step 1: Set Up Prerequisites
+
+Ensure you have the following:
+- Existing AKS cluster
+- Azure KeyVault (Goodvault)
+- Azure Monitor workspace
+- Permissions for AKS, KeyVault, and Azure Monitor
+
+## Step 2: Configure Azure KeyVault Integration
+
+First, we'll configure AKS to access secrets from KeyVault using the CSI driver:
+
+```bash
+# Enable the CSI driver addon on AKS
+az aks enable-addons --addons azure-keyvault-secrets-provider --name YOUR-AKS-CLUSTER --resource-group YOUR-RESOURCE-GROUP
+
+# Verify installation
+kubectl get pods -n kube-system -l app=secrets-store-csi-driver
+```
+
+Create a SecretProviderClass to access Grafana credentials:
+
+```yaml
+apiVersion: secrets-store.csi.x-k8s.io/v1
+kind: SecretProviderClass
+metadata:
+  name: grafana-keyvault
+spec:
+  provider: azure
+  parameters:
+    usePodIdentity: "false"
+    useVMManagedIdentity: "true"
+    userAssignedIdentityID: "<your-managed-identity-client-id>"
+    keyvaultName: "Goodvault"
+    objects: |
+      array:
+        - |
+          objectName: grafana-admin-username
+          objectType: secret
+        - |
+          objectName: grafana-admin-password
+          objectType: secret
+        - |
+          objectName: grafana-azure-client-id
+          objectType: secret
+        - |
+          objectName: grafana-azure-client-secret
+          objectType: secret
+        - |
+          objectName: grafana-azure-tenant-id
+          objectType: secret
+    tenantId: "<your-tenant-id>"
+```
+
+## Step 3: Create Grafana Helm Chart Values
+
+Create a custom values file for Grafana Helm chart (`grafana-values.yaml`):
+
+```yaml
+replicas: 2
+
+service:
+  type: ClusterIP
+
+ingress:
+  enabled: true
+  annotations:
+    kubernetes.io/ingress.class: nginx
+  hosts:
+    - grafana.your-domain.com
+
+persistence:
+  enabled: true
+  storageClassName: managed-premium
+  size: 10Gi
+
+datasources:
+  datasources.yaml:
+    apiVersion: 1
+    datasources:
+    - name: Azure Monitor
+      type: grafana-azure-monitor-datasource
+      access: proxy
+      isDefault: true
+      jsonData:
+        cloudName: azuremonitor
+        subscriptionId: ${AZURE_SUBSCRIPTION_ID}
+        tenantId: ${AZURE_TENANT_ID}
+        clientId: ${AZURE_CLIENT_ID}
+      secureJsonData:
+        clientSecret: ${AZURE_CLIENT_SECRET}
+
+adminUser: "${GRAFANA_ADMIN_USER}"
+adminPassword: "${GRAFANA_ADMIN_PASSWORD}"
+
+envFromSecret: grafana-secrets
+
+extraVolumeMounts:
+  - name: secrets-store
+    mountPath: "/mnt/secrets-store"
+    readOnly: true
+
+extraVolumes:
+  - name: secrets-store
+    csi:
+      driver: secrets-store.csi.k8s.io
+      readOnly: true
+      volumeAttributes:
+        secretProviderClass: "grafana-keyvault"
+```
+
+## Step 4: Create Kubernetes Manifests
+
+Create a namespace for Grafana:
+
+```yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: grafana
+```
+
+Create a ConfigMap for Grafana dashboards:
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: azure-monitor-dashboards
+  namespace: grafana
+data:
+  aks-dashboard.json: |
+    {
+      "title": "AKS Cluster Overview",
+      "panels": [
+        // Dashboard JSON content
+      ]
+    }
+```
+
+## Step 5: Create CI/CD Pipelines
+
+Let's create three separate pipelines:
+
+### Pipeline 1: Grafana Deployment
+
+Create `grafana-deployment-pipeline.yaml`:
+
+```yaml
+# Grafana Deployment Pipeline
+trigger:
+  branches:
+    include:
+    - main
+  paths:
+    include:
+    - helm/grafana/**
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  resourceGroup: 'your-resource-group'
+  aksClusterName: 'your-aks-cluster'
+  namespace: 'grafana'
+  helmReleaseName: 'grafana'
+
+stages:
+- stage: Deploy
+  displayName: 'Deploy Grafana'
+  jobs:
+  - job: DeployGrafana
+    steps:
+    - task: AzureCLI@2
+      displayName: 'Log in to Azure'
+      inputs:
+        azureSubscription: 'your-azure-service-connection'
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          az aks get-credentials --resource-group $(resourceGroup) --name $(aksClusterName)
+          
+    - task: HelmDeploy@0
+      displayName: 'Deploy Grafana using Helm'
+      inputs:
+        connectionType: 'Azure Resource Manager'
+        azureSubscription: 'your-azure-service-connection'
+        azureResourceGroup: '$(resourceGroup)'
+        kubernetesCluster: '$(aksClusterName)'
+        namespace: '$(namespace)'
+        command: 'upgrade'
+        chartType: 'Name'
+        chartName: 'grafana/grafana'
+        releaseName: '$(helmReleaseName)'
+        valueFile: 'helm/grafana/values.yaml'
+        overrideValues: |
+          fullnameOverride=grafana
+        install: true
+        waitForExecution: true
+        
+    - task: Kubernetes@1
+      displayName: 'Apply SecretProviderClass'
+      inputs:
+        connectionType: 'Azure Resource Manager'
+        azureSubscriptionEndpoint: 'your-azure-service-connection'
+        azureResourceGroup: '$(resourceGroup)'
+        kubernetesCluster: '$(aksClusterName)'
+        command: 'apply'
+        useConfigurationFile: true
+        configuration: 'kubernetes/secret-provider-class.yaml'
+        secretType: 'generic'
+        namespace: '$(namespace)'
+        
+    - task: Kubernetes@1
+      displayName: 'Restart Grafana Deployment'
+      inputs:
+        connectionType: 'Azure Resource Manager'
+        azureSubscriptionEndpoint: 'your-azure-service-connection'
+        azureResourceGroup: '$(resourceGroup)'
+        kubernetesCluster: '$(aksClusterName)'
+        command: 'rollout'
+        arguments: 'restart deployment/grafana'
+        namespace: '$(namespace)'
+
+```
+
+### Pipeline 2: Azure Monitor Integration
+
+Create `azure-monitor-integration-pipeline.yaml`:
+
+```yaml
+# Azure Monitor Integration Pipeline
+trigger:
+  branches:
+    include:
+    - main
+  paths:
+    include:
+    - config/datasources/**
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  resourceGroup: 'your-resource-group'
+  aksClusterName: 'your-aks-cluster'
+  namespace: 'grafana'
+  grafanaPodSelector: 'app.kubernetes.io/name=grafana'
+  keyvaultName: 'Goodvault'
+
+stages:
+- stage: Configure
+  displayName: 'Configure Azure Monitor Integration'
+  jobs:
+  - job: ConfigureMonitor
+    steps:
+    - task: AzureCLI@2
+      displayName: 'Get Secrets from KeyVault'
+      inputs:
+        azureSubscription: 'your-azure-service-connection'
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          # Retrieve Azure Monitor configuration from KeyVault
+          AZURE_CLIENT_ID=$(az keyvault secret show --name grafana-azure-client-id --vault-name $(keyvaultName) --query value -o tsv)
+          AZURE_CLIENT_SECRET=$(az keyvault secret show --name grafana-azure-client-secret --vault-name $(keyvaultName) --query value -o tsv)
+          AZURE_TENANT_ID=$(az keyvault secret show --name grafana-azure-tenant-id --vault-name $(keyvaultName) --query value -o tsv)
+          AZURE_SUBSCRIPTION_ID=$(az account show --query id -o tsv)
+          
+          # Export as pipeline variables
+          echo "##vso[task.setvariable variable=AZURE_CLIENT_ID;issecret=true]$AZURE_CLIENT_ID"
+          echo "##vso[task.setvariable variable=AZURE_CLIENT_SECRET;issecret=true]$AZURE_CLIENT_SECRET"
+          echo "##vso[task.setvariable variable=AZURE_TENANT_ID;issecret=true]$AZURE_TENANT_ID"
+          echo "##vso[task.setvariable variable=AZURE_SUBSCRIPTION_ID]$AZURE_SUBSCRIPTION_ID"
+          
+    - task: AzureCLI@2
+      displayName: 'Configure Grafana Azure Monitor DataSource'
+      inputs:
+        azureSubscription: 'your-azure-service-connection'
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          # Get AKS credentials
+          az aks get-credentials --resource-group $(resourceGroup) --name $(aksClusterName)
+          
+          # Create datasource configuration
+          cat > azure-monitor-datasource.yaml << EOF
+          apiVersion: v1
+          kind: ConfigMap
+          metadata:
+            name: azure-monitor-datasource
+            namespace: $(namespace)
+          data:
+            azure-monitor-datasource.yaml: |
+              apiVersion: 1
+              datasources:
+                - name: Azure Monitor
+                  type: grafana-azure-monitor-datasource
+                  access: proxy
+                  isDefault: true
+                  jsonData:
+                    cloudName: azuremonitor
+                    subscriptionId: $(AZURE_SUBSCRIPTION_ID)
+                    tenantId: $(AZURE_TENANT_ID)
+                    clientId: $(AZURE_CLIENT_ID)
+                  secureJsonData:
+                    clientSecret: $(AZURE_CLIENT_SECRET)
+          EOF
+          
+          # Apply the configuration
+          kubectl apply -f azure-monitor-datasource.yaml
+          
+    - task: AzureCLI@2
+      displayName: 'Restart Grafana to Apply Changes'
+      inputs:
+        azureSubscription: 'your-azure-service-connection'
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          # Get AKS credentials if not already done
+          az aks get-credentials --resource-group $(resourceGroup) --name $(aksClusterName)
+          
+          # Restart Grafana pods to apply changes
+          kubectl rollout restart deployment/grafana -n $(namespace)
+          
+          # Wait for Grafana to be ready
+          kubectl rollout status deployment/grafana -n $(namespace) --timeout=300s
+
+```
+
+### Pipeline 3: Dashboards and Alerts
+
+Create `dashboards-alerts-pipeline.yaml`:
+
+```yaml
+# Dashboards and Alerts Pipeline
+trigger:
+  branches:
+    include:
+    - main
+  paths:
+    include:
+    - dashboards/**
+    - alerts/**
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  resourceGroup: 'your-resource-group'
+  aksClusterName: 'your-aks-cluster'
+  namespace: 'grafana'
+  grafanaApiUrl: 'http://grafana.$(namespace).svc.cluster.local:3000/api'
+
+stages:
+- stage: DeployDashboards
+  displayName: 'Deploy Dashboards and Alerts'
+  jobs:
+  - job: DeployGrafanaContent
+    steps:
+    - task: AzureCLI@2
+      displayName: 'Login to AKS'
+      inputs:
+        azureSubscription: 'your-azure-service-connection'
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          az aks get-credentials --resource-group $(resourceGroup) --name $(aksClusterName)
+    
+    - task: AzureCLI@2
+      displayName: 'Get Grafana Credentials'
+      inputs:
+        azureSubscription: 'your-azure-service-connection'
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          # Get admin credentials from KeyVault
+          GRAFANA_USER=$(az keyvault secret show --name grafana-admin-username --vault-name Goodvault --query value -o tsv)
+          GRAFANA_PASSWORD=$(az keyvault secret show --name grafana-admin-password --vault-name Goodvault --query value -o tsv)
+          
+          # Export as pipeline variables
+          echo "##vso[task.setvariable variable=GRAFANA_USER;issecret=true]$GRAFANA_USER"
+          echo "##vso[task.setvariable variable=GRAFANA_PASSWORD;issecret=true]$GRAFANA_PASSWORD"
+    
+    - task: Kubernetes@1
+      displayName: 'Create ConfigMaps for Dashboards'
+      inputs:
+        connectionType: 'Azure Resource Manager'
+        azureSubscriptionEndpoint: 'your-azure-service-connection'
+        azureResourceGroup: '$(resourceGroup)'
+        kubernetesCluster: '$(aksClusterName)'
+        command: 'apply'
+        arguments: '-f dashboards/configmaps/'
+        namespace: '$(namespace)'
+    
+    - script: |
+        # Create port-forward to Grafana
+        kubectl port-forward -n $(namespace) svc/grafana 3000:3000 &
+        PF_PID=$!
+        
+        # Wait for port-forward to be established
+        sleep 10
+        
+        # Use curl to deploy dashboards
+        for dashboard_file in dashboards/*.json; do
+          echo "Deploying dashboard: $dashboard_file"
+          curl -X POST "http://localhost:3000/api/dashboards/db" \
+            -H "Content-Type: application/json" \
+            -u "$(GRAFANA_USER):$(GRAFANA_PASSWORD)" \
+            -d @$dashboard_file
+        done
+        
+        # Deploy alert rules
+        for alert_file in alerts/*.json; do
+          echo "Deploying alert rule: $alert_file"
+          curl -X POST "http://localhost:3000/api/alert-rules" \
+            -H "Content-Type: application/json" \
+            -u "$(GRAFANA_USER):$(GRAFANA_PASSWORD)" \
+            -d @$alert_file
+        done
+        
+        # Kill port-forward process
+        kill $PF_PID
+      displayName: 'Deploy Dashboards and Alerts'
+    
+    - task: Kubernetes@1
+      displayName: 'Add Dashboard Provider Configuration'
+      inputs:
+        connectionType: 'Azure Resource Manager'
+        azureSubscriptionEndpoint: 'your-azure-service-connection'
+        azureResourceGroup: '$(resourceGroup)'
+        kubernetesCluster: '$(aksClusterName)'
+        command: 'apply'
+        arguments: '-f dashboards/providers.yaml'
+        namespace: '$(namespace)'
+
+```
+
+## Step 6: Create Dashboard Examples
+
+Let's create example AKS dashboard configurations and alerts:
+
+```json
+{
+  "dashboard": {
+    "id": null,
+    "uid": "aks-monitoring",
+    "title": "AKS Cluster Overview",
+    "tags": ["azure", "kubernetes", "monitor"],
+    "timezone": "browser",
+    "schemaVersion": 16,
+    "version": 1,
+    "refresh": "5m",
+    "panels": [
+      {
+        "id": 1,
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 0
+        },
+        "type": "gauge",
+        "title": "Node CPU Usage",
+        "datasource": "Azure Monitor",
+        "targets": [
+          {
+            "refId": "A",
+            "queryType": "Azure Monitor",
+            "subscription": "${AZURE_SUBSCRIPTION_ID}",
+            "azureMonitor": {
+              "resourceGroup": "${RESOURCE_GROUP}",
+              "resourceName": "${AKS_CLUSTER_NAME}",
+              "metricNamespace": "Microsoft.ContainerService/managedClusters",
+              "metricName": "node_cpu_usage_percentage",
+              "aggregation": "Average",
+              "timeGrain": "auto"
+            }
+          }
+        ],
+        "options": {
+          "orientation": "auto",
+          "textMode": "auto",
+          "colorMode": "value",
+          "graphMode": "area",
+          "justifyMode": "auto",
+          "displayMode": "gradient",
+          "thresholdsMode": "absolute",
+          "thresholds": {
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 70
+              },
+              {
+                "color": "red",
+                "value": 85
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": 2,
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 0
+        },
+        "type": "gauge",
+        "title": "Node Memory Usage",
+        "datasource": "Azure Monitor",
+        "targets": [
+          {
+            "refId": "A",
+            "queryType": "Azure Monitor",
+            "subscription": "${AZURE_SUBSCRIPTION_ID}",
+            "azureMonitor": {
+              "resourceGroup": "${RESOURCE_GROUP}",
+              "resourceName": "${AKS_CLUSTER_NAME}",
+              "metricNamespace": "Microsoft.ContainerService/managedClusters",
+              "metricName": "node_memory_working_set_percentage",
+              "aggregation": "Average",
+              "timeGrain": "auto"
+            }
+          }
+        ],
+        "options": {
+          "orientation": "auto",
+          "textMode": "auto",
+          "colorMode": "value",
+          "graphMode": "area",
+          "justifyMode": "auto",
+          "displayMode": "gradient",
+          "thresholdsMode": "absolute",
+          "thresholds": {
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 70
+              },
+              {
+                "color": "red",
+                "value": 85
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": 3,
+        "gridPos": {
+          "h": 8,
+          "w": 24,
+          "x": 0,
+          "y": 8
+        },
+        "type": "timeseries",
+        "title": "Pod Count",
+        "datasource": "Azure Monitor",
+        "targets": [
+          {
+            "refId": "A",
+            "queryType": "Azure Monitor",
+            "subscription": "${AZURE_SUBSCRIPTION_ID}",
+            "azureMonitor": {
+              "resourceGroup": "${RESOURCE_GROUP}",
+              "resourceName": "${AKS_CLUSTER_NAME}",
+              "metricNamespace": "Microsoft.ContainerService/managedClusters",
+              "metricName": "pod_count",
+              "aggregation": "Average",
+              "timeGrain": "auto",
+              "dimensionFilters": []
+            }
+          }
+        ],
+        "options": {
+          "tooltip": {
+            "mode": "single"
+          },
+          "legend": {
+            "displayMode": "list",
+            "placement": "bottom"
+          }
+        }
+      },
+      {
+        "id": 4,
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 16
+        },
+        "type": "timeseries",
+        "title": "Network In",
+        "datasource": "Azure Monitor",
+        "targets": [
+          {
+            "refId": "A",
+            "queryType": "Azure Monitor",
+            "subscription": "${AZURE_SUBSCRIPTION_ID}",
+            "azureMonitor": {
+              "resourceGroup": "${RESOURCE_GROUP}",
+              "resourceName": "${AKS_CLUSTER_NAME}",
+              "metricNamespace": "Microsoft.ContainerService/managedClusters",
+              "metricName": "network_bytes_in",
+              "aggregation": "Total",
+              "timeGrain": "auto"
+            }
+          }
+        ]
+      },
+      {
+        "id": 5,
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 16
+        },
+        "type": "timeseries",
+        "title": "Network Out",
+        "datasource": "Azure Monitor",
+        "targets": [
+          {
+            "refId": "A",
+            "queryType": "Azure Monitor",
+            "subscription": "${AZURE_SUBSCRIPTION_ID}",
+            "azureMonitor": {
+              "resourceGroup": "${RESOURCE_GROUP}",
+              "resourceName": "${AKS_CLUSTER_NAME}",
+              "metricNamespace": "Microsoft.ContainerService/managedClusters",
+              "metricName": "network_bytes_out",
+              "aggregation": "Total",
+              "timeGrain": "auto"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "folderId": 0,
+  "overwrite": true
+}
+
+```
+
+Create an example alert rule:
+
+```json
+{
+  "name": "High Node CPU Alert",
+  "condition": {
+    "type": "query",
+    "query": {
+      "refId": "A",
+      "queryType": "Azure Monitor",
+      "subscription": "${AZURE_SUBSCRIPTION_ID}",
+      "azureMonitor": {
+        "resourceGroup": "${RESOURCE_GROUP}",
+        "resourceName": "${AKS_CLUSTER_NAME}",
+        "metricNamespace": "Microsoft.ContainerService/managedClusters",
+        "metricName": "node_cpu_usage_percentage",
+        "aggregation": "Average",
+        "timeGrain": "PT5M"
+      }
+    },
+    "reducer": {
+      "type": "avg"
+    },
+    "evaluator": {
+      "type": "gt",
+      "params": [85]
+    }
+  },
+  "for": "5m",
+  "frequency": "1m",
+  "handler": 1,
+  "message": "Node CPU usage has exceeded 85% for 5 minutes",
+  "notifications": [
+    {
+      "uid": "email-notification-channel"
+    }
+  ]
+}
+
+```
+
+## Step 7: Create Custom Resource Definitions (CRDs)
+
+Let's create a custom resource definition for Grafana dashboards:
+
+```yaml
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: grafanadashboards.monitoring.example.com
+spec:
+  group: monitoring.example.com
+  names:
+    kind: GrafanaDashboard
+    listKind: GrafanaDashboardList
+    plural: grafanadashboards
+    singular: grafanadashboard
+    shortNames:
+    - gd
+  scope: Namespaced
+  versions:
+  - name: v1
+    served: true
+    storage: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            properties:
+              title:
+                type: string
+              json:
+                type: string
+              folder:
+                type: string
+              datasource:
+                type: string
+            required: ["title", "json"]
+    additionalPrinterColumns:
+    - name: Title
+      type: string
+      jsonPath: .spec.title
+    - name: Folder
+      type: string
+      jsonPath: .spec.folder
+    - name: Age
+      type: date
+      jsonPath: .metadata.creationTimestamp
+
+```
+
+Create a dashboard controller to watch for these CRDs:
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grafana-dashboard-controller
+  namespace: grafana
+spec:
+  selector:
+    matchLabels:
+      app: grafana-dashboard-controller
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: grafana-dashboard-controller
+    spec:
+      serviceAccountName: grafana-dashboard-controller
+      containers:
+      - name: controller
+        image: bitnami/kubectl:latest
+        command:
+        - /bin/bash
+        - -c
+        - |
+          while true; do
+            echo "Watching for GrafanaDashboard resources..."
+            kubectl get grafanadashboards --all-namespaces -o json | jq -r '.items[] | "Namespace: \(.metadata.namespace), Name: \(.metadata.name), Title: \(.spec.title)"'
+            
+            # Process each dashboard
+            for dashboard in $(kubectl get grafanadashboards --all-namespaces -o json | jq -c '.items[]'); do
+              name=$(echo $dashboard | jq -r '.metadata.name')
+              namespace=$(echo $dashboard | jq -r '.metadata.namespace')
+              title=$(echo $dashboard | jq -r '.spec.title')
+              json=$(echo $dashboard | jq -r '.spec.json')
+              
+              echo "Processing dashboard: $name in namespace $namespace"
+              
+              # Create ConfigMap with dashboard content
+              kubectl create configmap grafana-dashboard-$name --from-literal=dashboard.json="$json" -n grafana --dry-run=client -o yaml | kubectl apply -f -
+            done
+            
+            # Wait before next check
+            sleep 30
+          done
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 200m
+            memory: 256Mi
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: grafana-dashboard-controller
+  namespace: grafana
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: grafana-dashboard-controller
+rules:
+- apiGroups: ["monitoring.example.com"]
+  resources: ["grafanadashboards"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["get", "list", "create", "update", "patch"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: grafana-dashboard-controller
+subjects:
+- kind: ServiceAccount
+  name: grafana-dashboard-controller
+  namespace: grafana
+roleRef:
+  kind: ClusterRole
+  name: grafana-dashboard-controller
+  apiGroup: rbac.authorization.k8s.io
+
+```
+
+## Step 8: Implement Monitoring Integration
+
+To integrate Azure Monitor with Grafana, create a datasource configuration file:
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: azure-monitor-datasource
+  namespace: grafana
+data:
+  azure-monitor-datasource.yaml: |
+    apiVersion: 1
+    datasources:
+      - name: Azure Monitor
+        type: grafana-azure-monitor-datasource
+        access: proxy
+        isDefault: true
+        jsonData:
+          cloudName: azuremonitor
+          subscriptionId: ${AZURE_SUBSCRIPTION_ID}
+          tenantId: ${AZURE_TENANT_ID}
+          clientId: ${AZURE_CLIENT_ID}
+          azureAuthType: clientsecret
+          logAnalyticsDefaultWorkspace: "/subscriptions/${AZURE_SUBSCRIPTION_ID}/resourceGroups/${RESOURCE_GROUP}/providers/Microsoft.OperationalInsights/workspaces/${LOG_ANALYTICS_WORKSPACE}"
+        secureJsonData:
+          clientSecret: ${AZURE_CLIENT_SECRET}
+        version: 1
+        editable: true
+
+```
+
+## Step 9: Create Grafana Sidecar for Dashboard Provisioning
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-provisioner
+  namespace: grafana
+data:
+  dashboard-provisioner.yaml: |
+    apiVersion: 1
+    providers:
+    - name: 'default'
+      orgId: 1
+      folder: ''
+      type: file
+      disableDeletion: false
+      updateIntervalSeconds: 30
+      allowUiUpdates: true
+      options:
+        path: /var/lib/grafana/dashboards
+        foldersFromFilesStructure: true
+
+```
+
+## Implementation Steps
+
+1. **Apply CRDs first:**
+   ```bash
+   kubectl apply -f grafana-dashboard-crd.yaml
+   ```
+
+2. **Run the Grafana deployment pipeline** to set up Grafana on AKS with KeyVault integration.
+
+3. **Run the Azure Monitor integration pipeline** to connect Grafana to Azure Monitor.
+
+4. **Run the dashboards & alerts pipeline** to provision your monitoring dashboards.
+
+5. **Verify the installation:**
+   ```bash
+   # Check Grafana pods
+   kubectl get pods -n grafana
+   
+   # Get the Grafana URL
+   kubectl get ingress -n grafana
+   
+   # Verify Azure Monitor datasource
+   kubectl exec -it $(kubectl get pods -n grafana -l app=grafana -o name) -n grafana -- \
+     curl -s http://admin:${ADMIN_PASSWORD}@localhost:3000/api/datasources
+   ```
+
+## Additional Considerations
+
+1. **High Availability**: The Helm chart values include 2 replicas for Grafana.
+
+2. **Persistent Storage**: Use persistent storage for Grafana to retain data between restarts.
+
+3. **Security**:
+   - All sensitive information is stored in Azure KeyVault
+   - Service accounts have minimal permissions
+   - Network policies can be added to restrict access
+
+4. **Monitoring Metrics**:
+   - Node
