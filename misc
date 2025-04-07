@@ -2,3 +2,11 @@ az ad sp list --filter "displayName eq 'Azure Monitor'" --query "[].{Name:displa
 
 
 az ad app list --query "[].{appId:appId, displayName:displayName}" -o table
+
+
+# For a specific application (replace with your app name)
+clientId=$(az ad app list --display-name "YourAppName" --query [].appId -o tsv)
+echo "Client ID: $clientId"
+
+# List all applications and their client IDs
+az ad app list --query '[].{displayName:displayName, appId:appId}' -o table
