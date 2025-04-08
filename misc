@@ -17,6 +17,16 @@ az keyvault set-policy --name Goodvault --object-id $(az aks show -g <resource-g
 
 #########
 
+Identify the AKS Cluster's Managed Identity
+First, determine the principal ID of your AKS cluster's managed identity:
+Assign Key Vault Access Policy
+Grant the necessary permissions to the managed identity:
+Verify the Access Policy
+Confirm the policy was applied correctly:
+Configure AKS to Use Key Vault Secrets (Optional)
+If you want to use Azure Key Vault Provider for Secrets Store CSI Driver:
+
+
 # Get the principal ID of the AKS cluster's managed identity
 AKS_RESOURCE_GROUP="your-aks-resource-group"
 AKS_NAME="your-aks-cluster-name"
