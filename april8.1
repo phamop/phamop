@@ -1,0 +1,188 @@
+# Assigning Key Vault Access to AKS Cluster's Managed Identity
+
+To securely access secrets from Azure Key Vault (Goodvault) in your AKS cluster, you'll need to properly configure the managed identity permissions. Here's a detailed implementation:
+
+## Prerequisites
+
+1. AKS cluster with managed identity enabled
+2. Existing Azure Key Vault (Goodvault)
+3. Azure CLI installed and logged in
+4. Proper permissions to manage Key Vault access policies
+
+## Step-by-Step Implementation
+
+### 1. Identify the AKS Cluster's Managed Identity
+
+First, determine the principal ID of your AKS cluster's managed identity:
+
+```bash
+# Get the principal ID of the AKS cluster's managed identity
+AKS_RESOURCE_GROUP="your-aks-resource-group"
+AKS_NAME="your-aks-cluster-name"
+
+PRINCIPAL_ID=$(az aks show \
+  --resource-group $AKS_RESOURCE_GROUP \
+  --name $AKS_NAME \
+  --query "identity.principalId" \
+  --output tsv)
+
+echo "Principal ID: $PRINCIPAL_ID"
+```
+
+### 2. Assign Key Vault Access Policy
+
+Grant the necessary permissions to the managed identity:
+
+```bash
+KEY_VAULT_NAME="Goodvault"
+KEY_VAULT_RESOURCE_GROUP="your-keyvault-resource-group"
+
+# Assign get and list permissions for secrets
+az keyvault set-policy \
+  --name $KEY_VAULT_NAME \
+  --resource-group $KEY_VAULT_RESOURCE_GROUP \
+  --object-id $PRINCIPAL_ID \
+  --secret-permissions get list
+```
+
+### 3. Verify the Access Policy
+
+Confirm the policy was applied correctly:
+
+```bash
+az keyvault show \
+  --name $KEY_VAULT_NAME \
+  --resource-group $KEY_VAULT_RESOURCE_GROUP \
+  --query "properties.accessPolicies[?objectId=='$PRINCIPAL_ID']"
+```
+
+### 4. Configure AKS to Use Key Vault Secrets (Optional)
+
+If you want to use Azure Key Vault Provider for Secrets Store CSI Driver:
+
+```bash
+# Add the Secrets Store CSI Driver Helm repo
+helm repo add csi-secrets-store-provider-azure https://azure.github.io/secrets-store-csi-driver-provider-azure/charts
+
+# Install the CSI driver
+helm install csi-secrets-store-provider-azure/csi-secrets-store-provider-azure \
+  --generate-name \
+  --namespace kube-system
+```
+
+### 5. Create SecretProviderClass for Grafana
+
+Create a YAML file `secret-provider-class.yaml`:
+
+```yaml
+apiVersion: secrets-store.csi.x-k8s.io/v1
+kind: SecretProviderClass
+metadata:
+  name: grafana-secrets
+  namespace: monitoring
+spec:
+  provider: azure
+  parameters:
+    usePodIdentity: "false"
+    useVMManagedIdentity: "true"
+    userAssignedIdentityID: "" # Leave empty for system-assigned identity
+    keyvaultName: "Goodvault"
+    objects: |
+      array:
+        - |
+          objectName: grafana-admin-user
+          objectType: secret
+        - |
+          objectName: grafana-admin-password
+          objectType: secret
+    tenantId: "your-azure-tenant-id"
+```
+
+Apply the configuration:
+
+```bash
+kubectl apply -f secret-provider-class.yaml
+```
+
+### 6. Update Grafana Deployment to Use Key Vault Secrets
+
+Modify your Grafana deployment to mount the secrets:
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grafana
+  namespace: monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: grafana
+  template:
+    metadata:
+      labels:
+        app: grafana
+    spec:
+      containers:
+      - name: grafana
+        image: grafana/grafana:latest
+        volumeMounts:
+        - name: secrets-store-inline
+          mountPath: "/mnt/secrets-store"
+          readOnly: true
+        env:
+        - name: GF_SECURITY_ADMIN_USER
+          valueFrom:
+            secretKeyRef:
+              name: grafana-secrets
+              key: grafana-admin-user
+        - name: GF_SECURITY_ADMIN_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: grafana-secrets
+              key: grafana-admin-password
+      volumes:
+      - name: secrets-store-inline
+        csi:
+          driver: secrets-store.csi.k8s.io
+          readOnly: true
+          volumeAttributes:
+            secretProviderClass: "grafana-secrets"
+```
+
+## Verification Steps
+
+1. Check if the pod can access secrets:
+   ```bash
+   kubectl exec -it <grafana-pod-name> -n monitoring -- cat /mnt/secrets-store/grafana-admin-user
+   ```
+
+2. Verify Grafana is using the correct credentials:
+   ```bash
+   kubectl logs <grafana-pod-name> -n monitoring | grep "admin"
+   ```
+
+## Troubleshooting
+
+If you encounter issues:
+
+1. **Permission denied errors**:
+   - Verify the principal ID is correct
+   - Check the Key Vault access policies
+   - Ensure the identity is propagated (may take a few minutes)
+
+2. **Secrets not appearing in pod**:
+   - Check the SecretProviderClass configuration
+   - Verify the CSI driver is running:
+     ```bash
+     kubectl get pods -n kube-system -l app=csi-secrets-store-provider-azure
+     ```
+
+3. **Managed identity not found**:
+   - Confirm AKS was created with managed identity:
+     ```bash
+     az aks show --name $AKS_NAME --resource-group $AKS_RESOURCE_GROUP --query "identity"
+     ```
+
+This configuration provides secure access to Key Vault secrets while maintaining least-privilege principles and leveraging AKS's built-in managed identity capabilities.
