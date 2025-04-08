@@ -1,0 +1,262 @@
+# Azure Monitor Insights Integration with Grafana for AKS: Implementation Guide
+
+This guide provides a detailed implementation plan for integrating Azure Monitor Insights metrics with Grafana on an existing AKS cluster, using existing Azure Key Vault (Goodvault) for secrets management, without Istio, and using Azure DevOps pipelines with Helm charts and CRDs.
+
+## Architecture Overview
+
+1. **Components**:
+   - Existing AKS cluster
+   - Existing Azure Monitor workspace
+   - Existing Azure Key Vault (Goodvault)
+   - Grafana deployed via Helm
+   - Azure Managed Identity for AKS to access Key Vault
+   - Azure DevOps pipelines for deployment
+
+2. **Flow**:
+   - AKS pods send metrics to Azure Monitor
+   - Grafana connects to Azure Monitor via Managed Identity
+   - Secrets (credentials, connection strings) stored in Key Vault
+   - Separate pipelines for Grafana deployment and Azure Monitor integration
+
+## Prerequisites
+
+1. Azure resources:
+   - AKS cluster with monitoring enabled
+   - Azure Monitor workspace
+   - Azure Key Vault with secrets for Grafana (admin user, password, etc.)
+   - Managed Identity for AKS to access Key Vault
+
+2. Tools:
+   - Azure DevOps organization
+   - Helm 3.x
+   - kubectl configured for your AKS cluster
+
+## Implementation Steps
+
+### 1. Configure AKS to Access Key Vault
+
+```bash
+# Assign Key Vault access to AKS cluster's managed identity
+az keyvault set-policy --name Goodvault --object-id $(az aks show -g <resource-group> -n <aks-name> --query identity.principalId -o tsv) --secret-permissions get list
+```
+
+### 2. Create Helm Chart for Grafana
+
+Directory structure:
+```
+grafana/
+├── Chart.yaml
+├── values.yaml
+├── templates/
+│   ├── deployment.yaml
+│   ├── service.yaml
+│   ├── configmap.yaml
+│   ├── secret-provider-class.yaml
+│   └── ingress.yaml
+```
+
+Sample `values.yaml`:
+```yaml
+image:
+  repository: grafana/grafana
+  tag: latest
+
+persistence:
+  enabled: true
+  storageClassName: managed-premium
+  accessModes:
+    - ReadWriteOnce
+  size: 10Gi
+
+env:
+  GF_SECURITY_ADMIN_USER: "$__grafana_admin_user__"
+  GF_SECURITY_ADMIN_PASSWORD: "$__grafana_admin_password__"
+
+service:
+  type: LoadBalancer
+  port: 80
+  targetPort: 3000
+```
+
+### 3. Create Azure DevOps Pipelines
+
+#### Pipeline 1: Grafana Deployment Pipeline (`grafana-deploy.yml`)
+
+```yaml
+trigger:
+  branches:
+    include:
+      - main
+  paths:
+    include:
+      - charts/grafana/*
+
+variables:
+  azureSubscription: 'Your-Azure-Service-Connection'
+  aksClusterName: 'your-aks-cluster'
+  resourceGroup: 'your-resource-group'
+  keyVaultName: 'Goodvault'
+
+stages:
+- stage: Deploy
+  jobs:
+  - job: DeployGrafana
+    steps:
+    - task: AzureKeyVault@2
+      inputs:
+        azureSubscription: $(azureSubscription)
+        KeyVaultName: $(keyVaultName)
+        SecretsFilter: 'grafana-admin-user, grafana-admin-password'
+    
+    - task: HelmDeploy@0
+      inputs:
+        azureSubscription: $(azureSubscription)
+        namespace: 'monitoring'
+        command: 'upgrade'
+        chartType: 'FilePath'
+        chartPath: 'charts/grafana'
+        releaseName: 'grafana'
+        overrideValues: |
+          env.GF_SECURITY_ADMIN_USER=$(grafana-admin-user)
+          env.GF_SECURITY_ADMIN_PASSWORD=$(grafana-admin-password)
+        valueFile: 'charts/grafana/values.yaml'
+```
+
+#### Pipeline 2: Azure Monitor Integration Pipeline (`azure-monitor-integration.yml`)
+
+```yaml
+trigger:
+  branches:
+    include:
+      - main
+  paths:
+    include:
+      - config/azure-monitor/*
+
+variables:
+  azureSubscription: 'Your-Azure-Service-Connection'
+  aksClusterName: 'your-aks-cluster'
+  resourceGroup: 'your-resource-group'
+  keyVaultName: 'Goodvault'
+
+stages:
+- stage: Integrate
+  jobs:
+  - job: ConfigureAzureMonitor
+    steps:
+    - task: AzureCLI@2
+      inputs:
+        azureSubscription: $(azureSubscription)
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          # Get Azure Monitor workspace details
+          az monitor account create --name "AzureMonitorWorkspace" --resource-group $(resourceGroup) --location eastus
+          
+          # Enable Azure Monitor on AKS
+          az aks enable-addons -a monitoring -n $(aksClusterName) -g $(resourceGroup) --workspace-resource-id $(az monitor account list --query "[0].id" -o tsv)
+    
+    - task: KubernetesManifest@0
+      inputs:
+        action: 'deploy'
+        namespace: 'monitoring'
+        strategy: 'canary'
+        manifests: |
+          config/azure-monitor/grafana-datasource.yaml
+```
+
+### 4. Create Grafana Data Source CRD
+
+`grafana-datasource.yaml`:
+```yaml
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaDataSource
+metadata:
+  name: azure-monitor-datasource
+  namespace: monitoring
+spec:
+  name: AzureMonitor
+  type: grafana-azure-monitor-datasource
+  access: proxy
+  jsonData:
+    subscriptionId: "$__azure_subscription_id__"
+    cloudName: azuremonitor
+    azureAuthType: msi
+    tenantId: "$__azure_tenant_id__"
+    clientId: "$__azure_client_id__"
+  secureJsonData:
+    clientSecret: "$__azure_client_secret__"
+```
+
+### 5. Configure Secrets in Key Vault
+
+```bash
+# Add required secrets to Key Vault
+az keyvault secret set --vault-name Goodvault --name grafana-admin-user --value admin
+az keyvault secret set --vault-name Goodvault --name grafana-admin-password --value "secure-password-123"
+az keyvault secret set --vault-name Goodvault --name azure-client-id --value "<your-client-id>"
+az keyvault secret set --vault-name Goodvault --name azure-client-secret --value "<your-client-secret>"
+az keyvault secret set --vault-name Goodvault --name azure-tenant-id --value "<your-tenant-id>"
+az keyvault secret set --vault-name Goodvault --name azure-subscription-id --value "<your-subscription-id>"
+```
+
+### 6. Configure Managed Grafana (Optional)
+
+If using Azure Managed Grafana:
+
+```yaml
+# In your Azure Monitor integration pipeline
+- task: AzureCLI@2
+  inputs:
+    azureSubscription: $(azureSubscription)
+    scriptType: 'bash'
+    scriptLocation: 'inlineScript'
+    inlineScript: |
+      # Create Azure Managed Grafana instance
+      az grafana create --name my-grafana --resource-group $(resourceGroup) --location eastus
+      
+      # Add AKS cluster as data source
+      az grafana data-source create --name my-grafana --data-source "{'name':'AzureMonitor','type':'grafana-azure-monitor-datasource'}"
+```
+
+## Verification Steps
+
+1. **Validate Grafana Deployment**:
+   ```bash
+   kubectl get pods -n monitoring
+   kubectl get svc -n monitoring
+   ```
+
+2. **Check Azure Monitor Integration**:
+   - Log in to Grafana
+   - Navigate to Configuration > Data Sources
+   - Verify Azure Monitor data source is configured correctly
+
+3. **Validate Metrics Flow**:
+   - Create a dashboard in Grafana using Azure Monitor metrics
+   - Verify data is being displayed
+
+## Maintenance and Monitoring
+
+1. **Update Pipeline**:
+   - Create a separate pipeline for Grafana updates
+   - Include version bump checks
+
+2. **Monitoring**:
+   - Set up alerts for Grafana pod failures
+   - Monitor Azure Monitor data source connectivity
+
+## Troubleshooting
+
+1. **Common Issues**:
+   - Permission errors: Verify AKS managed identity has proper Key Vault access
+   - Data source connection failures: Check CRD configuration and secrets
+   - Metric display issues: Verify Azure Monitor is properly configured for AKS
+
+2. **Debugging Commands**:
+   ```bash
+   kubectl logs -n monitoring <grafana-pod-name>
+   kubectl describe grafanadatasource -n monitoring azure-monitor-datasource
+   ```
+
+This implementation provides a secure, scalable way to integrate Azure Monitor metrics with Grafana on AKS using existing Azure resources and Azure DevOps pipelines.
