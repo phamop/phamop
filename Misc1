@@ -275,5 +275,195 @@ datasources:
         clientSecret: "$__file{/etc/grafana/secrets/azure/client_secret}"
 ```
 
+
+grafana-aks/
+├── Chart.yaml
+├── values.yaml
+├── templates/
+│   ├── deployment.yaml
+│   ├── service.yaml
+│   ├── ingress.yaml
+│   ├── configmap.yaml
+│   ├── secrets.yaml
+│   └── serviceaccount.yaml
+└── crds/
+    └── grafana-dashboard-crd.yaml
+
+values.yaml files 
+image:
+  repository: grafana/grafana
+  tag: 9.0.0
+  pullPolicy: IfNotPresent
+
+service:
+  type: LoadBalancer
+  port: 3000
+  annotations: {}
+
+ingress:
+  enabled: true
+  annotations:
+    kubernetes.io/ingress.class: nginx
+  hosts:
+    - host: grafana.yourdomain.com
+      paths:
+        - path: /
+          pathType: Prefix
+
+persistence:
+  enabled: true
+  storageClassName: default
+  accessModes:
+    - ReadWriteOnce
+  size: 10Gi
+
+env:
+  GF_AUTH_GENERIC_OAUTH_ENABLED: "true"
+  GF_AUTH_GENERIC_OAUTH_NAME: "Azure AD"
+  GF_AUTH_GENERIC_OAUTH_CLIENT_ID: "$__file{/etc/grafana/secrets/azure/client_id}"
+  GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET: "$__file{/etc/grafana/secrets/azure/client_secret}"
+  GF_AUTH_GENERIC_OAUTH_SCOPES: "openid email profile"
+  GF_AUTH_GENERIC_OAUTH_AUTH_URL: "https://login.microsoftonline.com/$__file{/etc/grafana/secrets/azure/tenant_id}/oauth2/authorize"
+  GF_AUTH_GENERIC_OAUTH_TOKEN_URL: "https://login.microsoftonline.com/$__file{/etc/grafana/secrets/azure/tenant_id}/oauth2/token"
+
+datasources:
+  datasources.yaml:
+    apiVersion: 1
+    datasources:
+    - name: AzureMonitor
+      type: grafana-azure-monitor-datasource
+      orgId: 1
+      typeLogoUrl: public/plugins/grafana-azure-monitor-datasource/img/logo.svg
+      access: proxy
+      url: /api/datasources/proxy/1
+      jsonData:
+        subscriptionId: "$__file{/etc/grafana/secrets/azure/subscription_id}"
+        cloudName: azuremonitor
+        azureAuthType: clientsecret
+        tenantId: "$__file{/etc/grafana/secrets/azure/tenant_id}"
+        clientId: "$__file{/etc/grafana/secrets/azure/client_id}"
+      secureJsonData:
+        clientSecret: "$__file{/etc/grafana/secrets/azure/client_secret}"
+      version: 1
+      editable: true
+
+templates/secrets.yaml files
+ apiVersion: v1
+kind: Secret
+metadata:
+  name: grafana-azure-secrets
+type: Opaque
+stringData:
+  client_id: |
+    {{ .Values.azure.clientId }}
+  client_secret: |
+    {{ .Values.azure.clientSecret }}
+  tenant_id: |
+    {{ .Values.azure.tenantId }}
+  subscription_id: |
+    {{ .Values.azure.subscriptionId }}
+
+grafana-creation-pipeline.yaml
+
+
+  trigger:
+  branches:
+    include:
+      - main
+  paths:
+    include:
+      - 'grafana-aks/*'
+
+variables:
+  - group: 'grafana-aks-config'
+  - name: 'namespace'
+    value: 'monitoring'
+
+stages:
+- stage: DeployGrafana
+  jobs:
+  - job: Deploy
+    steps:
+    - task: AzureCLI@2
+      inputs:
+        azureSubscription: 'your-azure-service-connection'
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          # Get secrets from Key Vault
+          clientId=$(az keyvault secret show --vault-name Goodvault --name grafana-azure-client-id --query value -o tsv)
+          clientSecret=$(az keyvault secret show --vault-name Goodvault --name grafana-azure-client-secret --query value -o tsv)
+          tenantId=$(az keyvault secret show --vault-name Goodvault --name grafana-azure-tenant-id --query value -o tsv)
+          subscriptionId=$(az keyvault secret show --vault-name Goodvault --name grafana-azure-subscription-id --query value -o tsv)
+          
+          # Helm install/upgrade
+          helm upgrade --install grafana grafana-aks/ \
+            --namespace $(namespace) \
+            --set azure.clientId="$clientId" \
+            --set azure.clientSecret="$clientSecret" \
+            --set azure.tenantId="$tenantId" \
+            --set azure.subscriptionId="$subscriptionId" \
+            --values grafana-aks/values.yaml
+
+azure-monitor-integration-pipeline.yaml files 
+
+
+trigger:
+  branches:
+    include:
+      - main
+  paths:
+    include:
+      - 'azure-monitor-config/*'
+
+variables:
+  - group: 'azure-monitor-config'
+  - name: 'namespace'
+    value: 'monitoring'
+
+stages:
+- stage: ConfigureAzureMonitor
+  jobs:
+  - job: Configure
+    steps:
+    - task: KubernetesManifest@0
+      inputs:
+        action: 'deploy'
+        namespace: '$(namespace)'
+        manifests: |
+          azure-monitor-config/azure-monitor-configmap.yaml
+          azure-monitor-config/azure-monitor-dashboards.yaml
+        strategy: 'kubectl'
+
+alert-dashboard-pipeline.yaml
+
+ trigger:
+  branches:
+    include:
+      - main
+  paths:
+    include:
+      - 'dashboards/*'
+      - 'alerts/*'
+
+variables:
+  - group: 'grafana-alerts-config'
+  - name: 'namespace'
+    value: 'monitoring'
+
+stages:
+- stage: DeployDashboardsAndAlerts
+  jobs:
+  - job: Deploy
+    steps:
+    - task: KubernetesManifest@0
+      inputs:
+        action: 'deploy'
+        namespace: '$(namespace)'
+        manifests: |
+          dashboards/*.yaml
+          alerts/*.yaml
+        strategy: 'kubectl'
+
 ## 4. Required Pipeli
 This setup provides Grafana with the necessary permissions to read monitoring data from Azure Monitor while following security best practices.
