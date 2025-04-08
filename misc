@@ -10,3 +10,7 @@ echo "Client ID: $clientId"
 
 # List all applications and their client IDs
 az ad app list --query '[].{displayName:displayName, appId:appId}' -o table
+
+
+# Assign Key Vault access to AKS cluster's managed identity
+az keyvault set-policy --name Goodvault --object-id $(az aks show -g <resource-group> -n <aks-name> --query identity.principalId -o tsv) --secret-permissions get list
