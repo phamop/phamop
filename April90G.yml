@@ -1,50 +1,53 @@
 Okay, let's break down the implementation of Azure Monitor Insights metrics for Grafana on an existing AKS cluster, leveraging existing Azure resources and without Istio or Azure DevOps pipelines for the application itself. We'll focus on the Grafana deployment and integration pipelines.
 
-High-Level Architecture:
+**High-Level Architecture:**
 
-Existing Infrastructure:
-Azure Kubernetes Service (AKS) cluster.
-Existing Azure Monitor Workspace.
-Existing Azure Key Vault (Goodvault) storing secrets (Grafana admin password, Azure Monitor API credentials).
-Grafana Deployment: We will deploy Grafana into the AKS cluster using Helm.
-Azure Monitor Data Source: We will configure Grafana to use the Azure Monitor data source to query metrics from your existing Azure Monitor Workspace.
-Azure DevOps Pipelines:
-Grafana Creation Pipeline: Deploys Grafana to AKS using Helm.
-Grafana Integration Pipeline: Configures the Azure Monitor data source in Grafana.
-Parameterization: We will use YAML variable files for different environments (specifically stg).
-No DNS Resolution & TLS (for Dev): We will focus on a basic setup for the development environment without explicit DNS configuration or TLS.
-Implementation Steps:
+1.  **Existing Infrastructure:**
+    * Azure Kubernetes Service (AKS) cluster.
+    * Existing Azure Monitor Workspace.
+    * Existing Azure Key Vault (`Goodvault`) storing secrets (Grafana admin password, Azure Monitor API credentials).
+2.  **Grafana Deployment:** We will deploy Grafana into the AKS cluster using Helm.
+3.  **Azure Monitor Data Source:** We will configure Grafana to use the Azure Monitor data source to query metrics from your existing Azure Monitor Workspace.
+4.  **Azure DevOps Pipelines:**
+    * **Grafana Creation Pipeline:** Deploys Grafana to AKS using Helm.
+    * **Grafana Integration Pipeline:** Configures the Azure Monitor data source in Grafana.
+5.  **Parameterization:** We will use YAML variable files for different environments (specifically `stg`).
+6.  **No DNS Resolution & TLS (for Dev):** We will focus on a basic setup for the development environment without explicit DNS configuration or TLS.
 
-1. Prepare Azure Key Vault (Goodvault):
+**Implementation Steps:**
 
-Ensure the following secrets exist in your Goodvault:
-grafana-admin-password: The desired admin password for Grafana.
-azure-monitor-client-id: The Client ID of a Service Principal with "Monitoring Reader" role on the Azure Monitor Workspace's Resource Group or Subscription.
-azure-monitor-client-secret: The Client Secret of the Service Principal.
-azure-monitor-tenant-id: The Tenant ID of your Azure subscription.
-azure-monitor-resource-uri: The Resource ID of your Azure Monitor Workspace (e.g., /subscriptions/<subscription-id>/resourceGroups/<resource-group>/providers/Microsoft.Monitor/accounts/<workspace-name>).
-2. Create Helm Chart for Grafana:
+**1. Prepare Azure Key Vault (`Goodvault`):**
 
-Create a directory structure for your Grafana Helm chart (e.g., charts/grafana).
-Inside the grafana directory, create the necessary files:
-Chart.yaml: Basic chart information.
-values.yaml: Default configuration values.
-templates/: Kubernetes manifests.
-templates/deployment.yaml: Grafana Deployment.
-templates/service.yaml: Grafana Service (likely ClusterIP for internal access in dev).
-templates/secret.yaml: Kubernetes Secret to store the Grafana admin password fetched from Azure Key Vault.
-Example charts/grafana/Chart.yaml:
+* Ensure the following secrets exist in your `Goodvault`:
+    * `grafana-admin-password`: The desired admin password for Grafana.
+    * `azure-monitor-client-id`: The Client ID of a Service Principal with "Monitoring Reader" role on the Azure Monitor Workspace's Resource Group or Subscription.
+    * `azure-monitor-client-secret`: The Client Secret of the Service Principal.
+    * `azure-monitor-tenant-id`: The Tenant ID of your Azure subscription.
+    * `azure-monitor-resource-uri`: The Resource ID of your Azure Monitor Workspace (e.g., `/subscriptions/<subscription-id>/resourceGroups/<resource-group>/providers/Microsoft.Monitor/accounts/<workspace-name>`).
 
-YAML
+**2. Create Helm Chart for Grafana:**
 
+* Create a directory structure for your Grafana Helm chart (e.g., `charts/grafana`).
+* Inside the `grafana` directory, create the necessary files:
+    * `Chart.yaml`: Basic chart information.
+    * `values.yaml`: Default configuration values.
+    * `templates/`: Kubernetes manifests.
+        * `templates/deployment.yaml`: Grafana Deployment.
+        * `templates/service.yaml`: Grafana Service (likely `ClusterIP` for internal access in dev).
+        * `templates/secret.yaml`: Kubernetes Secret to store the Grafana admin password fetched from Azure Key Vault.
+
+**Example `charts/grafana/Chart.yaml`:**
+
+```yaml
 apiVersion: v2
 name: grafana
 version: 1.0.0
 description: A Helm chart for Grafana
-Example charts/grafana/values.yaml:
+```
 
-YAML
+**Example `charts/grafana/values.yaml`:**
 
+```yaml
 grafanaAdminPasswordSecretName: grafana-admin-secret
 service:
   type: ClusterIP
@@ -55,10 +58,11 @@ deployment:
     repository: grafana/grafana
     tag: latest
     pullPolicy: IfNotPresent
-Example charts/grafana/templates/deployment.yaml:
+```
 
-YAML
+**Example `charts/grafana/templates/deployment.yaml`:**
 
+```yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -90,10 +94,11 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.grafanaAdminPasswordSecretName }}
                   key: password
-Example charts/grafana/templates/service.yaml:
+```
 
-YAML
+**Example `charts/grafana/templates/service.yaml`:**
 
+```yaml
 apiVersion: v1
 kind: Service
 metadata:
@@ -111,10 +116,11 @@ spec:
   selector:
     app: grafana
     release: {{ .Release.Name }}
-Example charts/grafana/templates/secret.yaml:
+```
 
-YAML
+**Example `charts/grafana/templates/secret.yaml`:**
 
+```yaml
 apiVersion: v1
 kind: Secret
 metadata:
@@ -125,15 +131,17 @@ metadata:
 type: Opaque
 data:
   password: {{ .Values.grafanaAdminPassword | b64enc }}
-3. Create Azure DevOps Variable Files:
+```
 
-Create a directory variable_files at the root of your repository.
-Inside variable_files, create a subdirectory stg.
-Create the following YAML file in variable_files/stg: grafana-stg.yaml.
-Example variable_files/stg/grafana-stg.yaml:
+**3. Create Azure DevOps Variable Files:**
 
-YAML
+* Create a directory `variable_files` at the root of your repository.
+* Inside `variable_files`, create a subdirectory `stg`.
+* Create the following YAML file in `variable_files/stg`: `grafana-stg.yaml`.
 
+**Example `variable_files/stg/grafana-stg.yaml`:**
+
+```yaml
 # AKS Cluster Details
 aksClusterName: "your-stg-aks-cluster-name"
 aksResourceGroup: "your-stg-aks-resource-group"
@@ -144,16 +152,18 @@ keyVaultName: "Goodvault"
 
 # Grafana Release Name
 grafanaReleaseName: "grafana-stg"
-4. Create the "Grafana Creation Pipeline" in Azure DevOps:
+```
 
-Go to your Azure DevOps project, navigate to "Pipelines," and create a "New pipeline."
-Choose "Azure Repos Git" as the source.
-Select your repository.
-Choose "Starter pipeline" and then edit the YAML.
-Example Azure DevOps Pipeline YAML (grafana-creation-pipeline.yaml):
+**4. Create the "Grafana Creation Pipeline" in Azure DevOps:**
 
-YAML
+* Go to your Azure DevOps project, navigate to "Pipelines," and create a "New pipeline."
+* Choose "Azure Repos Git" as the source.
+* Select your repository.
+* Choose "Starter pipeline" and then edit the YAML.
 
+**Example Azure DevOps Pipeline YAML (`grafana-creation-pipeline.yaml`):**
+
+```yaml
 trigger: none # Manual trigger for Grafana creation
 
 pool:
@@ -205,23 +215,26 @@ stages:
                 grafanaAdminPasswordSecretName: grafana-admin-secret
                 grafanaAdminPassword: "$(keyvaultSecrets.grafana-admin-password)"
               valueFile: 'charts/grafana/values.yaml'
-Key points in the Grafana Creation Pipeline:
+```
 
-trigger: none: This pipeline will be triggered manually.
-AzureCLI@2 (Login and Get Credentials): Logs in to Azure and gets the Kubernetes cluster credentials.
-AzureKeyVault@2: Retrieves the Grafana admin password from Azure Key Vault.
-HelmDeploy@0: Deploys the Grafana Helm chart.
-overrideValues: Overrides the grafanaAdminPassword in values.yaml with the value fetched from Key Vault.
-5. Create the "Grafana Integration into Azure Monitor Insights Pipeline" in Azure DevOps:
+**Key points in the Grafana Creation Pipeline:**
 
-Create another new pipeline in Azure DevOps.
-Choose "Azure Repos Git" as the source.
-Select your repository.
-Choose "Starter pipeline" and then edit the YAML.
-Example Azure DevOps Pipeline YAML (grafana-integration-pipeline.yaml):
+* **`trigger: none`**: This pipeline will be triggered manually.
+* **`AzureCLI@2` (Login and Get Credentials):** Logs in to Azure and gets the Kubernetes cluster credentials.
+* **`AzureKeyVault@2`:** Retrieves the Grafana admin password from Azure Key Vault.
+* **`HelmDeploy@0`:** Deploys the Grafana Helm chart.
+    * `overrideValues`: Overrides the `grafanaAdminPassword` in `values.yaml` with the value fetched from Key Vault.
 
-YAML
+**5. Create the "Grafana Integration into Azure Monitor Insights Pipeline" in Azure DevOps:**
 
+* Create another new pipeline in Azure DevOps.
+* Choose "Azure Repos Git" as the source.
+* Select your repository.
+* Choose "Starter pipeline" and then edit the YAML.
+
+**Example Azure DevOps Pipeline YAML (`grafana-integration-pipeline.yaml`):**
+
+```yaml
 trigger: none # Manual trigger for Grafana integration
 
 pool:
@@ -326,55 +339,62 @@ stages:
                           clientSecret: '__secure_secret:clientSecret__'
               kubernetesClusterEndpoint: '$(kubernetesServiceEndpoint)'
               kubeConfig: '$(KUBECONFIG)'
-Key points in the Grafana Integration Pipeline:
+```
 
-trigger: none: This pipeline will be triggered manually.
-parameters: Defines the environment parameter to select the variable file.
-variables: Loads the appropriate variable file based on the selected environment.
-AzureCLI@2 (Login and Get Credentials): Logs in to Azure and gets the Kubernetes cluster credentials.
-AzureKeyVault@2: Retrieves the Azure Monitor API credentials from Azure Key Vault.
-KubernetesManifest@0 (Apply Secret): Creates a Kubernetes Secret named grafana-azure-monitor-datasource in the Grafana namespace to securely store the Azure Monitor credentials.
-KubernetesManifest@0 (Apply ConfigMap): Creates a Kubernetes ConfigMap named grafana-azure-monitor-datasource-config containing the Grafana datasource configuration. It references the secrets stored in the grafana-azure-monitor-datasource Secret.
-6. Parameterized Variable File for Staging (stg):
+**Key points in the Grafana Integration Pipeline:**
 
-You have already created variable_files/stg/grafana-stg.yaml. Ensure it contains the correct values for your staging environment's AKS cluster name, resource group, and desired Grafana namespace.
-7. No DNS Resolution and TLS for Dev:
+* **`trigger: none`**: This pipeline will be triggered manually.
+* **`parameters`**: Defines the `environment` parameter to select the variable file.
+* **`variables`**: Loads the appropriate variable file based on the selected `environment`.
+* **`AzureCLI@2` (Login and Get Credentials):** Logs in to Azure and gets the Kubernetes cluster credentials.
+* **`AzureKeyVault@2`:** Retrieves the Azure Monitor API credentials from Azure Key Vault.
+* **`KubernetesManifest@0` (Apply Secret):** Creates a Kubernetes Secret named `grafana-azure-monitor-datasource` in the Grafana namespace to securely store the Azure Monitor credentials.
+* **`KubernetesManifest@0` (Apply ConfigMap):** Creates a Kubernetes ConfigMap named `grafana-azure-monitor-datasource-config` containing the Grafana datasource configuration. It references the secrets stored in the `grafana-azure-monitor-datasource` Secret.
 
-The service.yaml in the Helm chart defaults to type: ClusterIP, which provides internal access within the AKS cluster. This avoids the need for external DNS resolution in your development environment.
-TLS configuration is not included in the basic Helm chart provided. For development, you might access Grafana via port-forwarding or a basic ingress without TLS. For production or staging, you would typically configure TLS using an Ingress controller and a certificate manager like cert-manager.
-8. Applying the Pipelines:
+**6. Parameterized Variable File for Staging (`stg`):**
 
-Create Service Connections:
+* You have already created `variable_files/stg/grafana-stg.yaml`. Ensure it contains the correct values for your staging environment's AKS cluster name, resource group, and desired Grafana namespace.
 
-In your Azure DevOps project settings, under "Service connections," create:
-An "Azure Resource Manager" service connection that your pipelines will use to authenticate with Azure. Grant it appropriate permissions (e.g., Contributor on the resource groups involved). Note the name of this connection and update the azureSubscription inputs in the pipeline YAMLs.
-A "Kubernetes" service connection to your AKS cluster. You can configure this using the kubeconfig obtained via the Azure CLI. Note the name of this connection and update the kubernetesServiceEndpoint inputs in the grafana-integration-pipeline.yaml.
-Run the "Grafana Creation Pipeline":
+**7. No DNS Resolution and TLS for Dev:**
 
-Navigate to the pipeline and run it. This will deploy Grafana to your specified AKS namespace in the staging environment (as configured in the grafana-stg.yaml file).
-Run the "Grafana Integration into Azure Monitor Insights Pipeline":
+* The `service.yaml` in the Helm chart defaults to `type: ClusterIP`, which provides internal access within the AKS cluster. This avoids the need for external DNS resolution in your development environment.
+* TLS configuration is not included in the basic Helm chart provided. For development, you might access Grafana via port-forwarding or a basic ingress without TLS. For production or staging, you would typically configure TLS using an Ingress controller and a certificate manager like cert-manager.
 
-Navigate to this pipeline.
-When you run it, you will be prompted for the environment parameter. Select stg.
-This pipeline will:
-Fetch the Azure Monitor credentials from Key Vault.
-Create the Kubernetes Secret and ConfigMap in the Grafana namespace.
-9. Accessing Grafana (for Dev):
+**8. Applying the Pipelines:**
 
-Since we are using ClusterIP and not configuring external access in this basic setup, you can access Grafana in your development environment using kubectl port-forward:
+1.  **Create Service Connections:**
+    * In your Azure DevOps project settings, under "Service connections," create:
+        * An "Azure Resource Manager" service connection that your pipelines will use to authenticate with Azure. Grant it appropriate permissions (e.g., Contributor on the resource groups involved). Note the name of this connection and update the `azureSubscription` inputs in the pipeline YAMLs.
+        * A "Kubernetes" service connection to your AKS cluster. You can configure this using the kubeconfig obtained via the Azure CLI. Note the name of this connection and update the `kubernetesServiceEndpoint` inputs in the `grafana-integration-pipeline.yaml`.
 
-Bash
+2.  **Run the "Grafana Creation Pipeline":**
+    * Navigate to the pipeline and run it. This will deploy Grafana to your specified AKS namespace in the staging environment (as configured in the `grafana-stg.yaml` file).
 
-kubectl port-forward --namespace monitoring deployment/grafana-stg-grafana 3000:3000
-Then, you can access Grafana in your browser at http://localhost:3000. Use the admin username and the password you stored in Azure Key Vault.
+3.  **Run the "Grafana Integration into Azure Monitor Insights Pipeline":**
+    * Navigate to this pipeline.
+    * When you run it, you will be prompted for the `environment` parameter. Select `stg`.
+    * This pipeline will:
+        * Fetch the Azure Monitor credentials from Key Vault.
+        * Create the Kubernetes Secret and ConfigMap in the Grafana namespace.
 
-10. Configuring the Azure Monitor Data Source in Grafana:
+**9. Accessing Grafana (for Dev):**
 
-Once you access Grafana, the Azure Monitor data source should be automatically configured based on the ConfigMap and Secret you deployed. You can verify this by going to "Configuration" -> "Data sources" in Grafana. You should see an "Azure Monitor" data source.
-Important Considerations:
+* Since we are using `ClusterIP` and not configuring external access in this basic setup, you can access Grafana in your development environment using `kubectl port-forward`:
 
-Security: Ensure your Service Principal for Azure Monitor has the least privilege necessary (ideally "Monitoring Reader" on the Azure Monitor Workspace or its parent Resource Group/Subscription).
-Error Handling: The provided pipeline YAMLs are basic. Implement proper error handling and logging in a production environment.
-Idempotency: Ensure your Helm chart and Kubernetes manifests are idempotent so that running the pipelines multiple times doesn't cause issues.
-Secrets Management: While we are using Azure Key Vault, consider further security measures for accessing secrets within the AKS cluster if needed.
-Monitoring the Pipelines: Monitor the execution
+    ```bash
+    kubectl port-forward --namespace monitoring deployment/grafana-stg-grafana 3000:3000
+    ```
+
+    Then, you can access Grafana in your browser at `http://localhost:3000`. Use the admin username and the password you stored in Azure Key Vault.
+
+**10. Configuring the Azure Monitor Data Source in Grafana:**
+
+* Once you access Grafana, the Azure Monitor data source should be automatically configured based on the ConfigMap and Secret you deployed. You can verify this by going to "Configuration" -> "Data sources" in Grafana. You should see an "Azure Monitor" data source.
+
+**Important Considerations:**
+
+* **Security:** Ensure your Service Principal for Azure Monitor has the least privilege necessary (ideally "Monitoring Reader" on the Azure Monitor Workspace or its parent Resource Group/Subscription).
+* **Error Handling:** The provided pipeline YAMLs are basic. Implement proper error handling and logging in a production environment.
+* **Idempotency:** Ensure your Helm chart and Kubernetes manifests are idempotent so that running the pipelines multiple times doesn't cause issues.
+* **Secrets Management:** While we are using Azure Key Vault, consider further security measures for accessing secrets within the AKS cluster if needed.
+* **Monitoring the Pipelines:** Monitor the execution
