@@ -1,0 +1,589 @@
+Monitoring AKS with Azure Monitor and Grafana
+
+I'll provide a detailed implementation for monitoring an existing AKS cluster using Azure Monitor metrics and deploying Grafana via Azure DevOps CI/CD pipelines using Helm, with secure credential storage in Azure Key Vault.
+
+Solution Architecture
+
+Azure Monitor captures AKS metrics
+
+Grafana deployed in AKS via Helm for visualization
+
+Azure DevOps pipelines for CI/CD
+
+Azure Key Vault for securing credentials
+
+Prerequisites
+
+Existing AKS cluster
+
+Azure DevOps project
+
+Azure CLI access and appropriate permissions
+
+Helm 3
+
+Implementation Steps
+
+1. Enable Azure Monitor for Containers
+
+First, enable Azure Monitor for your AKS cluster:
+
+# Get your AKS cluster resource ID
+AKS_CLUSTER_ID=$(az aks show --resource-group myResourceGroup --name myAKSCluster --query id -o tsv)
+
+# Enable monitoring
+az aks enable-addons --resource-group myResourceGroup --name myAKSCluster --addons monitoring
+
+
+2. Set Up Azure Key Vault for Credentials
+
+Create a Key Vault and store Grafana admin credentials:
+
+# Create Key Vault
+az keyvault create --name myGrafanaKeyVault --resource-group myResourceGroup --location eastus
+
+# Store Grafana admin password
+az keyvault secret set --vault-name myGrafanaKeyVault --name grafana-admin-password --value "YourSecurePassword"
+
+# Grant permissions to AKS managed identity (if using pod identity)
+az keyvault set-policy --name myGrafanaKeyVault --spn $AKS_IDENTITY_CLIENT_ID --secret-permissions get list
+
+
+3. Configure Azure DevOps Pipeline
+
+Create a YAML pipeline file in your repository:
+
+trigger:
+  branches:
+    include:
+    - main
+  paths:
+    include:
+    - helm/**
+
+variables:
+  azureSubscription: 'your-azure-subscription'
+  resourceGroup: 'myResourceGroup'
+  aksClusterName: 'myAKSCluster'
+  namespace: 'monitoring'
+  keyVaultName: 'myGrafanaKeyVault'
+
+stages:
+- stage: Deploy
+  jobs:
+  - job: DeployGrafana
+    pool:
+      vmImage: 'ubuntu-latest'
+    steps:
+    - task: AzureCLI@2
+      displayName: 'Login to Azure and AKS'
+      inputs:
+        azureSubscription: $(azureSubscription)
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          az aks get-credentials --resource-group $(resourceGroup) --name $(aksClusterName)
+          
+    - task: AzureKeyVault@2
+      displayName: 'Get Secrets from Key Vault'
+      inputs:
+        azureSubscription: $(azureSubscription)
+        keyVaultName: $(keyVaultName)
+        secretsFilter: 'grafana-admin-password'
+    
+    - task: HelmDeploy@0
+      displayName: 'Create Monitoring Namespace'
+      inputs:
+        connectionType: 'Azure Resource Manager'
+        azureSubscription: $(azureSubscription)
+        azureResourceGroup: $(resourceGroup)
+        kubernetesCluster: $(aksClusterName)
+        command: 'create'
+        arguments: 'namespace $(namespace) --dry-run -o yaml | kubectl apply -f -'
+
+    - task: HelmDeploy@0
+      displayName: 'Deploy Grafana using Helm'
+      inputs:
+        connectionType: 'Azure Resource Manager'
+        azureSubscription: $(azureSubscription)
+        azureResourceGroup: $(resourceGroup)
+        kubernetesCluster: $(aksClusterName)
+        namespace: $(namespace)
+        command: 'upgrade'
+        chartType: 'FilePath'
+        chartPath: '$(System.DefaultWorkingDirectory)/helm/grafana'
+        releaseName: 'grafana'
+        install: true
+        waitForExecution: true
+        arguments: '--set adminPassword=$(grafana-admin-password) --set azureMonitor.enabled=true --set azureMonitor.tenantId=$(az account show --query tenantId -o tsv) --set azureMonitor.clientId=$(az account show --query user.name -o tsv)'
+    
+    - task: AzureCLI@2
+      displayName: 'Verify Deployment'
+      inputs:
+        azureSubscription: $(azureSubscription)
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          kubectl get all -n $(namespace)
+          # Get Grafana external IP or hostname
+          echo "Grafana URL:"
+          kubectl get svc -n $(namespace) grafana -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
+
+
+
+4. Create Helm Chart for Grafana
+
+Create a custom Helm chart or modify the official Grafana chart to integrate with Azure Monitor:
+
+service:
+  type: LoadBalancer
+  port: 80
+
+adminUser: admin
+# Password will be overridden by pipeline from Key Vault
+adminPassword: ""
+
+datasources:
+  datasources.yaml:
+    apiVersion: 1
+    datasources:
+    - name: Azure Monitor
+      type: grafana-azure-monitor-datasource
+      access: proxy
+      isDefault: true
+      jsonData:
+        azureAuthType: msi
+        subscriptionId: ${AZURE_SUBSCRIPTION_ID}
+        tenantId: ${AZURE_TENANT_ID}
+        clientId: ${AZURE_CLIENT_ID}
+      version: 1
+
+dashboardProviders:
+  dashboardproviders.yaml:
+    apiVersion: 1
+    providers:
+    - name: 'default'
+      orgId: 1
+      folder: ''
+      type: file
+      disableDeletion: false
+      editable: true
+      options:
+        path: /var/lib/grafana/dashboards/default
+
+dashboards:
+  default:
+    aks-overview:
+      gnetId: 10956 # Azure Kubernetes Service dashboard ID
+      revision: 1
+      datasource: Azure Monitor
+    kubernetes-cluster:
+      gnetId: 6417 # Kubernetes monitoring dashboard ID
+      revision: 1
+      datasource: Azure Monitor
+
+persistence:
+  enabled: true
+  storageClassName: default
+  size: 10Gi
+
+rbac:
+  create: true
+  pspEnabled: false
+
+serviceAccount:
+  create: true
+  name: grafana
+
+podAnnotations:
+  azure.workload.identity/use: "true"
+
+
+
+5. Configure AAD Pod Identity (or Workload Identity)
+
+Enable your Grafana pods to access Azure resources securely:
+
+# Install the AAD Pod Identity into your cluster
+helm repo add aad-pod-identity https://raw.githubusercontent.com/Azure/aad-pod-identity/master/charts
+helm install aad-pod-identity aad-pod-identity/aad-pod-identity
+
+# Create an identity for Grafana
+az identity create -g myResourceGroup -n grafana-identity
+
+# Get the identity details
+IDENTITY_CLIENT_ID=$(az identity show -g myResourceGroup -n grafana-identity --query clientId -o tsv)
+IDENTITY_RESOURCE_ID=$(az identity show -g myResourceGroup -n grafana-identity --query id -o tsv)
+
+# Assign the identity to AKS
+az aks pod-identity add --resource-group myResourceGroup --cluster-name myAKSCluster --namespace monitoring --name grafana-identity --identity-resource-id $IDENTITY_RESOURCE_ID
+
+
+6. Create Custom Dashboards (Optional)
+
+Create additional Grafana dashboard configurations:
+
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": "-- Grafana --",
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "gnetId": null,
+  "graphTooltip": 0,
+  "id": 1,
+  "links": [],
+  "panels": [
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": "Azure Monitor",
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "fill": 1,
+      "fillGradient": 0,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "hiddenSeries": false,
+      "id": 2,
+      "legend": {
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "show": true,
+        "total": false,
+        "values": false
+      },
+      "lines": true,
+      "linewidth": 1,
+      "nullPointMode": "null",
+      "options": {
+        "alertThreshold": true
+      },
+      "percentage": false,
+      "pluginVersion": "7.5.0",
+      "pointradius": 2,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "azureMonitor": {
+            "aggregation": "Average",
+            "dimensionFilters": [],
+            "metricDefinition": "Microsoft.ContainerService/managedClusters",
+            "metricName": "node_cpu_usage_percentage",
+            "metricNamespace": "insights.container/nodes",
+            "resourceGroup": "${RESOURCE_GROUP}",
+            "resourceName": "${CLUSTER_NAME}"
+          },
+          "refId": "A"
+        }
+      ],
+      "thresholds": [],
+      "timeRegions": [],
+      "title": "Node CPU Usage",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "percent",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        },
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
+      "datasource": "Azure Monitor",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 70
+              },
+              {
+                "color": "red",
+                "value": 90
+              }
+            ]
+          },
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "id": 4,
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true,
+        "text": {}
+      },
+      "pluginVersion": "7.5.0",
+      "targets": [
+        {
+          "azureMonitor": {
+            "aggregation": "Average",
+            "dimensionFilters": [],
+            "metricDefinition": "Microsoft.ContainerService/managedClusters",
+            "metricName": "node_memory_working_set_percentage",
+            "metricNamespace": "insights.container/nodes",
+            "resourceGroup": "${RESOURCE_GROUP}",
+            "resourceName": "${CLUSTER_NAME}"
+          },
+          "refId": "A"
+        }
+      ],
+      "title": "Node Memory Usage",
+      "type": "gauge"
+    },
+    {
+      "datasource": "Azure Monitor",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 8
+      },
+      "id": 6,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      },
+      "pluginVersion": "7.5.0",
+      "targets": [
+        {
+          "azureMonitor": {
+            "aggregation": "Total",
+            "dimensionFilters": [],
+            "metricDefinition": "Microsoft.ContainerService/managedClusters",
+            "metricName": "pod_count",
+            "metricNamespace": "insights.container/pods",
+            "resourceGroup": "${RESOURCE_GROUP}",
+            "resourceName": "${CLUSTER_NAME}"
+          },
+          "refId": "A"
+        }
+      ],
+      "title": "Pod Count",
+      "type": "timeseries"
+    }
+  ],
+  "refresh": "5m",
+  "schemaVersion": 27,
+  "style": "dark",
+  "tags": [
+    "kubernetes",
+    "azure"
+  ],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "",
+  "title": "AKS Cluster Overview",
+  "uid": "aks-overview",
+  "version": 1
+}
+
+
+
+7. Configure Azure Monitor Metrics Collection
+
+Ensure Container Insights is properly configured:
+
+# Check if Container Insights is enabled
+az aks show --resource-group myResourceGroup --name myAKSCluster --query addonProfiles.omsagent.enabled
+
+# Verify the Log Analytics workspace ID
+az aks show --resource-group myResourceGroup --name myAKSCluster --query addonProfiles.omsagent.config.logAnalyticsWorkspaceResourceID
+
+
+8. Setting Up Role-Based Access Control (RBAC)
+
+Grant appropriate permissions for Grafana to access Azure Monitor:
+
+# Get the object ID of the managed identity
+IDENTITY_OBJECT_ID=$(az identity show -g myResourceGroup -n grafana-identity --query principalId -o tsv)
+
+# Assign Reader role on the subscription or Resource Group level
+az role assignment create --assignee $IDENTITY_OBJECT_ID --role "Monitoring Reader" --scope /subscriptions/$(az account show --query id -o tsv)
+
+
+9. Alerting Configuration with Grafana
+
+Create alert rules in Grafana to notify when issues occur with your AKS cluster.
+
+Testing and Verification
+
+After deployment, verify the setup:
+
+Access Grafana UI using the service's external IP
+
+Verify Azure Monitor data source is working
+
+Check pre-configured dashboards are loading metrics
+
+Create test alerts to ensure notification system works
+
+Security Considerations
+
+Use Workload Identity or AAD Pod Identity for secure Azure services access
+
+Store all credentials in Azure Key Vault
+
+Implement network policy to restrict Grafana access
+
+Enable Azure Active Directory (AAD) authentication for Grafana
+
+Production Best Practices
+
+High Availability:
+
+Deploy Grafana with multiple replicas
+
+Use persistent storage for dashboards and settings
+
+Backup Strategy:
+
+Regularly backup Grafana configurations and dashboards
+
+Scaling:
+
+Set appropriate resource requests and limits
+
+Configure horizontal pod autoscaling
+
+Monitoring the Monitoring:
+
+Set up monitoring for Grafana itself
+
+This implementation gives you a comprehensive monitoring solution for your AKS cluster using Azure Monitor metrics visualized through Grafana, deployed securely via Azure DevOps pipelines.
+
+Would you like me to explain or break down any specific part of this implementation in more detail?
