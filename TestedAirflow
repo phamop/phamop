@@ -1,0 +1,46 @@
+# Base image
+FROM python:3.12.10-alpine3.21
+
+# Airflow version - adjust as needed
+ARG AIRFLOW_VERSION=2.9.0
+ARG AIRFLOW_HOME=/opt/airflow
+ARG AIRFLOW_DEPS=""
+ARG PYTHON_DEPS=""
+ENV AIRFLOW_HOME=${AIRFLOW_HOME}
+
+# Install required system packages
+RUN apk --no-cache add \
+    bash \
+    curl \
+    libffi-dev \
+    libxml2-dev \
+    libxslt-dev \
+    openssl-dev \
+    postgresql-dev \
+    freetype-dev \
+    libjpeg-turbo-dev \
+    zlib-dev \
+    jq \
+    build-base \
+    && rm -rf /var/cache/apk/*
+
+# Create airflow user and directory
+RUN adduser -D -u 1000 airflow \
+    && mkdir -p ${AIRFLOW_HOME} \
+    && chown -R airflow:airflow ${AIRFLOW_HOME}
+
+# Install Airflow with pip
+RUN pip install --no-cache-dir \
+    "apache-airflow==${AIRFLOW_VERSION}${AIRFLOW_DEPS:+"$AIRFLOW_DEPS"}" \
+    ${PYTHON_DEPS:+"$PYTHON_DEPS"}
+
+# Switch to airflow user
+USER airflow
+WORKDIR ${AIRFLOW_HOME}
+
+# Expose ports (webserver and flower)
+EXPOSE 8080 5555
+
+# Entrypoint
+ENTRYPOINT ["airflow"]
+CMD ["standalone"]
