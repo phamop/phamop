@@ -1,0 +1,32 @@
+cat Dockerfile 
+FROM python:3.10-alpine
+
+# Install system dependencies
+RUN apk update && \
+    apk add --no-cache \
+        bash \
+        g++ \
+        gcc \
+        musl-dev \
+        postgresql-dev \
+        python3-dev \
+        py3-pip \
+        build-base \
+        libffi-dev \
+        openssl-dev \
+        libstdc++
+
+# For re2 if needed (alternative to google-re2)
+RUN apk add --no-cache --repository=http://dl-cdn.alpinelinux.org/alpine/edge/testing re2-dev
+
+# Install requirements with build optimization
+COPY requirements.txt .
+RUN pip install --upgrade pip && \
+    CFLAGS="-fPIC" CPPFLAGS="-fPIC" \
+    pip install --no-cache-dir -r requirements.txt
+(base) phamo@PonmileD-Pro stage % cat requirements.txt 
+# Correct format (one package per line)
+psycopg2-binary==2.9.7
+pytz==2023.3
+pybind11==2.10.4
+apache-airflow==2.6.2
