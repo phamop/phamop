@@ -1,0 +1,308 @@
+Okay, let's outline the POC for monitoring your existing AKS cluster using Azure Monitor metrics in Grafana, deployed via Azure DevOps CI/CD with Helm, leveraging your existing resources. We'll break this down into Azure DevOps Board tasks and provide the necessary code implementation. Finally, we'll guide you on how to package the code into a zip file.
+
+**POC Goal:** Successfully deploy Grafana to your existing "GoodNs" namespace in AKS, configure it to use Azure Monitor metrics from your existing Azure Monitor workspace via secure credentials stored in your existing "SecureSecret" Azure Key Vault, all automated through an Azure DevOps CI/CD pipeline using Helm.
+
+**Existing Resources:**
+
+* Azure Kubernetes Service (AKS) cluster.
+* Azure Monitor Workspace.
+* Azure Key Vault named "SecureSecret".
+* Kubernetes namespace named "GoodNs".
+
+**Azure DevOps Board Task Breakdown:**
+
+Here's a breakdown of the POC into actionable tasks within Azure DevOps Board:
+
+**Epic: Monitor Existing AKS with Azure Monitor and Grafana**
+
+**Feature: Integrate Grafana with Azure Monitor Metrics in Existing AKS**
+
+1.  **Task: Prepare Azure Key Vault for Grafana Credentials**
+    * **Description:** Ensure the necessary Azure Monitor credentials (Service Principal Client ID, Secret, Tenant ID) are securely stored in the existing "SecureSecret" Azure Key Vault.
+    * **Acceptance Criteria:**
+        * Verify that the required secrets (`azure-monitor-client-id`, `azure-monitor-client-secret`, `azure-monitor-tenant-id`) exist in the "SecureSecret" Azure Key Vault.
+        * Confirm the Service Principal used has "Get" permissions on these secrets in the Key Vault.
+    * **Implementation Details:** (See Implementation Code Section - Azure Key Vault Permissions)
+
+2.  **Task: Create Helm Chart for Grafana with Azure Monitor Integration**
+    * **Description:** Develop a Helm chart for deploying Grafana to the AKS cluster, pre-configured with the Azure Monitor data source using Key Vault for credentials.
+    * **Acceptance Criteria:**
+        * A Helm chart exists that defines the Grafana deployment.
+        * The `values.yaml` in the chart includes configuration for the Azure Monitor data source, referencing secrets in "SecureSecret".
+        * The chart specifies deployment within the "GoodNs" namespace.
+    * **Implementation Details:** (See Implementation Code Section - Grafana Helm Chart)
+
+3.  **Task: Set Up Azure DevOps Pipeline for Grafana Deployment**
+    * **Description:** Create an Azure DevOps CI/CD pipeline that uses Helm to deploy the Grafana chart to the AKS cluster.
+    * **Acceptance Criteria:**
+        * An Azure DevOps pipeline is created and linked to the repository containing the Helm chart.
+        * The pipeline includes stages for building (packaging) and deploying the Helm chart.
+        * The deployment stage uses the Helm task to deploy to the target AKS cluster in the "GoodNs" namespace.
+        * The pipeline is configured with the necessary Azure service connection to the AKS cluster.
+    * **Implementation Details:** (See Implementation Code Section - Azure DevOps Pipeline)
+
+4.  **Task: Configure Azure Service Connection for AKS and Azure**
+    * **Description:** Ensure the Azure DevOps project has the necessary Service Connections configured for interacting with your Azure subscription (for AKS access and potentially Key Vault access if needed directly by the pipeline, though Helm/Grafana will handle Key Vault access in this setup).
+    * **Acceptance Criteria:**
+        * An Azure Resource Manager service connection exists and is authorized to access the target Azure subscription.
+        * The pipeline tasks are configured to use this service connection.
+    * **Implementation Details:** (This is a configuration step within Azure DevOps UI).
+
+5.  **Task: Test Grafana Deployment and Azure Monitor Integration**
+    * **Description:** Run the Azure DevOps pipeline to deploy Grafana and verify that the Azure Monitor data source is correctly configured and can query metrics.
+    * **Acceptance Criteria:**
+        * The Azure DevOps pipeline completes successfully.
+        * The Grafana pod is running within the "GoodNs" namespace in the AKS cluster.
+        * The Azure Monitor data source is present and configured in Grafana.
+        * Users can create a basic Grafana dashboard to visualize metrics from the AKS cluster using the Azure Monitor data source.
+    * **Implementation Details:** (Manual verification through Grafana UI after deployment).
+
+**Implementation Code:**
+
+Here's the necessary code for the Helm chart and Azure DevOps pipeline:
+
+**1. Grafana Helm Chart:**
+
+Create a directory structure like this:
+
+```
+grafana-azure-monitor/
+├── Chart.yaml
+└── values.yaml
+└── templates/
+    ├── deployment.yaml
+    └── service.yaml
+```
+
+**`grafana-azure-monitor/Chart.yaml`:**
+
+```yaml
+apiVersion: v2
+name: grafana-azure-monitor
+description: A Helm chart for Grafana with Azure Monitor integration
+type: application
+version: 0.1.0
+appVersion: 9.x.x # Replace with your desired Grafana version
+```
+
+**`grafana-azure-monitor/values.yaml`:**
+
+```yaml
+adminUser: admin
+adminPassword: "your-grafana-admin-password" # Consider using a generated password or Kubernetes Secret
+
+namespace: GoodNs # Use the existing namespace
+
+datasources:
+  datasources.yaml:
+    apiVersion: 1
+    datasources:
+      - name: Azure Monitor
+        type: azuremonitor
+        jsonData:
+          azureCloud: AzureCloud
+          subscriptionId: "your-azure-subscription-id" # Replace with your Azure Subscription ID
+          logAnalyticsWorkspaceId: "your-azure-monitor-workspace-id" # Replace with your Azure Monitor Workspace ID
+          authenticationType: client_secret_key_vault
+          keyVaultUrl: "https://SecureSecret.vault.azure.net/" # Use your existing Azure Key Vault name
+          keyVaultSecretClientId: "azure-monitor-client-id"
+          keyVaultSecretClientSecret: "azure-monitor-client-secret"
+          keyVaultSecretTenantId: "azure-monitor-tenant-id"
+        secureJsonData:
+          clientId: "__keyvault__:azure-monitor-client-id"
+          clientSecret: "__keyvault__:azure-monitor-client-secret"
+          tenantId: "__keyvault__:azure-monitor-tenant-id"
+
+persistence:
+  enabled: true
+  size: 10Gi
+  storageClassName: "default" # Adjust as needed
+
+service:
+  type: LoadBalancer # Or ClusterIP if you prefer internal access
+  ports:
+    - port: 80
+      targetPort: 3000
+```
+
+**`grafana-azure-monitor/templates/deployment.yaml`:**
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    app.kubernetes.io/name: {{ .Release.Name }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ .Release.Name }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ .Release.Name }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+    spec:
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      containers:
+        - name: grafana
+          image: grafana/grafana:{{ .Chart.AppVersion }}
+          ports:
+            - containerPort: 3000
+          volumeMounts:
+            - name: grafana-storage
+              mountPath: /var/lib/grafana
+          env:
+            - name: GF_SECURITY_ADMIN_USER
+              value: {{ .Values.adminUser }}
+            - name: GF_SECURITY_ADMIN_PASSWORD
+              value: {{ .Values.adminPassword }}
+      volumes:
+        - name: grafana-storage
+          persistentVolumeClaim:
+            claimName: {{ .Release.Name }}-pvc
+```
+
+**`grafana-azure-monitor/templates/service.yaml`:**
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-service
+  namespace: {{ .Values.namespace }}
+  labels:
+    app.kubernetes.io/name: {{ .Release.Name }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.ports.0.port }}
+      targetPort: {{ .Values.service.ports.0.targetPort }}
+      protocol: TCP
+      name: http
+  selector:
+    app.kubernetes.io/name: {{ .Release.Name }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+```
+
+**2. Azure DevOps Pipeline (`azure-pipelines.yaml`):**
+
+```yaml
+trigger:
+- main # Or your preferred branch
+
+pool:
+  vmImage: ubuntu-latest
+
+stages:
+- stage: Build
+  displayName: Build Helm Chart
+  jobs:
+  - job: Package
+    displayName: Package Helm Chart
+    steps:
+    - task: HelmPack@0
+      displayName: Package Chart
+      inputs:
+        chartRoot: 'grafana-azure-monitor'
+        chartVersion: '$(Build.BuildId)' # Example versioning
+        appVersion: '{{ .Chart.AppVersion }}'
+
+    - task: PublishBuildArtifacts@1
+      displayName: Publish Artifact
+      inputs:
+        PathtoPublish: '$(Build.ArtifactStagingDirectory)/grafana-azure-monitor'
+        ArtifactName: 'grafana-chart'
+        PublishLocation: 'Container'
+
+- stage: DeployDev
+  displayName: Deploy Grafana to AKS (GoodNs)
+  dependsOn: Build
+  jobs:
+  - job: Deploy
+    displayName: Deploy Grafana
+    steps:
+    - task: AzureCLI@2
+      displayName: 'Azure CLI - Set AKS Context'
+      inputs:
+        azureSubscription: 'Your Azure Subscription Connection' # Replace with your Azure Subscription Service Connection Name
+        scriptType: bash
+        script: |
+          az aks get-credentials --resource-group 'your-aks-resource-group' --name 'your-aks-cluster-name' --file ~/.kube/config
+          kubectl config set-context --current --namespace=GoodNs
+
+    - task: HelmDeploy@0
+      displayName: 'Helm Deploy'
+      inputs:
+        azureSubscription: 'Your Azure Subscription Connection' # Replace with your Azure Subscription Service Connection Name
+        kubernetesCluster: 'Default'
+        useKubectl: true
+        kubectlArgs: 'apply -f -'
+        namespace: 'GoodNs' # Deploy to the existing namespace
+        chartType: 'Name'
+        chartName: '$(Build.ArtifactStagingDirectory)/grafana-chart/grafana-azure-monitor-$(Build.BuildId).tgz'
+        releaseName: 'grafana-release' # Choose a release name
+        createNamespace: false # Do not create the namespace as it exists
+        valueFile: 'grafana-azure-monitor/values.yaml'
+        overrideValues: |
+          datasources.datasources.0.jsonData.subscriptionId: "$(azureSubscriptionId)" # Define these variables in pipeline or variable group
+          datasources.datasources.0.jsonData.logAnalyticsWorkspaceId: "$(azureMonitorWorkspaceId)" # Define these variables
+```
+
+**3. Azure Key Vault Permissions (Azure CLI Command):**
+
+You need to ensure the Service Principal used by your AKS cluster's managed identity (recommended) or a specific SP has "Get" permissions on the secrets in your "SecureSecret" Key Vault.
+
+**Using AKS Managed Identity (Recommended):**
+
+```bash
+# Get the Resource Group of your AKS cluster
+AKS_RESOURCE_GROUP=$(az aks show --name your-aks-cluster-name --resource-group your-aks-resource-group --query nodeResourceGroup -o tsv)
+# Get the Principal ID of the system-assigned managed identity of the AKS cluster
+AKS_MANAGED_IDENTITY_ID=$(az identity list --resource-group $AKS_RESOURCE_GROUP --query "[?name=='aks-agentpool-*'].principalId" -o tsv)
+echo "AKS Managed Identity Principal ID: $AKS_MANAGED_IDENTITY_ID"
+
+# Grant "Key Vault Secrets User" role to the Managed Identity
+KEY_VAULT_NAME="SecureSecret"
+az role assignment create --role "Key Vault Secrets User" --assignee "$AKS_MANAGED_IDENTITY_ID" --scope "/subscriptions/your-subscription-id/resourceGroups/your-keyvault-resource-group/providers/Microsoft.KeyVault/vaults/$KEY_VAULT_NAME"
+```
+
+**Using a Specific Service Principal:**
+
+```bash
+SP_APP_ID="your-service-principal-app-id"
+KEY_VAULT_NAME="SecureSecret"
+az keyvault set-policy --name "$KEY_VAULT_NAME" --spn "$SP_APP_ID" --secret-permissions get
+```
+
+**How to Download to Zip File:**
+
+1.  **Create the Directory Structure:** Create the `grafana-azure-monitor` directory and its subdirectories (`templates`).
+2.  **Save the Files:** Save the `Chart.yaml`, `values.yaml`, `deployment.yaml`, and `service.yaml` files within the appropriate directories.
+3.  **Create the Azure DevOps Pipeline File:** Save the `azure-pipelines.yaml` file in the root of your repository (or a designated pipeline folder).
+4.  **Zip the `grafana-azure-monitor` Directory:** Use your operating system's tools to create a zip archive of the `grafana-azure-monitor` directory. For example, on Linux/macOS:
+
+    ```bash
+    zip -r grafana-azure-monitor.zip grafana-azure-monitor
+    ```
+
+    On Windows, you can right-click on the `grafana-azure-monitor` folder and select "Send to" -> "Compressed (zipped) folder".
+
+**Important Considerations:**
+
+* **Replace Placeholders:** Make sure to replace all placeholder values (e.g., `your-...`, subscription IDs, resource group names, Key Vault name, Azure Monitor Workspace ID) with your actual values.
+* **Azure Service Connection:** Ensure you have a properly configured Azure Resource Manager service connection in your Azure DevOps project that has permissions to interact with your AKS cluster and potentially Key Vault (though Grafana will handle Key Vault access in this setup).
+* **Service Principal Permissions:** The Service Principal used by your AKS cluster's managed identity or the specific SP needs the "Reader" role on the Azure Monitor Workspace to query metrics. This is configured separately in Azure.
+* **Variable Configuration:** In the Azure DevOps pipeline, you'll need to define the `azureSubscriptionId` and `azureMonitorWorkspaceId` variables. You can do this directly in the pipeline definition or, preferably, using Azure DevOps Variable Groups for better management, especially across different environments.
+* **Security:** Avoid hardcoding sensitive information directly in the Helm chart or pipeline. Leverage Azure Key Vault for secrets management as demonstrated. For the Grafana admin password, consider using Kubernetes Secrets or other secure methods in a production environment.
+
+This comprehensive outline and code snippets should provide a solid foundation for your POC. Remember to adapt the code and configuration to your specific Azure environment. Good luck!
