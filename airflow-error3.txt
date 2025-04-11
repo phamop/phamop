@@ -1,0 +1,56 @@
+#6 17.82 Building wheels for collected packages: google-re2, psutil, python-nvd3, sqlalchemy
+#6 17.83   Building wheel for google-re2 (pyproject.toml): started
+#6 18.07   Building wheel for google-re2 (pyproject.toml): finished with status 'error'
+#6 18.08   error: subprocess-exited-with-error
+#6 18.08   
+#6 18.08   × Building wheel for google-re2 (pyproject.toml) did not run successfully.
+#6 18.08   │ exit code: 1
+#6 18.08   ╰─> [27 lines of output]
+#6 18.08       /tmp/pip-build-env-nijb1lu_/overlay/lib/python3.12/site-packages/setuptools/dist.py:759: SetuptoolsDeprecationWarning: License classifiers are deprecated.
+#6 18.08       !!
+#6 18.08       
+#6 18.08               ********************************************************************************
+#6 18.08               Please consider removing the following classifiers in favor of a SPDX license expression:
+#6 18.08       
+#6 18.08               License :: OSI Approved :: BSD License
+#6 18.08       
+#6 18.08               See https://packaging.python.org/en/latest/guides/writing-pyproject-toml/#license for details.
+#6 18.08               ********************************************************************************
+#6 18.08       
+#6 18.08       !!
+#6 18.08         self._finalize_license_expression()
+#6 18.08       running bdist_wheel
+#6 18.08       running build
+#6 18.08       running build_py
+#6 18.08       creating build/lib.linux-aarch64-cpython-312/re2
+#6 18.08       copying re2/__init__.py -> build/lib.linux-aarch64-cpython-312/re2
+#6 18.08       running build_ext
+#6 18.08       building '_re2' extension
+#6 18.08       creating build/temp.linux-aarch64-cpython-312
+#6 18.08       g++ -fno-strict-overflow -Wsign-compare -DNDEBUG -g -O3 -Wall -fPIC -I/usr/local/include/python3.12 -c _re2.cc -o build/temp.linux-aarch64-cpython-312/_re2.o -fvisibility=hidden
+#6 18.08       _re2.cc:16:10: fatal error: pybind11/buffer_info.h: No such file or directory
+#6 18.08          16 | #include "pybind11/buffer_info.h"
+#6 18.08             |          ^~~~~~~~~~~~~~~~~~~~~~~~
+#6 18.08       compilation terminated.
+#6 18.08       error: command '/usr/bin/g++' failed with exit code 1
+#6 18.08       [end of output]
+#6 18.08   
+#6 18.08   note: This error originates from a subprocess, and is likely not a problem with pip.
+#6 18.08   ERROR: Failed building wheel for google-re2
+#6 18.08   Building wheel for psutil (pyproject.toml): started
+#6 19.29   Building wheel for psutil (pyproject.toml): finished with status 'done'
+#6 19.29   Created wheel for psutil: filename=psutil-7.0.0-cp36-abi3-linux_aarch64.whl size=278042 sha256=96d9af87414a9841ce02e95f34687e9199ebfa718db6cf02e1ecc8199b8fb6f7
+#6 19.29   Stored in directory: /tmp/pip-ephem-wheel-cache-nf5_9_tm/wheels/0c/58/48/ccefe23b905f1dd76f8444f328ff2cfb1d4920a081f9d5d03d
+#6 19.30   Building wheel for python-nvd3 (pyproject.toml): started
+#6 19.45   Building wheel for python-nvd3 (pyproject.toml): finished with status 'done'
+#6 19.45   Created wheel for python-nvd3: filename=python_nvd3-0.16.0-py3-none-any.whl size=37651 sha256=6045112757f654bc391b48c64ba5f5448972032f9b92f518f02b7536706cadee
+#6 19.45   Stored in directory: /tmp/pip-ephem-wheel-cache-nf5_9_tm/wheels/97/ca/3e/4acf0f36254adde4cf5654b0b4c6f922068788e397392dca49
+#6 19.45   Building wheel for sqlalchemy (pyproject.toml): started
+#6 20.41   Building wheel for sqlalchemy (pyproject.toml): finished with status 'done'
+#6 20.41   Created wheel for sqlalchemy: filename=sqlalchemy-1.4.54-cp312-cp312-linux_aarch64.whl size=1628148 sha256=18ee038dcb29c2ea4e58167cf1e894fda00cddd4420facf6ffb4186c7290bf97
+#6 20.41   Stored in directory: /tmp/pip-ephem-wheel-cache-nf5_9_tm/wheels/e5/a9/f3/7283f2f22d0a4915cdc18a76d309ba1ae3bf56cdeade6e8b61
+#6 20.42 Successfully built psutil python-nvd3 sqlalchemy
+#6 20.42 Failed to build google-re2
+#6 20.52 ERROR: Failed to build installable wheels for some pyproject.toml based projects (google-re2)
+------
+executor failed running [/bin/sh -c pip install --no-cache-dir psycopg2-binary pytz pybind11 apache-airflow]: exit code: 1
