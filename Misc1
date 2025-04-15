@@ -480,6 +480,13 @@ Error: Unable to continue with install: could not get information about the reso
 
 az aks get-credentials --resource-group <your-resource-group> --name <your-cluster-name> --admin
 kubectl auth can-i create customresourcedefinitions --all-namespaces
+- task: AzureCLI@2
+  inputs:
+    azureSubscription: 'Your-Azure-Connection'
+    scriptType: 'bash'
+    scriptLocation: 'inlineScript'
+    inlineScript: |
+      az aks get-credentials --resource-group $(resourceGroupName) --name $(clusterName) --admin
 
 ######
 
