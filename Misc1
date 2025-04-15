@@ -476,7 +476,9 @@ Error: Unable to continue with install: could not get information about the reso
 
 2025-04-15T15:29:03.7447557Z ##[section]Finishing: Deploy ESO Helm Chart
 
+#########
 
+kubectl auth can-i create customresourcedefinitions --all-namespaces
 
 ######
 
