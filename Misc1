@@ -478,15 +478,41 @@ Error: Unable to continue with install: could not get information about the reso
 
 ######### update on the ongoing error.
 
-az aks get-credentials --resource-group <your-resource-group> --name <your-cluster-name> --admin
-kubectl auth can-i create customresourcedefinitions --all-namespaces
-- task: AzureCLI@2
-  inputs:
-    azureSubscription: 'Your-Azure-Connection'
-    scriptType: 'bash'
-    scriptLocation: 'inlineScript'
-    inlineScript: |
-      az aks get-credentials --resource-group $(resourceGroupName) --name $(clusterName) --admin
+2025-04-16T18:40:04.6633463Z ##[section]Starting: Create Secret SecretStore
+2025-04-16T18:40:04.6641099Z ==============================================================================
+2025-04-16T18:40:04.6641247Z Task         : Kubectl
+2025-04-16T18:40:04.6641309Z Description  : Deploy, configure, update a Kubernetes cluster in Azure Container Service by running kubectl commands
+2025-04-16T18:40:04.6641444Z Version      : 1.255.0
+2025-04-16T18:40:04.6641505Z Author       : Microsoft Corporation
+2025-04-16T18:40:04.6641574Z Help         : https://aka.ms/azpipes-kubectl-tsg
+2025-04-16T18:40:04.6641875Z ==============================================================================
+2025-04-16T18:40:05.6807772Z Prepending PATH environment variable with directory: /usr/local/bin
+2025-04-16T18:40:05.6827475Z [command]/azp/agent/_work/_temp/a1e3f1d4-6aa5-4f22-a5e3-51270744f80c/bin/linux_amd64/kubelogin convert-kubeconfig -l spn --client-id *** --client-secret *** --tenant-id 38b7fc89-dbe8-4ed1-a78b-39dfb6a217a8
+2025-04-16T18:40:05.6999020Z 
+2025-04-16T18:40:06.2255569Z ==============================================================================
+2025-04-16T18:40:06.2256281Z 			Kubectl Client Version: v1.32.0
+2025-04-16T18:40:06.2256691Z 			Kubectl Server Version: v1.31.5
+2025-04-16T18:40:06.2256955Z ==============================================================================
+2025-04-16T18:40:06.2641290Z [command]/usr/local/bin/kubectl apply -n eddv3-hbt -f /azp/agent/_work/67/s/devops/helm-charts/grafana-monitor/sa.yaml -f /azp/agent/_work/67/s/devops/helm-charts/grafana-monitor/secretstore.yaml -o json
+2025-04-16T18:40:06.6903294Z Error from server (Forbidden): error when retrieving current configuration of:
+2025-04-16T18:40:06.6903821Z Resource: "external-secrets.io/v1beta1, Resource=secretstores", GroupVersionKind: "external-secrets.io/v1beta1, Kind=SecretStore"
+2025-04-16T18:40:06.6904317Z Name: "grafana-azure-kv", Namespace: "eddv3-hbt"
+2025-04-16T18:40:06.6905029Z from server for: "/azp/agent/_work/67/s/devops/helm-charts/grafana-monitor/secretstore.yaml": secretstores.external-secrets.io "grafana-azure-kv" is forbidden: User "e524bd2f-9cc8-4a65-8a5c-d7407061fc82" cannot get resource "secretstores" in API group "external-secrets.io" in the namespace "eddv3-hbt"
+2025-04-16T18:40:06.6905687Z Error from server (Forbidden): error when retrieving current configuration of:
+2025-04-16T18:40:06.6906123Z Resource: "external-secrets.io/v1beta1, Resource=externalsecrets", GroupVersionKind: "external-secrets.io/v1beta1, Kind=ExternalSecret"
+2025-04-16T18:40:06.6906873Z Name: "azure-monitor-secrets", Namespace: "eddv3-hbt"
+2025-04-16T18:40:06.6907480Z from server for: "/azp/agent/_work/67/s/devops/helm-charts/grafana-monitor/secretstore.yaml": externalsecrets.external-secrets.io "azure-monitor-secrets" is forbidden: User "e524bd2f-9cc8-4a65-8a5c-d7407061fc82" cannot get resource "externalsecrets" in API group "external-secrets.io" in the namespace "eddv3-hbt"
+2025-04-16T18:40:06.6927108Z 
+2025-04-16T18:40:06.6982937Z ##[error]Error from server (Forbidden): error when retrieving current configuration of:
+2025-04-16T18:40:06.6990402Z ##[error]Resource: "external-secrets.io/v1beta1, Resource=secretstores", GroupVersionKind: "external-secrets.io/v1beta1, Kind=SecretStore"
+2025-04-16T18:40:06.6991427Z ##[error]Name: "grafana-azure-kv", Namespace: "eddv3-hbt"
+2025-04-16T18:40:06.6992402Z ##[error]from server for: "/azp/agent/_work/67/s/devops/helm-charts/grafana-monitor/secretstore.yaml": secretstores.external-secrets.io "grafana-azure-kv" is forbidden: User "e524bd2f-9cc8-4a65-8a5c-d7407061fc82" cannot get resource "secretstores" in API group "external-secrets.io" in the namespace "eddv3-hbt"
+2025-04-16T18:40:06.6993328Z ##[error]Error from server (Forbidden): error when retrieving current configuration of:
+2025-04-16T18:40:06.6994136Z ##[error]Resource: "external-secrets.io/v1beta1, Resource=externalsecrets", GroupVersionKind: "external-secrets.io/v1beta1, Kind=ExternalSecret"
+2025-04-16T18:40:06.6995065Z ##[error]Name: "azure-monitor-secrets", Namespace: "eddv3-hbt"
+2025-04-16T18:40:06.6996419Z ##[error]from server for: "/azp/agent/_work/67/s/devops/helm-charts/grafana-monitor/secretstore.yaml": externalsecrets.external-secrets.io "azure-monitor-secrets" is forbidden: User "e524bd2f-9cc8-4a65-8a5c-d7407061fc82" cannot get resource "externalsecrets" in API group "external-secrets.io" in the namespace "eddv3-hbt"
+2025-04-16T18:40:07.3848143Z ##[error]The process '/usr/local/bin/kubectl' failed with exit code 1
+2025-04-16T18:40:07.3990677Z ##[section]Finishing: Create Secret SecretStore
 
 - task: AzureCLI@2
   displayName: 'Get AKS credentials with admin privileges'
