@@ -514,6 +514,42 @@ Error: Unable to continue with install: could not get information about the reso
 2025-04-16T18:40:07.3848143Z ##[error]The process '/usr/local/bin/kubectl' failed with exit code 1
 2025-04-16T18:40:07.3990677Z ##[section]Finishing: Create Secret SecretStore
 
+Solution
+========
+
+It looks like you're encountering a Kubernetes permission error when trying to access resources related to the External Secrets Operator. Specifically, your user account doesn't have permission to interact with SecretStore resources from the external-secrets.io API group.
+This permission error is happening even after you've installed External Secrets, which suggests that while your service principal had enough permissions to install the operator (creating CRDs), it doesn't have the necessary permissions to use the created custom resources.
+To fix this issue, you'll need to:
+
+Create a Role or ClusterRole that grants access to SecretStore resources:
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: external-secrets-user
+rules:
+- apiGroups: ["external-secrets.io"]
+  resources: ["secretstores", "externalsecrets", "clustersecretstores"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: external-secrets-user-binding
+subjects:
+- kind: User
+  name: "your-service-principal-object-id" # Replace with your actual SP object ID
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: external-secrets-user
+  apiGroup: rbac.authorization.k8s.io
+
+You can apply these via kubectl or incorporate them into your pipeline if you have cluster-admin permissions temporarily.
+If you're continuing to face issues, you might need broader permissions. Consider asking your Azure administrator to grant the "Azure Kubernetes Service RBAC Cluster Admin" role to your service principal at the Azure RBAC level.
+
+
 - task: AzureCLI@2
   displayName: 'Get AKS credentials with admin privileges'
   inputs:
