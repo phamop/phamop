@@ -1,3 +1,5 @@
+https://everythingdevops.dev/unlock-the-secrets-of-azure-seamless-authentication-with-external-secrets-operator-key-vault-and-workload-identity/
+
 # Creating an Azure AD Application for Grafana Integration
 
 Here's a complete guide to create an Azure AD application for Grafana with the necessary permissions to access Azure Monitor metrics:
