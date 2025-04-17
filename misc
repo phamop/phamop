@@ -84,6 +84,41 @@ Release "grafana" does not exist. Installing it now.
 
 Finishing: Deploy Grafana Helm Chart
 
+####
+new sol
+#######
+
+kubectl apply -f - <<EOF
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: grafana-installer-role
+rules:
+- apiGroups: ["rbac.authorization.k8s.io"]
+  resources: ["clusterroles", "clusterrolebindings"]
+  verbs: ["get", "list", "create", "update", "patch", "delete"]
+- apiGroups: [""]
+  resources: ["namespaces", "configmaps", "secrets", "services"]
+  verbs: ["get", "list", "create", "update", "patch", "delete"]
+- apiGroups: ["apps"]
+  resources: ["deployments", "daemonsets", "statefulsets"]
+  verbs: ["get", "list", "create", "update", "patch", "delete"]
+EOF
+
+kubectl apply -f - <<EOF
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: grafana-installer-binding
+subjects:
+- kind: User
+  name: "SP"  # This is your service principal's name
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: grafana-installer-role
+  apiGroup: rbac.authorization.k8s.io
+EOF
 
 Solution
 ========
