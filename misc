@@ -194,3 +194,25 @@ roleRef:
   name: grafana-installer-namespace-role
   apiGroup: rbac.authorization.k8s.io
 EOF
+
+
++++++++
+sol4
+=====
+
+
+- script: |
+    # Verify secrets exist in Key Vault
+    az keyvault secret show --name grafana-azure-monitor-client-secret --vault-name YOUR-VAULT-NAME
+    az keyvault secret show --name grafana-azure-monitor-app-id --vault-name YOUR-VAULT-NAME
+    az keyvault secret show --name grafana-azure-monitor-sub-id --vault-name YOUR-VAULT-NAME
+    az keyvault secret show --name grafana-azure-monitor-tenant-id --vault-name YOUR-VAULT-NAME
+  displayName: 'Verify Key Vault Secrets Exist'
+
+- script: |
+    kubectl apply -f externalsecret.yaml -n monitoring
+    # Wait for secret to be created
+    kubectl wait --for=condition=Ready externalsecret/azure-monitor-secrets -n monitoring --timeout=60s
+    # Verify secret was created
+    kubectl get secret azure-monitor-secrets -n monitoring
+  displayName: 'Apply ExternalSecret and Verify'
