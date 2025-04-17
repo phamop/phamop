@@ -562,6 +562,11 @@ If you're continuing to face issues, you might need broader permissions. Conside
 ######
 
 
+issue
+######
+
+secretstores.external-secrets.io "azure-kv" is forbidden: User "SP" cannot get resource "secretstores" in API group "external-secrets.io" in the namespace "comm-dev"
+
 /azp/agent/_work/_tool/helm/3.17.3/x64/linux-amd64/helm upgrade --namespace eddv3-hbt --install --wait --timeout 10m0s --create-namespace external-secrets external-secrets/external-secrets --version 0.9.0
 Error: Unable to continue with install: could not get information about the resource CustomResourceDefinition "acraccesstokens.generators.external-secrets.io" in namespace "": customresourcedefinitions.apiextensions.k8s.io "acraccesstokens.generators.external-secrets.io" is forbidden: User "e524bd2f-9cc8-4a65-8a5c-d7407061fc82" cannot get resource "customresourcedefinitions" in API group "apiextensions.k8s.io" at the cluster scope
 Release "external-secrets" does not exist. Installing it now.
