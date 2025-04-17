@@ -237,3 +237,21 @@ az aks update --resource-group <your-resource-group> --name <your-aks-name> --en
 4. Restrict access to Azure Key Vault secrets
 
 This setup provides comprehensive monitoring of your AKS cluster using Azure Monitor metrics visualized in Grafana, without requiring Istio or Azure DevOps pipelines. The Helm chart deployment ensures maintainability, and Azure Key Vault integration provides secure secret management.
+
+
+
+
+
+
+
+
+
+
+Error from server (Forbidden): error when applying patch:
+{"metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"external-secrets.io/v1beta1\",\"kind\":\"SecretStore\",\"metadata\":{\"annotations\":{},\"name\":\"azure-kv\",\"namespace\":\"eddv3-hbt\"},\"spec\":{\"provider\":{\"azurekv\":{\"authType\":\"WorkloadIdentity\",\"serviceAccountRef\":{\"name\":\"grafana-sa\",\"namespace\":\"eddv3-hbt\"},\"tenantId\":\"38b7fc89-dbe8-4ed1-a78b-39dfb6a217a8\",\"vaultUrl\":\"https://eddv-app-eikv01.vault.azure.net/\"}}}}\n"}},"spec":{"provider":{"azurekv":{"serviceAccountRef":{"namespace":"eddv3-hbt"},"tenantId":"38b7fc89-dbe8-4ed1-a78b-39dfb6a217a8"}}}}
+to:
+Resource: "external-secrets.io/v1beta1, Resource=secretstores", GroupVersionKind: "external-secrets.io/v1beta1, Kind=SecretStore"
+Name: "azure-kv", Namespace: "eddv3-hbt"
+for: "/azp/agent/_work/67/s/devops/helm-charts/grafana-monitor/secretstore.yaml": error when patching "/azp/agent/_work/67/s/devops/helm-charts/grafana-monitor/secretstore.yaml": admission webhook "validate.secretstore.external-secrets.io" denied the request: invalid ServiceAccountRef: namespace not allowed with namespaced SecretStore
+
+
