@@ -1,5 +1,13 @@
 # Azure Monitor Insights Integration with Grafana on AKS: Implementation Guide
 
+
+$tcp = New-Object System.Net.Sockets.TcpClient
+$tcp.Connect("<hostname_or_IP>", <port>)
+if ($tcp.Connected) { "Port open" } else { "Port closed" }
+$tcp.Close()
+
+
+
 This guide provides a detailed implementation plan for integrating Azure Monitor Insights metrics with Grafana on an existing AKS cluster, using Azure Key Vault for secrets management and Azure DevOps pipelines for deployment.
 
 ## Prerequisites
