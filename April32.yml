@@ -1,9 +1,9 @@
 # Azure Monitor Insights Integration with Grafana on AKS: Implementation Guide
 
 
-The same upgrade tasks that typically complete in under 2 hours on RHEL 7.9 are taking over 3 hours on this server. This significant slowdown indicates a performance degradation, warranting further investigation
-
-
+https://learn.microsoft.com/en-us/azure/aks/use-azure-ad-pod-identity
+https://learn.microsoft.com/en-us/azure/aks/use-azure-ad-pod-identity#access-azure-key-vault-using-managed-identity
+https://learn.microsoft.com/en-us/azure/aks/workload-identity-overview?tabs=dotnet
 
 
 This guide provides a detailed implementation plan for integrating Azure Monitor Insights metrics with Grafana on an existing AKS cluster, using Azure Key Vault for secrets management and Azure DevOps pipelines for deployment.
