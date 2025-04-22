@@ -1,8 +1,7 @@
 # Azure Monitor Insights Integration with Grafana on AKS: Implementation Guide
 
 
-The same upgrade activities  on  RHEL7 that takes less than 2 hours on RHEL 7.9 is taking over 3 hours on this server.
- So there is slowness and, on this server, and more reason why it’s  reported for degradation 
+The same upgrade tasks that typically complete in under 2 hours on RHEL 7.9 are taking over 3 hours on this server. This significant slowdown indicates a performance degradation, warranting further investigation
 
 
 
