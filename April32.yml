@@ -1,10 +1,9 @@
 # Azure Monitor Insights Integration with Grafana on AKS: Implementation Guide
 
 
-$tcp = New-Object System.Net.Sockets.TcpClient
-$tcp.Connect("<hostname_or_IP>", <port>)
-if ($tcp.Connected) { "Port open" } else { "Port closed" }
-$tcp.Close()
+The same upgrade activities  on  RHEL7 that takes less than 2 hours on RHEL 7.9 is taking over 3 hours on this server.
+ So there is slowness and, on this server, and more reason why it’s  reported for degradation 
+
 
 
 
