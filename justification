@@ -1,0 +1,63 @@
+# **Why Use Managed Identity with Federated Credentials for Grafana-Azure Key Vault Integration?**
+
+When deploying **Grafana** in a non-Azure environment (e.g., Kubernetes, AWS, or GitHub Actions) but needing to access **Azure Key Vault** for secrets (such as API keys, credentials, or certificates), **Managed Identity with Federated Identity Credentials (FIC)** is the most secure and efficient approach. Here’s why:
+
+---
+
+## **1. Eliminates Hardcoded Secrets**
+- **Problem:** Traditional methods require storing Azure Service Principal credentials (Client ID + Secret) in Grafana’s config or Kubernetes Secrets, which is a security risk.
+- **Solution:** Federated credentials allow **temporary, auto-rotated OIDC tokens** instead of static secrets, reducing exposure.
+
+---
+
+## **2. Works Across Clouds & On-Prem**
+- **Problem:** Standard Managed Identity only works for Azure-native resources (e.g., Azure VMs, App Services).
+- **Solution:** Federated Identity extends this to **external systems** (e.g., Grafana on AWS EKS, GitHub Actions, or on-prem Kubernetes) by trusting their OIDC tokens.
+
+---
+
+## **3. Secure, Short-Lived Credentials**
+- **Problem:** Long-lived Azure Service Principal secrets can be leaked or misused.
+- **Solution:** Federated Identity uses **short-lived JWT tokens** issued by the external system (e.g., Kubernetes Service Account, GitHub Actions OIDC), which Azure AD validates before granting access.
+
+---
+
+## **4. Simplified Secret Management**
+- **Problem:** Manually rotating secrets in Grafana when Azure Key Vault credentials expire is cumbersome.
+- **Solution:** Since the federation uses **dynamic authentication**, no manual secret updates are needed.
+
+---
+
+## **5. Granular Access Control**
+- **Problem:** A single Service Principal with broad access is risky.
+- **Solution:** Federated Identity allows **fine-grained RBAC**:
+   - Restrict Grafana’s Managed Identity to only read specific secrets in Azure Key Vault.
+   - Limit federation to specific external identities (e.g., only a certain Kubernetes namespace or GitHub repo).
+
+---
+
+### **Example Workflow (Grafana + Azure Key Vault)**
+1. **Grafana (running in Kubernetes) needs a database password stored in Azure Key Vault.**
+2. **Instead of using a static Azure AD App Secret:**
+   - Kubernetes Service Account generates an OIDC token.
+   - Azure AD trusts this token via Federated Identity Credentials.
+   - Grafana’s pod uses this token to request Azure Key Vault access via Managed Identity.
+3. **Result:** No secrets stored in Grafana configs—just secure, temporary authentication.
+
+---
+
+### **When NOT to Use Federated Identity?**
+- If Grafana is running **inside Azure** (e.g., Azure Kubernetes Service), a standard **Managed Identity** (without federation) is simpler.
+- If the external system **doesn’t support OIDC** (e.g., legacy apps), you may need alternatives like workload identity brokers.
+
+---
+
+### **Conclusion**
+Using **Managed Identity + Federated Credentials** for Grafana’s Azure Key Vault access provides:
+✅ **No hardcoded secrets**  
+✅ **Cross-cloud compatibility**  
+✅ **Short-lived, auto-rotated credentials**  
+✅ **Fine-grained Azure RBAC**  
+✅ **Easier maintenance (no manual secret rotation)**  
+
+Would you like a step-by-step implementation guide for your setup (e.g., Kubernetes, GitHub Actions, etc.)?
