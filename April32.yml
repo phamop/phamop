@@ -6,6 +6,21 @@ https://learn.microsoft.com/en-us/azure/aks/use-azure-ad-pod-identity#access-azu
 https://learn.microsoft.com/en-us/azure/aks/workload-identity-overview?tabs=dotnet
 
 
+
+
+Please let us know if you are facing any performance impact on the server,? Yes; Slowness 
+
+. Can you elaborate more about the upgrade task you are performing? See the attached yum-note.txt file
+NOTE:  the upgrade started at 10:22AM and completed by 2:11PM 
+Check line 33 in the attached file,  with this comment “2025-04-21 15:09:26 UTC” which will be 11:09 EST
+The next update recorded was in [2025-04-21T13:58:22-04:00
+So it took about 2h40 mins based on the timestamp to backup.
+Please kindly help to clarify this technically.
+. What is the current status of the server? The server is up but still slow
+
+. Have you made any changes to the server recently before the issue occurred? No changes have been made to the servers other than  the upgrade.
+
+
 This guide provides a detailed implementation plan for integrating Azure Monitor Insights metrics with Grafana on an existing AKS cluster, using Azure Key Vault for secrets management and Azure DevOps pipelines for deployment.
 
 ## Prerequisites
