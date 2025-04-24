@@ -1,11 +1,139 @@
+Here's the rewritten Kubernetes manifest deployment task with Helm variables and proper templating for the SecretProviderClass:
+
+```yaml
 - task: KubernetesManifest@1
   displayName: 'Apply SecretProviderClass'
   inputs:
     action: 'apply'
     kubernetesServiceConnection: '$(AzureSubscription)'
-    manifests: '$(helmChartPath)/templates/secretproviderclass.yaml' # Assuming you have a template for SPC
-    namespace: '$(namespace)'
+    manifests: |
+      apiVersion: secrets-store.csi.x-k8s.io/v1
+      kind: SecretProviderClass
+      metadata:
+        name: grafana-azure-secrets
+        namespace: $(namespace)
+      spec:
+        provider: azure
+        parameters:
+          usePodIdentity: "false"
+          useVMManagedIdentity: "true"
+          userAssignedIdentityID: $(managedIdentityClientId)
+          keyvaultName: $(keyVaultName)
+          objects: |
+            array:
+              - |
+                objectName: $(grafanaSecretName)
+                objectType: secret
+              - |
+                objectName: $(azureMonitorSecretName)
+                objectType: secret
+          tenantId: $(azureTenantId)
+    namespace: $(namespace)
   condition: and(succeeded(), eq(variables['secretProviderClass.enabled'], 'true'))
+```
+
+### Corresponding Helm Chart Structure
+
+1. Create a `templates/secretproviderclass.yaml` in your Helm chart:
+```yaml
+{{- if .Values.secretsStoreCSIDriver.enabled }}
+apiVersion: secrets-store.csi.x-k8s.io/v1
+kind: SecretProviderClass
+metadata:
+  name: {{ .Values.secretsStoreCSIDriver.secretProviderClass }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "grafana.labels" . | nindent 4 }}
+spec:
+  provider: azure
+  parameters:
+    usePodIdentity: "false"
+    useVMManagedIdentity: "true"
+    userAssignedIdentityID: {{ .Values.azure.managedIdentityClientId }}
+    keyvaultName: {{ .Values.azure.keyVaultName }}
+    objects: |
+      array:
+        - |
+          objectName: {{ .Values.azure.grafanaSecretName }}
+          objectType: secret
+        - |
+          objectName: {{ .Values.azure.azureMonitorSecretName }}
+          objectType: secret
+    tenantId: {{ .Values.azure.tenantId }}
+{{- end }}
+```
+
+2. Update your `values.yaml` with these variables:
+```yaml
+azure:
+  tenantId: ""
+  managedIdentityClientId: ""
+  keyVaultName: ""
+  grafanaSecretName: "grafana-azure-credentials"
+  azureMonitorSecretName: "azure-monitor-credentials"
+
+secretsStoreCSIDriver:
+  enabled: true
+  secretProviderClass: "grafana-azure-secrets"
+```
+
+### Pipeline Variables Setup
+
+In your Azure DevOps pipeline, define these variables:
+
+```yaml
+variables:
+  - name: namespace
+    value: 'grafana'
+  
+  - name: secretProviderClass.enabled
+    value: 'true'
+  
+  - name: managedIdentityClientId
+    value: '<your-managed-identity-client-id>'
+  
+  - name: keyVaultName
+    value: '<your-key-vault-name>'
+  
+  - name: grafanaSecretName
+    value: 'grafana-azure-credentials'
+  
+  - name: azureMonitorSecretName
+    value: 'azure-monitor-credentials'
+  
+  - name: azureTenantId
+    value: '<your-azure-tenant-id>'
+```
+
+### Helm Deployment Task
+
+Add this task to deploy your Helm chart:
+
+```yaml
+- task: HelmDeploy@0
+  displayName: 'Deploy Grafana with Helm'
+  inputs:
+    connectionType: 'Azure Resource Manager'
+    azureSubscription: '$(AzureSubscription)'
+    azureResourceGroup: '$(resourceGroupName)'
+    kubernetesCluster: '$(aksClusterName)'
+    command: 'upgrade'
+    chartType: 'FilePath'
+    chartPath: '$(helmChartPath)'
+    releaseName: 'grafana'
+    namespace: '$(namespace)'
+    valueFile: '$(helmChartPath)/values.yaml'
+    arguments: '--set azure.tenantId=$(azureTenantId) \
+                --set azure.managedIdentityClientId=$(managedIdentityClientId) \
+                --set azure.keyVaultName=$(keyVaultName) \
+                --set secretsStoreCSIDriver.enabled=$(secretProviderClass.enabled)'
+```
+
+This approach provides better maintainability and flexibility by:
+1. Using Helm templating for the SecretProviderClass
+2. Separating configuration into values.yaml
+3. Supporting pipeline variables for environment-specific values
+4. Maintaining condition checks for optional components
 
 
 
