@@ -1,0 +1,208 @@
+Alright, let's get Grafana deployed into your AKS cluster using Azure Monitor as the data source, all within your Azure DevOps CI/CD pipeline. We'll cover the necessary role assignments, permissions, Helm deployment, access credentials using a Service Principal for monitoring reader access, and a Managed Identity for accessing secrets from Azure Key Vault via SecretProviderClass.
+
+Here's a breakdown of the steps and the corresponding YAML configurations for your pipeline:
+
+**1. Prerequisites:**
+
+* **AKS Cluster:** You have an existing Azure Kubernetes Service (AKS) cluster.
+* **Azure Monitor Workspace:** You have an Azure Monitor Workspace configured.
+* **Azure Key Vault:** You have an Azure Key Vault to store sensitive information.
+* **Service Principal:** You have an Azure Active Directory Service Principal with sufficient permissions.
+* **Managed Identity:** You have a Managed Identity enabled on the AKS nodes or a user-assigned Managed Identity.
+* **Helm:** Helm is installed on your Azure DevOps agent.
+* **Azure DevOps Project:** You have an Azure DevOps project with a repository for your Helm chart and pipeline definitions.
+
+**2. Role Assignments and Permissions:**
+
+You'll need to grant the following permissions:
+
+* **Service Principal (for Azure Monitor Reader):**
+    * **Reader** role on the Azure Monitor Workspace. This allows Grafana, using the Service Principal's credentials, to query metrics and logs from the Azure Monitor Workspace.
+* **Managed Identity (for Azure Key Vault SecretProviderClass):**
+    * **Reader** role on the Azure Key Vault. This allows the SecretProviderClass, running under the context of the Managed Identity, to read secrets from the Key Vault.
+    * If using a user-assigned Managed Identity, ensure it's assigned to the AKS nodes (or a Pod Identity if configured). If using a system-assigned Managed Identity, ensure it's enabled on the AKS nodes.
+
+**3. Helm Chart:**
+
+Let's assume you have a basic Grafana Helm chart. You'll need to configure the `values.yaml` and potentially create a SecretProviderClass definition within your chart.
+
+Here's a simplified example of a `values.yaml` file:
+
+```yaml
+grafana:
+  adminPassword: "your-admin-password" # This will be overridden by Key Vault
+  datasources:
+    datasources.yaml:
+      apiVersion: 1
+      datasources:
+        - name: Azure Monitor
+          type: grafana-azure-monitor-datasource
+          access: proxy
+          jsonData:
+            azureLogAnalyticsSameAsAzureMonitor: true
+            azureMonitorUrl: https://management.azure.com
+            cloudName: AzureCloud
+            tenantId: "{{ .Values.azure.tenantId }}"
+            subscriptionId: "{{ .Values.azure.subscriptionId }}"
+            resourceGroup: "{{ .Values.azure.resourceGroup }}"
+            azureMonitorWorkspaceResourceId: "{{ .Values.azure.azureMonitorWorkspaceResourceId }}"
+          secureJsonData:
+            clientId: "{{ .Values.azure.servicePrincipalClientId }}"
+            clientSecret: "{{ .Values.azure.servicePrincipalClientSecret }}"
+
+secretProviderClass:
+  enabled: true
+  name: grafana-secrets
+  namespace: default # Adjust if needed
+  spec:
+    provider: azure
+    parameters:
+      usePodIdentity: "false" # Set to "true" if using Pod Identity
+      keyvaultName: "{{ .Values.azure.keyVaultName }}"
+      tenantId: "{{ .Values.azure.tenantId }}"
+      objects: |
+        - secretName: grafana-admin-credentials
+          type: Opaque
+          data:
+            - objectName: grafana-admin-password
+              key: GF_SECURITY_ADMIN_PASSWORD
+```
+
+**4. Azure DevOps Pipeline:**
+
+Here's an example of an Azure DevOps pipeline YAML that includes the necessary tasks:
+
+```yaml
+trigger:
+- main
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+- group: AzureCredentials # Contains Azure Subscription details
+- name: aksResourceGroup
+  value: 'your-aks-resource-group'
+- name: aksClusterName
+  value: 'your-aks-cluster-name'
+- name: helmChartPath
+  value: 'path/to/your/grafana-chart' # Adjust the path to your Helm chart
+- name: releaseName
+  value: 'grafana'
+- name: namespace
+  value: 'monitoring'
+- name: azureMonitorWorkspaceResourceId
+  value: '/subscriptions/your-subscription-id/resourceGroups/your-monitor-rg/providers/microsoft.monitor/accounts/your-monitor-workspace' # Replace with your Azure Monitor Workspace Resource ID
+- name: keyVaultName
+  value: 'your-key-vault-name' # Replace with your Key Vault name
+
+steps:
+- task: AzureCLI@2
+  displayName: 'Login to Azure'
+  inputs:
+    azureSubscription: '$(AzureSubscription)'
+    scriptType: 'bash'
+    script: |
+      az aks get-credentials --resource-group "$(aksResourceGroup)" --name "$(aksClusterName)" --file ~/.kube/config
+
+- task: HelmInstaller@1
+  displayName: 'Install Helm'
+  inputs:
+    helmVersionToInstall: '3.x'
+
+- task: KubernetesManifest@1
+  displayName: 'Apply SecretProviderClass'
+  inputs:
+    action: 'apply'
+    kubernetesServiceConnection: '$(AzureSubscription)'
+    manifests: '$(helmChartPath)/templates/secretproviderclass.yaml' # Assuming you have a template for SPC
+    namespace: '$(namespace)'
+  condition: and(succeeded(), eq(variables['secretProviderClass.enabled'], 'true'))
+
+- task: HelmDeploy@0
+  displayName: 'Deploy Grafana via Helm'
+  inputs:
+    azureSubscription: '$(AzureSubscription)'
+    kubernetesCluster: '$(aksClusterName)'
+    resourceGroup: '$(aksResourceGroup)'
+    namespace: '$(namespace)'
+    chartPath: '$(helmChartPath)'
+    releaseName: '$(releaseName)'
+    valueFile: '$(helmChartPath)/values.yaml'
+    overrideValues: |
+      azure.tenantId=$(AzureTenantId)
+      azure.subscriptionId=$(AzureSubscriptionId)
+      azure.resourceGroup=$(aksResourceGroup)
+      azure.azureMonitorWorkspaceResourceId=$(azureMonitorWorkspaceResourceId)
+      azure.servicePrincipalClientId=$(ServicePrincipalClientId) # From AzureCredentials variable group
+      azure.servicePrincipalClientSecret=$(ServicePrincipalClientSecret) # From AzureCredentials variable group
+      azure.keyVaultName=$(keyVaultName)
+
+- task: Kubernetes@1
+  displayName: 'Check Grafana Pod Status'
+  inputs:
+    command: 'get'
+    type: 'pod'
+    kubernetesServiceEndpoint: '$(AzureSubscription)'
+    namespace: '$(namespace)'
+    arguments: '-l app.kubernetes.io/name=$(releaseName)'
+    outputFormat: 'wide'
+```
+
+**Explanation of the Pipeline Tasks:**
+
+1.  **`trigger`:** Defines the branch that triggers the pipeline (e.g., `main`).
+2.  **`pool`:** Specifies the agent pool to use.
+3.  **`variables`:**
+    * **`group: AzureCredentials`:** This links to a variable group in Azure DevOps where you securely store your Azure Subscription ID, Tenant ID, Service Principal Client ID, and Service Principal Client Secret. **Important:** Store these as secret variables.
+    * Other variables define resource group names, cluster names, Helm chart paths, release names, namespaces, Azure Monitor Workspace Resource ID, and Key Vault name. **Replace the placeholder values with your actual values.**
+4.  **`steps`:**
+    * **`AzureCLI@2 - Login to Azure`:** Logs into your Azure subscription using the provided credentials and configures `kubectl` to interact with your AKS cluster.
+    * **`HelmInstaller@1 - Install Helm`:** Installs the specified version of Helm on the agent.
+    * **`KubernetesManifest@1 - Apply SecretProviderClass`:** Applies the SecretProviderClass definition to your AKS cluster. This will instruct the Azure Key Vault Provider for Secrets Store CSI Driver to fetch the Grafana admin password from your Key Vault and create a Kubernetes Secret. This step is conditional based on the `secretProviderClass.enabled` variable in your `values.yaml`. You'll need to ensure you have the Secrets Store CSI Driver and Azure Key Vault Provider installed on your AKS cluster.
+    * **`HelmDeploy@0 - Deploy Grafana via Helm`:** Deploys the Grafana Helm chart. The `overrideValues` section passes the necessary Azure details, including the Service Principal credentials and Key Vault name, to the Helm chart.
+    * **`Kubernetes@1 - Check Grafana Pod Status`:** A basic task to check if the Grafana pods are running correctly after deployment.
+
+**Variable Files:**
+
+While the example above uses inline `overrideValues`, you can also use separate variable files for different environments. For instance, you could have `values-dev.yaml`, `values-staging.yaml`, and `values-prod.yaml`. You would then specify the appropriate file in the `HelmDeploy` task using the `valueFile` input.
+
+**Example `values-dev.yaml` (partial):**
+
+```yaml
+azure:
+  tenantId: "your-dev-tenant-id"
+  subscriptionId: "your-dev-subscription-id"
+  resourceGroup: "your-dev-rg"
+  azureMonitorWorkspaceResourceId: "/subscriptions/your-dev-subscription-id/resourceGroups/your-dev-monitor-rg/providers/microsoft.monitor/accounts/your-dev-monitor-workspace"
+  servicePrincipalClientId: "$(ServicePrincipalClientIdDev)" # Assuming you have environment-specific SPs
+  servicePrincipalClientSecret: "$(ServicePrincipalClientSecretDev)"
+  keyVaultName: "your-dev-kv"
+```
+
+You would then update the `HelmDeploy` task in your pipeline to point to the desired variable file:
+
+```yaml
+- task: HelmDeploy@0
+  displayName: 'Deploy Grafana via Helm'
+  inputs:
+    # ... other inputs
+    valueFile: '$(helmChartPath)/values-dev.yaml' # Or other environment-specific file
+    overrideValues: |
+      azure.tenantId=$(AzureTenantId) # These can still be used for common overrides
+      azure.subscriptionId=$(AzureSubscriptionId)
+      azure.resourceGroup=$(aksResourceGroup)
+      azure.azureMonitorWorkspaceResourceId=$(azureMonitorWorkspaceResourceId)
+```
+
+**Important Considerations:**
+
+* **Secrets Management:** The example uses Azure Key Vault and SecretProviderClass for the Grafana admin password. Ensure the Secrets Store CSI Driver and Azure Key Vault Provider are installed and configured on your AKS cluster.
+* **Service Principal Permissions:** Double-check that the Service Principal has only the necessary **Reader** role on the Azure Monitor Workspace. Follow the principle of least privilege.
+* **Managed Identity Configuration:** Ensure the Managed Identity (either system-assigned on the nodes or a user-assigned identity) is correctly configured and has the **Reader** role on the Azure Key Vault. If using a user-assigned identity, make sure it's associated with your AKS nodes or used with Pod Identity.
+* **Helm Chart Structure:** Adapt the `templates/secretproviderclass.yaml` path in the pipeline if your Helm chart has a different structure. You might need to create this template file if it doesn't exist.
+* **Namespace:** Adjust the `namespace` variable as needed for your Grafana deployment.
+* **Error Handling:** Consider adding more robust error handling and logging to your pipeline.
+* **Security:** Be mindful of storing sensitive information securely in Azure DevOps (using variable groups with secret variables) and in Azure Key Vault.
+
+This comprehensive guide should help you deploy Grafana into your AKS cluster using Azure Monitor as a data source within your Azure DevOps CI/CD pipeline, incorporating role assignments, Helm deployment, Service Principal for monitoring, and Managed Identity for secret management. Remember to replace the placeholder values with your actual resource names and IDs. Good luck!
