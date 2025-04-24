@@ -1,3 +1,5 @@
+The pipeline is not valid. Job DeployESOchart: Step KubernetesManifest1 input kubernetesServiceEndpoint expects a service connection of type kubernetes but the provided service connection ARM-ServiceConnection-DEV is of type azurerm. 
+
 # Azure Monitor Insights for Grafana on AKS 1.30.3
 
 Here's a comprehensive walkthrough for setting up Azure Monitor Insights metrics for Grafana on your existing AKS 1.30.3 cluster with Azure Key Vault integration:
