@@ -1,0 +1,104 @@
+Here's a step-by-step guide to drawing an application architecture diagram connected to PostgreSQL using **draw.io** (now **diagrams.net**) and including **ODBC** connectivity:
+
+---
+
+### **Step 1: Set Up Your Diagram**
+1. **Open draw.io**  
+   - Go to [app.diagrams.net](https://app.diagrams.net/) (or use the desktop app).
+   - Select **Blank Diagram** or choose a template like **AWS**, **Azure**, or **Software Design**.
+
+2. **Choose a Layout**  
+   - Use **Flowchart** or **Software Architecture** shapes.
+
+---
+
+### **Step 2: Add Components**
+#### **1. Application Components**
+- **Search shapes** (left panel) for:
+  - **"Server"** (for backend)
+  - **"Database"** (for PostgreSQL)
+  - **"User"** (for frontend)
+  - **"API"** (if applicable)
+
+- **Drag and drop**:
+  - A **rectangle** for your app server.
+  - A **database icon** (PostgreSQL).
+  - A **user icon** (client/browser).
+
+#### **2. PostgreSQL Database**
+- Search for **"PostgreSQL"** in the shapes panel.
+- Drag the **PostgreSQL database** icon onto the canvas.
+
+#### **3. ODBC Connection**
+- Search for **"ODBC"** or **"JDBC"** (use a generic DB connector if unavailable).
+- Use an **arrow** with a label:
+  - **"ODBC Driver"** (for PostgreSQL ODBC connection).
+  - **"TCP/IP"** (if showing network connectivity).
+
+---
+
+### **Step 3: Connect Components**
+1. **App → PostgreSQL via ODBC**  
+   - Use a **solid arrow** (→) labeled **"ODBC Connection"**.
+   - Add a **note** (optional):  
+     ```
+     Connection String:  
+     Driver={PostgreSQL ODBC Driver(UNICODE)};  
+     Server=localhost;  
+     Port=5432;  
+     Database=mydb;  
+     UID=user;  
+     PWD=pass;
+     ```
+
+2. **Client → App Server**  
+   - Use a **dashed arrow** (⇢) labeled **"HTTP/API Calls"**.
+
+---
+
+### **Step 4: Customize & Annotate**
+1. **Label Components**  
+   - Right-click → **Edit Text** to name:
+     - App: **"Node.js/Java/Python Backend"**
+     - DB: **"PostgreSQL DB (v14)"**
+     - ODBC: **"ODBC Driver (psqlODBC)"**
+
+2. **Styling**  
+   - Change colors (e.g., PostgreSQL = blue, App = green).
+   - Use **containers** (dotted boxes) to group layers (e.g., "Backend," "Database").
+
+---
+
+### **Step 5: Save & Export**
+1. **Save**  
+   - File → **Save As** (`.drawio`, `.png`, or `.svg`).
+
+2. **Example Diagram Structure**  
+   ```
+   [User] → (HTTP) → [App Server] → (ODBC) → [PostgreSQL]
+   ```
+
+---
+
+### **Bonus: ODBC-Specific Details**
+- If focusing on **ODBC configuration**, add:
+  - A **"Configuration File"** shape linked to the app with:  
+    ```
+    odbc.ini / odbcinst.ini
+    ```
+  - A **"Driver Manager"** (e.g., `unixODBC` on Linux, `Windows ODBC Admin` on Windows).
+
+---
+
+### **Example Screenshot (draw.io)**
+![draw.io PostgreSQL ODBC Example](https://i.imgur.com/example.png) *(mockup)*
+
+---
+
+### **Tools Mentioned**
+- **PostgreSQL ODBC Drivers**: [psqlODBC](https://odbc.postgresql.org/)
+- **ODBC Admin Tools**:  
+  - Windows: `ODBC Data Source Administrator`  
+  - Linux: `unixODBC` + `odbcinst`
+
+Would you like a sample `.drawio` file for this setup? I can guide you on how to import it!
