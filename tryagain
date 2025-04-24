@@ -2,6 +2,9 @@
 # ##[error]Failed to download Python from the Github Actions python registry (https://github.com/actions/python-versions). Error: Error: The process '/usr/bin/bash' failed with exit code 127
 ##[error]Version spec 3.x for architecture x64 did not match any version in Agent.ToolsDirectory.
 
+
+##[error]Failed to download Python from the Github Actions python registry (https://github.com/actions/python-versions). Error: Error: The process '/usr/bin/bash' failed with exit code 127
+##[error]Version spec 3.9 for architecture x64 did not match any version in Agent.ToolsDirectory.
 trigger:
   branches:
     include:
