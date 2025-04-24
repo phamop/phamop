@@ -1,6 +1,236 @@
 To sign in, use a web browser to open the page https://microsoft.com/devicelogin and enter the code FXYBUCUMD to authenticate.
 Error: failed to authenticate: DeviceCodeCredential: context deadline exceeded
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+########################################################################################################################################
+########################################################################################################################################
+trigger:
+  branches:
+    include:
+      - feature/devHbt3Flexgrafana
+#     - develop
+
+pool: 'CMHC-SCHL Agent Pool (Linux) - DEV'
+
+parameters:
+- name: Environment
+  type: string
+  default: 'dev'
+  values:
+    - dev
+    - prod  
+
+variables:
+#- group: AzureCredentials # Contains Azure Subscription details
+- name: aksResourceGroup
+  value: 'AKS-CLUS-ED'
+- name: secretProviderClass.enabled
+  value: 'true'
+- name: azure-tenant-id
+  value: '38b7fc89-dbe8-4ed1-a78b-39dfb6a217a8'
+- name: managedIdentityClientId
+  value: 'a9b8bcc0-a4a6-428a-acdb-a6c60ea27c5e'  
+- name: aksClusterName
+  value: 'EDDVAKSCLUS01'
+#- name: helmChartPath
+#  value: '$(Pipeline.Workspace)/s/devops/helm-charts/grafana-monitor/sa.yaml' # Adjust the path to your Helm chart
+- name: releaseName
+  value: 'grafana'
+- name: chartVersion
+  value: '8.11.4'
+- name: namespace
+  value: 'eddv3-hbt'
+- name:  AzureSubscription 
+  value: 'ARM-ServiceConnection-DEV'
+- name: SubscriptionId
+  value: '5918db9c-25c1-4564-9079-665362a0b0c2'
+- name: azureMonitorWorkspaceResourceId
+  value: '/subscriptions/5918db9c-25c1-4564-9079-665362a0b0c2/resourceGroups/loganalytics-general-cd/providers/Microsoft.OperationalInsights/workspaces/cd-general-01' # Replace with your Azure Monitor Workspace Resource ID
+- name: keyVaultName
+  value: 'EDDV-APP-EIKV01' 
+- ${{ if eq(parameters.environment, 'dev')}}:
+  - template: stages/config-dev.yml
+- ${{ if eq(parameters.environment, 'prod')}}:
+  - template: stages/config-prd.yml
+stages:
+- stage: ESO
+  displayName: 'Deploying ESO Helm chart'
+  jobs:
+  - job: DeployESOchart
+    displayName: Deploy ESO using Helm
+    steps:
+    - checkout: self
+      
+    - script: |
+        sudo apt-get update
+        sudo apt-get install -y zip unzip
+        curl -LO https://dl.k8s.io/release/v1.32.0/bin/linux/amd64/kubectl
+        sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+        chmod +x kubectl
+        mkdir -p ~/.local/bin
+        mv ./kubectl ~/.local/bin/kubectl
+        curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+        sudo apt-get install azure-cli -y
+        echo "Checking files in $(Pipeline.Workspace)" # debugging pipeline workspace
+        ls  -ld /devops/helm-charts/grafana-monitor
+        ls -la $(Pipeline.Workspace)/s/
+      displayName: 'Package installation and files verification'
+     
+    - task: HelmInstaller@1
+      displayName: 'Install Helm'
+      inputs:
+        helmVersionToInstall: '3.9.0'
+
+    - task: AzureCLI@2
+      displayName: 'Login to Azure with admin privileges and configure kubectl'
+      inputs:
+        azureSubscription: $(AzureSubscription)
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          export AZURE_CLI_DISABLE_CONNECTION_VERIFICATION=1
+          export AZURE_CLI_DEVICE_CODE_TIMEOUT=300
+          az aks get-credentials --resource-group $(resourceGroup) --name $(clusterName) --admin --overwrite-existing
+          kubectl config use-context $(clusterName)
+
+    - task: KubeloginInstaller@0
+      displayName: 'Install kubelogin'
+
+    - task: AzureCLI@2
+      displayName: 'Apply SecretProviderClass'
+      inputs:
+    #azureSubscription: 'your-azure-service-connection'
+       # connectionType: 'Azure Resource Manager'
+        azureSubscription: $(AzureSubscription)
+        #kubernetesCluster: $(aksClusterName)
+        #azureResourceGroup: $(aksResourceGroup)
+        addSpnToEnvironment: true
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          cat <<EOF | kubectl apply -f -
+          apiVersion: secrets-store.csi.x-k8s.io/v1
+          kind: SecretProviderClass
+          metadata:
+            name: azure-kv
+            namespace: $(namespace)
+          spec:
+            provider: azure
+            parameters:
+              keyvaultName: "$(keyVaultName)"
+              objects: |
+                array:
+                  - |
+                    objectName: grafana-admin-user
+                    objectType: secret
+                  - |
+                    objectName: grafana-admin-password
+                    objectType: secret
+              tenantId: "$(azure-tenant-id)"
+            secretObjects:
+            - secretName: grafana-secrets
+              type: Opaque
+              data:
+              - objectName: grafana-admin-user
+                key: admin-user
+              - objectName: grafana-admin-password
+                key: admin-password
+          EOF
+
+    - task: KubernetesManifest@0
+      displayName: 'Deploy SecretProviderClass'
+      inputs:
+        action: 'deploy'
+   # kubernetesServiceConnection: 'your-aks-service-connection'
+        connectionType: 'Azure Resource Manager'
+        azureSubscription: $(AzureSubscription)
+        kubernetesCluster: $(aksClusterName)
+        azureResourceGroup: $(aksResourceGroup)
+        namespace: '$(namespace)'
+        manifests: |
+          $(Pipeline.Workspace)/s/devops/helm-charts/grafana-service/templates/secret-provider-class.yaml
+
+    - task: HelmDeploy@0
+      displayName: 'Deploy Grafana via Helm'
+      inputs:
+        azureSubscription: '$(AzureSubscription)'
+        kubernetesCluster: '$(aksClusterName)'
+        resourceGroup: '$(aksResourceGroup)'
+        namespace: '$(namespace)'
+        chartPath: '$(helmChartPath)'
+        releaseName: '$(releaseName)'
+        valueFile: '$(helmChartPath)/values.yaml'
+        overrideValues: |
+          azure.tenantId=$(AzureTenantId)
+          azure.subscriptionId=$(AzureSubscriptionId)
+          azure.resourceGroup=$(aksResourceGroup)
+          azure.azureMonitorWorkspaceResourceId=$(azureMonitorWorkspaceResourceId)
+          azure.servicePrincipalClientId=$(ServicePrincipalClientId) # From AzureCredentials variable group
+          azure.servicePrincipalClientSecret=$(ServicePrincipalClientSecret) # From AzureCredentials variable group
+          azure.keyVaultName=$(keyVaultName)
+
+    - task: Kubernetes@1
+      displayName: 'Check Grafana Pod Status'
+      inputs:
+        command: 'get'
+        type: 'pod'
+        #kubernetesServiceEndpoint: '$(AzureSubscription)'
+        connectionType: 'Azure Resource Manager'
+        azureSubscription: $(AzureSubscription)
+        kubernetesCluster: $(aksClusterName)
+        azureResourceGroup: $(aksResourceGroup)
+        namespace: '$(namespace)'
+        arguments: '-l app.kubernetes.io/name=$(releaseName)'
+        outputFormat: 'wide'
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # Azure Monitor Insights for Grafana on AKS 1.30.3
 
 Here's a comprehensive walkthrough for setting up Azure Monitor Insights metrics for Grafana on your existing AKS 1.30.3 cluster with Azure Key Vault integration:
