@@ -1,0 +1,234 @@
+# Helm Chart Deployment for Grafana on AKS with Azure DevOps CI/CD
+
+This guide outlines a complete implementation for deploying Grafana to AKS using Helm charts in an Azure DevOps pipeline, with Azure Monitor as the data source and secure credential management using Service Principals and Managed Identities.
+
+## Prerequisites
+
+- Azure Kubernetes Service (AKS) cluster
+- Azure Container Registry (ACR)
+- Azure Key Vault
+- Azure DevOps organization and project
+- Helm 3 installed
+
+## 1. Required Azure Roles and Permissions
+
+### Service Principal for Azure DevOps (for CI/CD pipeline)
+- **Azure Kubernetes Service Cluster Admin Role** (on AKS cluster)
+- **AcrPush** role (on ACR)
+- **Key Vault Secrets User** (on Key Vault)
+- **Monitoring Reader** (for Azure Monitor data source)
+
+### Managed Identity for AKS (for Key Vault integration)
+- **Key Vault Secrets User** (on Key Vault)
+
+### Grafana Service Account (for Azure Monitor)
+- **Monitoring Reader** (subscription or resource group level)
+
+## 2. Azure Resources Setup
+
+### Create Managed Identity for AKS Key Vault Integration
+```bash
+az identity create --name "aks-kv-identity" --resource-group "your-rg"
+```
+
+### Assign Permissions to Managed Identity
+```bash
+# Get identity ID
+IDENTITY_ID=$(az identity show --name "aks-kv-identity" --resource-group "your-rg" --query principalId -o tsv)
+
+# Assign Key Vault access
+az keyvault set-policy --name "your-kv" --object-id $IDENTITY_ID --secret-permissions get list
+```
+
+### Configure AKS with Managed Identity
+```bash
+az aks update --name "your-aks" --resource-group "your-rg" --enable-managed-identity --assign-identity "/subscriptions/your-sub/resourcegroups/your-rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/aks-kv-identity"
+```
+
+## 3. Azure DevOps Pipeline Setup
+
+### Service Connection Setup
+1. Create an Azure Resource Manager service connection in Azure DevOps
+2. Use the Service Principal with the roles mentioned above
+
+### Variable Group with Key Vault Integration
+1. Create a variable group in Azure DevOps
+2. Link it to your Key Vault
+3. Include these secrets:
+   - `grafana-admin-user`
+   - `grafana-admin-password`
+   - `azure-monitor-client-id`
+   - `azure-monitor-client-secret`
+   - `azure-tenant-id`
+
+## 4. Helm Chart Configuration
+
+### values.yaml
+```yaml
+# Grafana configuration
+grafana:
+  adminUser: "$(grafana-admin-user)"
+  adminPassword: "$(grafana-admin-password)"
+  
+  persistence:
+    enabled: true
+    storageClassName: "default"
+    accessModes: ["ReadWriteOnce"]
+    size: 10Gi
+  
+  plugins:
+    - grafana-azure-monitor-datasource
+  
+  datasources:
+    datasources.yaml:
+      apiVersion: 1
+      datasources:
+      - name: AzureMonitor
+        type: grafana-azure-monitor-datasource
+        orgId: 1
+        typeLogoUrl: public/plugins/grafana-azure-monitor-datasource/img/logo.jpg
+        access: proxy
+        url: /api/datasources/proxy/2
+        jsonData:
+          subscriptionId: "$(azure-subscription-id)"
+          tenantId: "$(azure-tenant-id)"
+          clientId: "$(azure-monitor-client-id)"
+          cloudName: azuremonitor
+        secureJsonData:
+          clientSecret: "$(azure-monitor-client-secret)"
+        version: 1
+        editable: true
+
+# CSI Secret Store for Key Vault integration
+secretProviderClass:
+  enabled: true
+  name: azure-kv
+  provider: azure
+  parameters:
+    keyvaultName: "your-kv"
+    objects: |
+      array:
+        - |
+          objectName: grafana-admin-user
+          objectType: secret
+        - |
+          objectName: grafana-admin-password
+          objectType: secret
+  tenantId: "$(azure-tenant-id)"
+```
+
+## 5. Azure DevOps Pipeline YAML
+
+```yaml
+trigger:
+- main
+
+variables:
+- group: 'grafana-kv-vars'
+- name: 'namespace'
+  value: 'monitoring'
+- name: 'releaseName'
+  value: 'grafana'
+- name: 'chartVersion'
+  value: '6.40.0' # Grafana Helm chart version
+
+stages:
+- stage: Deploy
+  jobs:
+  - deployment: DeployGrafana
+    environment: 'prod'
+    pool:
+      vmImage: 'ubuntu-latest'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: HelmInstaller@1
+            displayName: 'Install Helm'
+            inputs:
+              helmVersion: '3.8.2'
+              
+          - task: AzureCLI@2
+            displayName: 'Login to AKS'
+            inputs:
+              azureSubscription: 'your-azure-service-connection'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                az aks get-credentials --resource-group your-rg --name your-aks --admin
+                kubectl config use-context your-aks-admin
+                
+          - task: Kubernetes@1
+            displayName: 'Create namespace if not exists'
+            inputs:
+              command: 'apply'
+              useConfigurationFile: false
+              arguments: 'create namespace $(namespace) --dry-run=client -o yaml | kubectl apply -f -'
+              
+          - task: HelmDeploy@0
+            displayName: 'Add Grafana Helm repo'
+            inputs:
+              command: 'init'
+              connectionType: 'None'
+              arguments: '--upgrade --force-update repo add grafana https://grafana.github.io/helm-charts'
+              
+          - task: HelmDeploy@0
+            displayName: 'Deploy Grafana'
+            inputs:
+              command: 'upgrade'
+              connectionType: 'Kubernetes Service Connection'
+              namespace: '$(namespace)'
+              chartType: 'name'
+              chartName: 'grafana/grafana'
+              releaseName: '$(releaseName)'
+              version: '$(chartVersion)'
+              overrideValues: 'grafana.adminUser=$(grafana-admin-user),grafana.adminPassword=$(grafana-admin-password)'
+              valueFile: 'charts/grafana/values.yaml'
+              arguments: '--install --wait --atomic --timeout 300s'
+              
+          - task: AzureCLI@2
+            displayName: 'Get Grafana Service URL'
+            inputs:
+              azureSubscription: 'your-azure-service-connection'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                echo "##vso[task.setvariable variable=GRAFANA_URL]http://$(kubectl get svc -n $(namespace) $(releaseName) -o jsonpath='{.status.loadBalancer.ingress[0].ip}')"
+                echo "Grafana URL: $(GRAFANA_URL)"
+```
+
+## 6. Post-Deployment Verification
+
+1. Access Grafana dashboard using the LoadBalancer IP
+2. Verify Azure Monitor datasource is properly configured
+3. Check logs for any errors:
+   ```bash
+   kubectl logs -n monitoring -l app.kubernetes.io/name=grafana
+   ```
+
+## 7. Optional: Ingress Configuration
+
+Add this to your values.yaml if you want to configure ingress:
+
+```yaml
+ingress:
+  enabled: true
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+  hosts:
+    - grafana.yourdomain.com
+  tls:
+    - secretName: grafana-tls
+      hosts:
+        - grafana.yourdomain.com
+```
+
+## Security Considerations
+
+1. Use network policies to restrict access to Grafana
+2. Enable Azure AD authentication for Grafana
+3. Regularly rotate secrets in Key Vault
+4. Monitor AKS audit logs for suspicious activities
+
+This implementation provides a secure, automated deployment of Grafana on AKS with Azure Monitor integration, leveraging Azure DevOps for CI/CD and Azure Key Vault for secret management.
