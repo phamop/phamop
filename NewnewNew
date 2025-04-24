@@ -1,3 +1,15 @@
+- task: KubernetesManifest@1
+  displayName: 'Apply SecretProviderClass'
+  inputs:
+    action: 'apply'
+    kubernetesServiceConnection: '$(AzureSubscription)'
+    manifests: '$(helmChartPath)/templates/secretproviderclass.yaml' # Assuming you have a template for SPC
+    namespace: '$(namespace)'
+  condition: and(succeeded(), eq(variables['secretProviderClass.enabled'], 'true'))
+
+
+
+
 Alright, let's get Grafana deployed into your AKS cluster using Azure Monitor as the data source, all within your Azure DevOps CI/CD pipeline. We'll cover the necessary role assignments, permissions, Helm deployment, access credentials using a Service Principal for monitoring reader access, and a Managed Identity for accessing secrets from Azure Key Vault via SecretProviderClass.
 
 Here's a breakdown of the steps and the corresponding YAML configurations for your pipeline:
