@@ -1,47 +1,5 @@
-- task: AzureCLI@2
-  displayName: 'Apply SecretProviderClass'
-  inputs:
-    azureSubscription: 'your-azure-service-connection'
-    scriptType: 'bash'
-    scriptLocation: 'inlineScript'
-    inlineScript: |
-      cat <<EOF | kubectl apply -f -
-      apiVersion: secrets-store.csi.x-k8s.io/v1
-      kind: SecretProviderClass
-      metadata:
-        name: azure-kv
-        namespace: $(namespace)
-      spec:
-        provider: azure
-        parameters:
-          keyvaultName: "$(keyVaultName)"
-          objects: |
-            array:
-              - |
-                objectName: grafana-admin-user
-                objectType: secret
-              - |
-                objectName: grafana-admin-password
-                objectType: secret
-          tenantId: "$(azure-tenant-id)"
-        secretObjects:
-        - secretName: grafana-secrets
-          type: Opaque
-          data:
-          - objectName: grafana-admin-user
-            key: admin-user
-          - objectName: grafana-admin-password
-            key: admin-password
-      EOF
-save in secret-provider-class.yaml
-- task: KubernetesManifest@0
-  displayName: 'Deploy SecretProviderClass'
-  inputs:
-    action: 'deploy'
-    kubernetesServiceConnection: 'your-aks-service-connection'
-    namespace: '$(namespace)'
-    manifests: |
-      $(System.DefaultWorkingDirectory)/path/to/secret-provider-class.yaml
+To sign in, use a web browser to open the page https://microsoft.com/devicelogin and enter the code FXYBUCUMD to authenticate.
+Error: failed to authenticate: DeviceCodeCredential: context deadline exceeded
 
 # Azure Monitor Insights for Grafana on AKS 1.30.3
 
