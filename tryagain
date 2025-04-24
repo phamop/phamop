@@ -3,6 +3,8 @@ Error: failed to authenticate: DeviceCodeCredential: context deadline exceeded
 To sign in, use a web browser to open the page https://microsoft.com/devicelogin and enter the code AMLL2KGNU to authenticate.
 To sign in, use a web browser to open the page https://microsoft.com/devicelogin and enter the code B29ZK2ZRE to authenticate.
 Error: failed to authenticate: DeviceCodeCredential: server response error:
+#[error]Error: Input required: kubernetesServiceEndpoint
+2025-04-24T10:17:37.9761988Z ##[section]Finishing: Deploy Grafana Helm Chart
  context deadline exceeded
 trigger:
   branches:
