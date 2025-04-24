@@ -1,3 +1,6 @@
+To sign in, use a web browser to open the page https://microsoft.com/devicelogin and enter the code A2L484LEG to authenticate.
+Error: failed to authenticate: DeviceCodeCredential: context deadline exceeded
+To sign in, use a web browser to open the page https://microsoft.com/devicelogin and enter the code AMLL2KGNU to authenticate.
 ##[error]Script failed with error: Error: Input required: connectedServiceNameARM
     at Object.getInput (/azp/agent/_work/_tasks/AzureCLI_46e4be58-730b-4389-8a2f-ea10b3e5e815/2.254.0/node_modules/azure-pipelines-task-lib/task.js:231:15)
     at azureclitask.setAzureCloudBasedOnServiceEndpoint (/azp/agent/_work/_tasks/AzureCLI_46e4be58-730b-4389-8a2f-ea10b3e5e815/2.254.0/azureclitask.js:294:35)
