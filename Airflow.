@@ -4,10 +4,10 @@ To push the current branch and set the remote as upstream, use
 
     git push --set-upstream origin remotes/origin/First_branch
 
-[ooridot_randstad@cvgrdd02 runner-connection-test_1755]$  git push --set-upstream origin remotes/origin/First_branch
+[ runner-connection-test_1755]$  git push --set-upstream origin remotes/origin/First_branch
 error: src refspec remotes/origin/First_branch matches more than one.
 error: failed to push some refs to 'https://cvgitd02.symprod.com:8443/GRP_CORE_SERVICE/gitlab_upgrade/newgroup1755/runner-connection-test_1755.git'
-[ooridot_randstad@cvgrdd02 runner-connection-test_1755]$ ooridot_randstad
+ runner-connection-test_1755]$ ooridot_randstad
 -bash: ooridot_randstad: command not found
 
 
