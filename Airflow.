@@ -1,33 +1,6 @@
 
 
 
-
-
-
-
-
-As part of the upcoming GitLab upgrade to version 17.7, there will be a mandatory change requiring all communications to use SSLv3 for enhanced security. This update may impact existing integrations, pipelines, or services that do not currently support SSLv3.
-
-Next Steps:
-Review your systems (CI/CD pipelines, integrations, API calls, etc.) to ensure compatibility with SSLv3.
-
-Test in staging (if available) before the production rollout.
-
-Report any blockers by [deadline, e.g., DD/MM/YYYY] so we can address them proactively.
-
-Key Details:
-Change Date: [Insert planned deployment date]
-
-Affected Components: [List specific services if known, e.g., GitLab runners, container registries, webhooks]
-
-Documentation Reference: [Link to GitLab’s SSLv3 requirements or internal docs]
-
-Please reply to this thread with updates or concerns by [deadline]. Let’s coordinate in [standup/meeting] if further discussion is needed.
-
-
-
-
-
 FROM docker.io/python:3.12.10-alpine3.21
 
 RUN apk update && apk add --no-cache \
