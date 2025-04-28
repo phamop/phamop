@@ -1,0 +1,46 @@
+### **Key Components to Review:**  
+1. **Azure RBAC & Permissions**  
+   - Confirm `Contributor`/`Monitoring Contributor` roles for:  
+     - **Application Insights** (metrics & traces) 
+      
+     - **Azure Monitor Logs** (Log Analytics workspace)  
+   - Ensure **Grafana** has `Reader` access to Azure Monitor + App Insights.  
+
+2. **OpenTelemetry Collector Permissions**  
+   - Verify service principal/Managed Identity has:  
+     - `Log Analytics Contributor` (for log ingestion).  
+     - `Azure Metrics Publisher` (for custom metrics).  
+
+3. **Azure Key Vault for Secrets**  
+   - Store the following securely in Key Vault:  
+     - Grafana API keys / Azure AD service principal credentials.  
+     - OpenTelemetry connection strings (App Insights Instrumentation Key).  
+   - Grant **CI/CD pipeline** (`Azure DevOps/GitHub Actions`) access to Key Vault via:  
+     - Managed Identity or `Key Vault Secrets User` role.  
+
+4. **Helm & CI/CD Permissions**  
+   - Helm charts must reference secrets from Key Vault (use `helm-secrets` or `external-secrets`).  
+   - CI/CD service principal needs:  
+     - `Azure Kubernetes Service Contributor` (for Helm deployments).  
+     - `Key Vault Secrets Officer` (if modifying secrets).  
+
+5. **Grafana Data Source Setup**  
+   - Ensure Grafana’s Azure Monitor data source is configured with least-privilege access.  
+
+### **Action Items:**  
+✅ **DevOps Team:** Validate RBAC assignments and test Key Vault access.  
+✅ **Dev Team:** Confirm OpenTelemetry configs pull secrets correctly.  
+✅ **Security Team:** Audit role assignments for compliance.  
+
+
+### **Checklist Summary Table**  
+| **Area**               | **Required Role/Permission**               | **Owner**       |  
+|-------------------------|--------------------------------------------|----------------|  
+| Azure Monitor Logs      | `Log Analytics Contributor`                | DevOps         |  
+| App Insights Metrics    | `Azure Metrics Publisher`                  | DevOps         |  
+| Key Vault Secrets       | `Key Vault Secrets User` (CI/CD)           | Security       |  
+| Helm Deployments        | `AKS Contributor`                          | DevOps         |  
+| Grafana Access          | `Reader` on Azure Monitor/App Insights     | DevOps         |  
+
+
+
