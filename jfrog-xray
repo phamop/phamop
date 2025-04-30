@@ -1,5 +1,13 @@
 sudo kill -15 $(ps -ef | grep '[x]ray' | awk '{print $2}')
 
+
+# Navigate to Xray bin directory
+cd /opt/jfrog/xray/bin/
+
+# Start Xray as a single daemon
+./xray start &> /var/log/xray_start.log &
+
+
 # **Upgrading JFrog Xray from 3.89.5 to 3.111.24 on RHEL 8 (Using TAR Installation)**
 
 This guide provides a step-by-step process for upgrading **JFrog Xray** from **version 3.89.5 to 3.111.24** on **RHEL 8** using the **TAR** distribution (not RPM).
