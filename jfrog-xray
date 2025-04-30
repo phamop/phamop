@@ -1,4 +1,4 @@
-
+sudo kill -15 $(ps -ef | grep '[x]ray' | awk '{print $2}')
 
 # **Upgrading JFrog Xray from 3.89.5 to 3.111.24 on RHEL 8 (Using TAR Installation)**
 
