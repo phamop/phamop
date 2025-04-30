@@ -1,0 +1,238 @@
+
+
+# **Upgrading JFrog Xray from 3.89.5 to 3.111.24 on RHEL 8 (Using TAR Installation)**
+
+This guide provides a step-by-step process for upgrading **JFrog Xray** from **version 3.89.5 to 3.111.24** on **RHEL 8** using the **TAR** distribution (not RPM).
+
+---
+
+## **Prerequisites**
+1. **Backup**:
+   - Take a full backup of:
+     - Xray data directory (default: `$JFROG_HOME/xray/`)
+     - PostgreSQL database (if external).
+   - Ensure **Artifactory** is running (Xray depends on it).
+
+2. **Verify Compatibility**:
+   - Ensure Artifactory version is compatible with Xray 3.111.24 (check [JFrog's compatibility matrix](https://www.jfrog.com/confluence/display/JFROG/Xray+Release+Notes)).
+
+3. **Download Required Files**:
+   - Download **Xray 3.111.24** TAR file from [JFrog's official site](https://releases.jfrog.io/).
+   - Example filename: `jfrog-xray-3.111.24-linux.tar.gz`.
+
+4. **Stop Xray Service**:
+   ```bash
+   sudo systemctl stop xray-service
+   ```
+
+---
+
+## **Upgrade Steps**
+
+### **1. Extract the New Xray Version**
+```bash
+# Navigate to the directory where the TAR file is downloaded
+cd /opt/jfrog/
+
+# Extract the new Xray version
+tar -xvf jfrog-xray-3.111.24-linux.tar.gz
+
+# Rename the extracted folder (optional, but recommended for clarity)
+mv jfrog-xray-3.111.24 xray-new
+```
+
+### **2. Migrate Configurations**
+Copy the existing configurations from the old Xray installation to the new one:
+```bash
+# Copy the 'etc' directory (contains critical configs)
+cp -rp /opt/jfrog/xray/var/etc/ /opt/jfrog/xray-new/var/
+
+# Copy the 'data' directory (if needed)
+cp -rp /opt/jfrog/xray/var/data/ /opt/jfrog/xray-new/var/
+```
+
+### **3. Update Systemd Service (if needed)**
+Check if the service file (`/etc/systemd/system/xray.service`) needs updates:
+```bash
+sudo vi /etc/systemd/system/xray.service
+```
+Ensure paths point to the new installation directory (`/opt/jfrog/xray-new/`).
+
+Reload systemd:
+```bash
+sudo systemctl daemon-reload
+```
+
+### **4. Start Xray**
+```bash
+sudo systemctl start xray-service
+```
+
+### **5. Verify Upgrade**
+- Check logs:
+  ```bash
+  tail -f /opt/jfrog/xray-new/var/log/console.log
+  ```
+- Verify status:
+  ```bash
+  sudo systemctl status xray-service
+  ```
+- Access the Xray UI and confirm the version (`http://<XRAY_SERVER_IP>:8000`).
+
+---
+
+## **Post-Upgrade Steps**
+1. **Reindex Xray Data** (if required):
+   ```bash
+   curl -u admin:<PASSWORD> -X POST http://localhost:8000/api/v1/system/reindex
+   ```
+2. **Validate Scans**:
+   - Trigger a test scan to ensure Xray is functioning correctly.
+
+---
+
+## **Rollback Plan (If Upgrade Fails)**
+1. Stop the new Xray service:
+   ```bash
+   sudo systemctl stop xray-service
+   ```
+2. Revert to the old version:
+   ```bash
+   mv /opt/jfrog/xray /opt/jfrog/xray-failed-upgrade
+   mv /opt/jfrog/xray-old /opt/jfrog/xray
+   ```
+3. Restart the old service:
+   ```bash
+   sudo systemctl start xray-service
+   ```
+
+---
+
+## **Troubleshooting**
+- **Permission Issues**: Ensure `jfrog:xray` user owns the new directory:
+  ```bash
+  chown -R jfrog:xray /opt/jfrog/xray-new/
+  ```
+- **Database Errors**: Check PostgreSQL logs if Xray fails to connect.
+- **Port Conflicts**: Ensure no other service is using `8000` (Xray’s default port).
+
+---
+
+### **Conclusion**
+This process ensures a smooth upgrade of **JFrog Xray** from **3.89.5 to 3.111.24** on **RHEL 8** using the TAR method. Let me know if you need adjustments or encounter issues! 🚀
+
+
+################################################################
+################################################################
+create a backup
+
+# Stop Xray services first
+$XRAY_HOME/app/bin/xray.sh stop
+
+# Create backup directory
+mkdir -p /path/to/xray_backup/$(date +%Y%m%d)
+
+# Backup configuration files
+cp -r $XRAY_HOME/app/etc/* /path/to/xray_backup/$(date +%Y%m%d)/
+
+# Backup database data (if using embedded database)
+cp -r $XRAY_HOME/var /path/to/xray_backup/$(date +%Y%m%d)/
+
+
+#######################
+
+You're looking to upgrade JFrog Xray from 3.89.5 to 3.111.24 on RHEL8 using the **TAR.GZ** distribution, not RPM. This process involves manually extracting the new version and ensuring your configurations and data are correctly migrated.
+
+Here's a detailed process, keeping in mind that you should **always refer to the official JFrog Upgrade Xray guide** for the most accurate and specific instructions for your environment:
+
+**Before You Begin (Same as RPM, but emphasizing TAR.GZ specifics):**
+
+1.  **Read the Release Notes:** Thoroughly review the release notes for all Xray versions between 3.89.5 and 3.111.24. Pay close attention to breaking changes, deprecated features, and upgrade considerations specific to the TAR.GZ distribution.
+    * [Xray Release Notes](https://jfrog.com/help/r/xray-release-information/xray-release-notes)
+2.  **System Requirements:** Ensure your RHEL8 system meets the system requirements for Xray 3.111.24, including disk space, memory, and any specific library dependencies.
+3.  **Full Backup:** **This is absolutely critical.** Perform a full backup of your Xray data and the underlying PostgreSQL database. The backup procedure for PostgreSQL will depend on your setup (e.g., using `pg_dump`).
+4.  **Backup JFrog Home:** Back up the entire `$JFROG_HOME/xray` directory. This contains configurations, logs, and potentially other important data.
+5.  **Database Compatibility:** Verify that your PostgreSQL database version is compatible with Xray 3.111.24. Consult the JFrog documentation for supported PostgreSQL versions.
+6.  **Connectivity:** Ensure your Xray server has network connectivity to Artifactory and other relevant services.
+7.  **Understand Your Current Setup:** Note down your current Xray installation directory (where the 3.89.5 TAR.GZ was extracted) and any custom configurations you might have made in the `system.yaml` file or other configuration files.
+
+**Upgrade Steps (TAR.GZ Installation on RHEL8):**
+
+1.  **Download the Xray TAR.GZ Package:** Download the TAR.GZ package for Xray version 3.111.24 from the JFrog downloads page.
+2.  **Stop the Xray Service:** Stop the current Xray service. The way you stop it depends on how you are running Xray (e.g., as a systemd service, using a script). Identify and stop the Xray process.
+    ```bash
+    # Example if running as a systemd service (adjust service name if needed)
+    sudo systemctl stop xray
+    ```
+    or
+    ```bash
+    # Example if using a script (adjust the script name and path)
+    sudo /opt/jfrog/xray/bin/xray.sh stop
+    ```
+3.  **Create a New Installation Directory (Recommended):** It's often safer to extract the new version into a new directory rather than overwriting the old one directly. This allows for easier rollback if needed.
+    ```bash
+    sudo mkdir /opt/jfrog/xray-3.111.24
+    cd /opt/jfrog/xray-3.111.24
+    sudo tar -zxvf /path/to/jfrog-xray-3.111.24.tar.gz --strip-components=1
+    ```
+    Replace `/path/to/jfrog-xray-3.111.24.tar.gz` with the actual path to the downloaded file. The `--strip-components=1` flag removes the top-level directory in the archive.
+
+4.  **Migrate Configuration:**
+    * **Copy `system.yaml`:** Carefully copy your existing `system.yaml` file from your old Xray installation directory (e.g., `/opt/jfrog/xray-3.89.5/var/etc/system.yaml`) to the new installation directory's configuration location (e.g., `/opt/jfrog/xray-3.111.24/var/etc/`).
+        ```bash
+        sudo cp /opt/jfrog/xray-3.89.5/var/etc/system.yaml /opt/jfrog/xray-3.111.24/var/etc/system.yaml
+        ```
+    * **Review and Update `system.yaml`:** **This is crucial.** Open the copied `system.yaml` file and carefully review it against the `system.yaml` file provided in the new Xray version (you can find a default one in the new installation directory). Pay attention to any new parameters, renamed parameters, or changes in the configuration structure. **You might need to manually adjust the new `system.yaml` to incorporate your old settings while adhering to the new version's format.** Refer to the JFrog documentation for any specific configuration changes required for the upgrade.
+    * **Other Custom Configurations:** If you have any other custom configuration files (e.g., for logging), ensure you migrate and update them as necessary.
+
+5.  **Migrate Data (Usually Handled by Xray):** For upgrades within the 3.x series, Xray typically handles data migrations automatically upon startup. However, it's still essential to have a database backup in case of issues.
+
+6.  **Set File Permissions:** Ensure the files and directories in the new Xray installation have the correct ownership and permissions. This usually involves setting the owner to the user that will run the Xray service.
+    ```bash
+    sudo chown -R <xray_user>:<xray_group> /opt/jfrog/xray-3.111.24
+    # Replace <xray_user> and <xray_group> with the appropriate user and group
+    ```
+
+7.  **Update Service Definition (if applicable):** If you are running Xray as a systemd service or using a custom startup script, you might need to update the service definition or script to point to the new installation directory (`/opt/jfrog/xray-3.111.24`).
+
+    * **Systemd Service Example (adjust paths accordingly):** You might need to modify the `WorkingDirectory`, `ExecStart`, and other paths in your `/etc/systemd/system/xray.service` file to reflect the new installation location. After modifying, reload systemd:
+        ```bash
+        sudo systemctl daemon-reload
+        ```
+
+8.  **Start the Upgraded Xray Service:** Start the Xray service using your chosen method (systemd, script, etc.).
+    ```bash
+    # Example if using systemd
+    sudo systemctl start xray
+    ```
+    or
+    ```bash
+    # Example if using a script (adjust the script name and path)
+    sudo /opt/jfrog/xray-3.111.24/bin/xray.sh start
+    ```
+
+9.  **Check the Xray Logs:** Monitor the Xray service logs (usually in `$JFROG_HOME/xray/var/log/console.log` or within the new installation directory's log directory) for any errors or issues during startup. Ensure Xray connects to Artifactory successfully.
+
+10. **Verify the Upgrade:** Once Xray is running, log in to the JFrog Platform UI and navigate to the Xray section to verify that the version has been updated to 3.111.24.
+
+11. **Perform Functional Testing:** Thoroughly test the functionality of Xray, including scanning artifacts, generating reports, and integration with Artifactory, to ensure everything is working as expected.
+
+**Important Considerations for TAR.GZ Upgrade:**
+
+* **Manual Configuration Migration:** Upgrading via TAR.GZ requires careful manual migration and merging of configuration files. Pay close attention to the `system.yaml` file.
+* **Service Management:** You are responsible for managing the Xray service (starting, stopping, restarting) and ensuring it's configured correctly (e.g., as a systemd service).
+* **Environment Variables:** Ensure any environment variables required by Xray are set correctly for the new installation.
+* **JFrog Home:** While you backed it up, the new version might have different expectations for the directory structure or contents. Be cautious about simply copying everything over without review.
+
+**Rollback Procedure (TAR.GZ):**
+
+1.  Stop the upgraded Xray service.
+2.  If you created a new installation directory, simply switch back to using the old installation directory (e.g., by updating your service definition or script).
+3.  Restore the backup of your `$JFROG_HOME/xray` directory and your PostgreSQL database.
+4.  Start the previous version of Xray.
+
+**Recommendation:**
+
+While this provides a detailed outline, **always prioritize the official JFrog Upgrade Guide** for the most accurate and up-to-date instructions for upgrading Xray using the TAR.GZ distribution. The official documentation will provide specific details about configuration changes and any necessary pre- or post-upgrade steps for the versions you are upgrading between.
+
+Ensure you have a solid backup strategy and a well-tested rollback plan before proceeding with the upgrade. Good luck!
