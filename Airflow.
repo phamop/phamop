@@ -1,7 +1,6 @@
-Warning  UpdateFailed  46s (x7 over 47s)  external-secrets  the desired SecretStore azure-kv is not ready
-  Warning  UpdateFailed  4s (x7 over 46s)   external-secrets  keyvault.BaseClient#GetSecret: Failure responding to request: StatusCode=403 -- Original Error: autorest/azure: Service returned an error. Status=403 Code="Forbidden" Message="The user, group or application 'appid=aee07df1-1c39-4195-835e-390813ad4daf;oid=a9b8bcc0-a4a6-428a-acdb-a6c60ea27c5e;iss=https://sts.windows.net/38b7fc89-dbe8-4ed1-a78b-39dfb6a217a8/' does not have secrets get permission on key vault 'EDDV-APP-EIKV01;location=canadaeast'. For help resolving this issue, please see https://go.microsoft.com/fwlink/?linkid=2125287" InnerError={"code":"AccessDenied"}
+string to search for "opentelemetry-helm-charts using azure app insights as backend"
 
-
+https://blog.arkahna.io/integrating-opentelemetry-with-azure-application-insights
 FROM docker.io/python:3.12.10-alpine3.21
 
 RUN apk update && apk add --no-cache \
