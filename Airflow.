@@ -3,6 +3,11 @@ string to search for "opentelemetry-helm-charts using azure app insights as back
 https://blog.arkahna.io/integrating-opentelemetry-with-azure-application-insights
 FROM docker.io/python:3.12.10-alpine3.21
 
+clusterroles.rbac.authorization.k8s.io "my-opentelemetry-collector" is forbidden: user "SP" (groups=["system:authenticated"]) is attempting to grant RBAC permissions not currently held:
+{APIGroups:[""], Resources:["nodes/stats"], Verbs:["get" "watch" "list"]}
+	* clusterroles.rbac.authorization.k8s.io "my-opentelemetry-collector" not found
+
+
 RUN apk update && apk add --no-cache \
 bash \
 gcc \
