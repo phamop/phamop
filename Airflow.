@@ -1,3 +1,4 @@
+kubectl auth can-i create clusterroles --as <your-user>
 string to search for "opentelemetry-helm-charts using azure app insights as backend"
 
 https://blog.arkahna.io/integrating-opentelemetry-with-azure-application-insights
