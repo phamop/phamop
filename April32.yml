@@ -1,14 +1,16 @@
 
 
-Coordinate with other stakeholder on Qlik upgrade.
-Follow with UNIX team on pending and provided needed information concerning the requirement
-Performed Gitlab task as per request.
-Coordinate with other stakeholder on Gitlab EOL for RHEL7 and receive and approval to new server (RHEL9) deployment.
-Maintained the Frog application ensure both Artifactory and Xray are working as expected.
-Will be working with DBA for the creation of the DB instance for the upgrade to PostgreSQL16 for Qlik.
-Request for the New Server is pending project name before submission
-Engaged with colleagues on application support tasks.
-Xray upgraded was suspended due space issue and will be revisited next
+Engaged with stakeholders on upgrade plans.
+Followed up with UNIX team for pending requirements.
+Qlik PostgreSQL 16 DB instance setup with DBAs in progress
+Completed requested GitLab tasks.
+Coordinated GitLab EOL (RHEL7 → RHEL9) and received approval for new server deployment.
+Submit new server request once project name is confirmed.
+Continue stakeholder syncs on GitLab RHEL9 migration.
+Ensured Artifactory and Xray were operational.
+Xray upgrade paused due to storage constraints 
+Revisit Xray upgrade after storage resolution.
+Assisted colleagues with application support tasks.
 
 
 
