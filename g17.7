@@ -1,0 +1,75 @@
+# Subject: Follow-up: GitLab Upgrade OpenSSL 3 Configuration Review - Impact Assessment
+
+Dear [Team/Stakeholders],
+
+I'm writing to follow up on our discussion regarding the upcoming GitLab upgrade that will transition to OpenSSL 3. Before proceeding with deployment in our lower environments, I wanted to provide a comprehensive review of potential impacts and recommended mitigation strategies.
+
+## OpenSSL 3 Migration Impact Assessment
+
+### Key Changes in OpenSSL 3
+- **Deprecated Algorithms**: Several legacy algorithms are now deprecated or removed, including:
+  - MD2, MD4, MD5 (for TLS)
+  - DES, IDEA, SEED, RC4, RC5
+  - SSLv2, SSLv3
+- **Default Security Level**: OpenSSL 3 enforces a higher default security level (1), which may reject certificates and connections that were previously accepted
+- **FIPS Compliance**: New FIPS provider implementation with stricter compliance requirements
+- **API Changes**: Some internal API changes that could affect custom integrations
+
+### Potential Impact Areas
+
+1. **Custom Certificates**: 
+   - Certificates using MD5/SHA-1 signatures may no longer be trusted
+   - RSA keys smaller than 2048 bits may be rejected
+   - Self-signed certificates with weak parameters may fail validation
+
+2. **Integration Points**:
+   - GitLab integrations with external systems using legacy encryption
+   - CI/CD pipelines with custom SSL configurations
+   - Docker registry connections with legacy cipher suites
+   - Legacy LDAP configurations with outdated encryption settings
+
+3. **Custom Scripts/Applications**:
+   - Any custom scripts directly using OpenSSL libraries
+   - Legacy applications interacting with GitLab API
+   - Automation tools with hardcoded cipher preferences
+
+## Recommended Pre-Deployment Actions
+
+1. **Inventory Collection**:
+   - Identify all custom certificates in use across environments
+   - Document all integration points and their SSL/TLS configurations
+   - Catalog any custom scripts that interact with cryptographic functions
+
+2. **Certificate Validation**:
+   - Validate all certificates against OpenSSL 3 requirements (using the openssl verify command)
+   - Renew any certificates using deprecated algorithms or key sizes
+   - Update self-signed certificates to use modern parameters
+
+3. **Testing Strategy**:
+   - Deploy OpenSSL 3 in an isolated test environment first
+   - Prioritize testing of all identified integration points
+   - Create specific test cases for each potential impact area
+   - Implement parallel testing where possible to compare behaviors
+
+4. **Rollback Plan**:
+   - Document complete rollback procedures
+   - Create backup of all relevant configurations
+   - Establish clear rollback triggers and decision points
+
+## Next Steps
+
+1. I recommend we schedule a technical review meeting with the security and infrastructure teams by [DATE] to finalize our testing approach.
+
+2. Based on our inventory assessment, we should prioritize updating any certificates or configurations that use deprecated algorithms before the upgrade.
+
+3. We should create a detailed testing matrix for the lower environment deployment, with specific focus on integration points.
+
+4. I suggest allocating [TIMEFRAME] for testing in the lower environment before proceeding to production.
+
+Please let me know if you have any questions or concerns about this assessment. I'm available to discuss any technical details in more depth.
+
+Best regards,
+
+[Your Name]
+[Your Position]
+[Contact Information]
