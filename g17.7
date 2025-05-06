@@ -1,3 +1,28 @@
+
+Thanks for providing some additional context on the GitLab upgrade to OpenSSL 3. While we can't comment on everything, there are some areas where we can help perform validations in DEV to uncover any issues post-upgrade. I believe we all agree that we can't entirely shake down the environment but can do some validations that covers major solutions and integrations.
+
+Here are a few areas we can focus on:
+
+- GitLab runner compatibility and connectivity tests
+- External endpoint connections, including Azure, ACR connectivity, OpenShift, and on-premises connections
+- Validation of tool connectivity such as SonarQube, Artifactory, Ansible, etc.
+- Deployment tools like Az CLI, OC CLI, and Helm command functions
+
+The upgrade validation checklist for DEV needs to be expanded to cover these points and this comes with higher scope and efforts in identifying the pipelines, runners and making sure they are functional before the upgrades.
+
+Please let me know if you have any questions about this approach.
+
+
+
+
+
+
+
+
+
+
+
+
 # Subject: Follow-up: GitLab Upgrade OpenSSL 3 Configuration Review - Impact Assessment
 
 Dear [Team/Stakeholders],
