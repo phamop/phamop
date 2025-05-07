@@ -1,11 +1,32 @@
-We are created a new DB server, and we would like to migrate all the data to the new DB server. 
-we have been able to be established connection to the need DB server. However, to ensure the application is pointing to the DB server is the challenge we are facing. 
-We are able to successfully backup our current DB and has import the DB into the new Server.
+We have successfully set up a new database server and are in the process of migrating all data to it.
 
-So if you can kindly provide step to ensure we are pointing to the new server DB server and validation. 
-We have 2 products
-Nprinting 
-Sense.
+Current Progress:
+
+Established a connection to the new DB server.
+
+Successfully backed up the current database.
+
+Imported the database into the new server.
+
+Current Challenge:
+Ensuring the application correctly points to the new DB server.
+
+Request:
+Could you kindly provide steps to:
+
+Redirect the application to the new DB server.
+
+Validate the connection to confirm everything is functioning as expected.
+
+Affected Products:
+
+Nprinting
+
+Sense
+
+Your assistance would be greatly appreciated.
+
+
 
 
 RUN apk update && apk add --no-cache \
