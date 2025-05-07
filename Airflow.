@@ -1,30 +1,4 @@
-We have successfully set up a new database server and are in the process of migrating all data to it.
-
-Current Progress:
-
-Established a connection to the new DB server.
-
-Successfully backed up the current database.
-
-Imported the database into the new server.
-
-Current Challenge:
-Ensuring the application correctly points to the new DB server.
-
-Request:
-Could you kindly provide steps to:
-
-Redirect the application to the new DB server.
-
-Validate the connection to confirm everything is functioning as expected.
-
-Affected Products:
-
-Nprinting
-
-Sense
-
-Your assistance would be greatly appreciated.
+I will reach out to james  and discussed  the additional area that needed to be added to validation checklist  and ensure the validation is performed and the result is shar before proceeding to upgrade . 
 
 
 
