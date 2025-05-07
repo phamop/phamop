@@ -1,16 +1,11 @@
-kubectl auth can-i create clusterroles --as <your-user>
-string to search for "opentelemetry-helm-charts using azure app insights as backend"
+We are created a new DB server, and we would like to migrate all the data to the new DB server. 
+we have been able to be established connection to the need DB server. However, to ensure the application is pointing to the DB server is the challenge we are facing. 
+We are able to successfully backup our current DB and has import the DB into the new Server.
 
-https://blog.arkahna.io/integrating-opentelemetry-with-azure-application-insights
-FROM docker.io/python:3.12.10-alpine3.21
-
-Error: UPGRADE FAILED: failed to create resource: clusterroles.rbac.authorization.k8s.io "my-opentelemetry-collector" is forbidden: user 
-
-create your own ClusterRole and ClusterRoleBinding, and associate the ClusterRole to the ServiceAccount via ClusterRoleBinding otel-collector
-
-clusterroles.rbac.authorization.k8s.io "my-opentelemetry-collector" is forbidden: user "SP" (groups=["system:authenticated"]) is attempting to grant RBAC permissions not currently held:
-{APIGroups:[""], Resources:["nodes/stats"], Verbs:["get" "watch" "list"]}
-	* clusterroles.rbac.authorization.k8s.io "my-opentelemetry-collector" not found
+So if you can kindly provide step to ensure we are pointing to the new server DB server and validation. 
+We have 2 products
+Nprinting 
+Sense.
 
 
 RUN apk update && apk add --no-cache \
