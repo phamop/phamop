@@ -1,5 +1,5 @@
- will contact James to discuss the additional areas that need to be included in the validation checklist. Once confirmed, I will ensure the validation is performed and the results are shared before proceeding with the upgrade.
-
+ The provided article link does not clarify where DB connection can be modified so that the new DB can have a successful connection to the Qlik (Nprinting and Sense) application. I already mentioned in my previous comment that we were able to backup DB successfully.  
+Please can you clarify the location on the window server where the DB connection needs to be defned for the 2 products
 
 RUN apk update && apk add --no-cache \
 bash \
