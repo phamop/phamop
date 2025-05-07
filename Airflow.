@@ -1,5 +1,12 @@
- The provided article link does not clarify where DB connection can be modified so that the new DB can have a successful connection to the Qlik (Nprinting and Sense) application. I already mentioned in my previous comment that we were able to backup DB successfully.  
-Please can you clarify the location on the window server where the DB connection needs to be defned for the 2 products
+ The provided article does not specify where to modify the database connection settings to ensure a successful connection between the new DB server and the Qlik applications (NPrinting and Sense).
+
+As previously mentioned, we have already completed the database backup successfully. Could you please clarify:
+
+Where on the Windows Server the DB connection settings need to be configured for both products?
+
+Any specific steps or files that require adjustment?
+
+Your guidance on this would be greatly appreciated.
 
 RUN apk update && apk add --no-cache \
 bash \
