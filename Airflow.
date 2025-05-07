@@ -1,6 +1,4 @@
-I will reach out to james  and discussed  the additional area that needed to be added to validation checklist  and ensure the validation is performed and the result is shar before proceeding to upgrade . 
-
-
+ will contact James to discuss the additional areas that need to be included in the validation checklist. Once confirmed, I will ensure the validation is performed and the results are shared before proceeding with the upgrade.
 
 
 RUN apk update && apk add --no-cache \
