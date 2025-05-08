@@ -1,8 +1,14 @@
-It seems, my ask is not clear enough. I need to change  the current Db connection to new DB connection.
-And I need to know the location where that configuration need to be made.
-I have tested  the newDB and I have validated both connection and credentials. 
-This is my ask. Any guidance to resolve this will greatly be appreciated. Even if you would like to send a link for screen sharing that will be alright as well..
+It seems my previous request wasn’t clear enough. To clarify, I need to:
 
+Change the current database connection to a new one.
+
+Identify the exact configuration file/location where this change needs to be made.
+
+I’ve already tested the new database connection and confirmed that both the connection and credentials are working properly.
+
+Could you please provide guidance on how to proceed? If it’s easier, I’m also open to a screen-sharing session or any reference documentation to help resolve this.
+
+Your support would be greatly appreciated!
 RUN apk update && apk add --no-cache \
 bash \
 gcc \
