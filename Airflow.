@@ -1,5 +1,41 @@
-I’ve completed the pre-upgrade validations, and all checks have passed successfully. There were no issues detected with SSL/TLS connectivity or pipeline execution.
-Please let me know if you have any questions or if further details are needed.
+Here’s a professional and concise email draft for your manager regarding the Qlik case:  
+
+---  
+
+**Subject:** Update on Qlik Case #900123 – Configuration Issue & Next Steps  
+
+**Dear [Manager's Name],**  
+
+I wanted to provide an update regarding our ongoing case with Qlik Support (#900123).  
+
+**Current Status:**  
+- Our objective was to obtain the database configuration details or locate the relevant documentation/article, but we have not received a resolution despite multiple exchanges.  
+- This morning, Qlik Support sent a Zoom link to schedule a troubleshooting session. However, Zoom is blocked in our environment, making this approach unfeasible.  
+- While we can connect to Qlik Sense, we continue to encounter issues that require deeper investigation.  
+
+**Next Steps:**  
+- Eric and I have scheduled time today to review the issue before DR operations commence.  
+- We will explore alternative solutions, such as using an approved conferencing tool (e.g., Teams) if further collaboration with Qlik is needed.  
+
+**Action Requested:**  
+If you have any additional insights or contacts at Qlik who could expedite resolution, please let us know. Otherwise, we will proceed with our plan and keep you updated.  
+
+Thank you for your support.  
+
+**Best regards,**  
+[Your Full Name]  
+[Your Position]  
+[Your Contact Information]  
+
+---  
+
+### Key Notes:  
+1. **Tone:** Professional, solution-oriented, and transparent about roadblocks.  
+2. **Structure:** Clear sections (status, next steps, action requested) for readability.  
+3. **Call to Action:** Directly asks for help if needed but shows ownership of the issue.  
+4. **DR Mention:** Highlights urgency without being alarmist.  
+
+Let me know if you'd like any adjustments!
 
 
 
