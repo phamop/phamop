@@ -1,0 +1,146 @@
+# GitLab Logging and Monitoring Setup with GroundWork and Splunk
+
+## Overview
+This document outlines a comprehensive approach to implement logging and monitoring for GitLab using GroundWork for alerting and Splunk for logging. The system will route OS-level alerts to the Unix team and application-level alerts to the application team.
+
+## Architecture Components
+
+1. **GitLab**: Source of application logs and metrics
+2. **Splunk**: Centralized logging solution
+3. **GroundWork Monitor**: Alert management and notification system
+4. **Alert Routing**:
+   - OS alerts → Unix team
+   - Application alerts → App team
+
+## Implementation Steps
+
+### 1. Log Collection with Splunk
+
+**Splunk Forwarder Configuration:**
+```
+# Configure inputs.conf on GitLab servers
+[monitor:///var/log/gitlab/gitlab-rails/production.log]
+sourcetype = gitlab:rails
+index = gitlab_app
+
+[monitor:///var/log/gitlab/gitlab-shell/gitlab-shell.log]
+sourcetype = gitlab:shell
+index = gitlab_app
+
+[monitor:///var/log/gitlab/nginx/*.log]
+sourcetype = gitlab:nginx
+index = gitlab_os
+
+[monitor:///var/log/syslog]
+sourcetype = syslog
+index = gitlab_os
+```
+
+**Splunk Index Configuration:**
+- Create separate indexes for application and OS logs
+- Set appropriate retention policies for each index
+
+### 2. GroundWork Monitoring Setup
+
+**GitLab Monitoring Configuration:**
+```
+# Configure monitoring probes in GroundWork
+1. GitLab Service Availability
+   - HTTP check on GitLab web interface
+   - API endpoint checks
+
+2. Resource Monitoring
+   - CPU, memory, disk usage (OS-level)
+   - GitLab-specific metrics (sidekiq queues, DB connections)
+
+3. Application Health Checks
+   - Background job processing
+   - Repository access checks
+   - CI/CD pipeline status
+```
+
+### 3. Alert Routing Configuration
+
+**GroundWork Alert Rules:**
+```
+# OS-Level Alerts (routed to Unix team)
+- High CPU utilization
+- Disk space thresholds
+- Memory pressure
+- Nginx errors
+- System service failures
+
+# Application-Level Alerts (routed to App team)
+- GitLab Rails errors
+- Failed background jobs
+- High response times
+- Authentication failures
+- Repository access issues
+- CI/CD pipeline failures
+```
+
+### 4. Notification Setup
+
+**GroundWork Notification Configuration:**
+```
+1. Create two notification profiles:
+   - Unix Team Profile:
+     * Email: unix-team@company.com
+     * SMS: +1XXX-XXX-XXXX (on-call rotation)
+     * PagerDuty integration (if available)
+
+   - App Team Profile:
+     * Email: gitlab-app-team@company.com
+     * Slack/Teams channel: #gitlab-alerts
+     * PagerDuty integration (if available)
+
+2. Assign alert rules to appropriate notification profiles
+```
+
+### 5. Dashboard Configuration
+
+**Splunk Dashboards:**
+- Create operational dashboards showing:
+  - Real-time application errors
+  - Performance metrics
+  - User activity patterns
+  - CI/CD pipeline statistics
+
+**GroundWork Dashboards:**
+- System health overview
+- Alert summary by category
+- Historical trend analysis
+
+## Maintenance and Tuning
+
+1. **Regular Review**:
+   - Monthly review of alert thresholds
+   - Quarterly review of alert routing rules
+
+2. **False Positive Reduction**:
+   - Implement alert deduplication
+   - Configure maintenance windows for planned outages
+
+3. **Documentation**:
+   - Maintain runbooks for common alerts
+   - Document escalation procedures
+
+## Example Alert Scenarios
+
+**OS Alert Example:**
+```
+Alert: High Disk Utilization on GitLab Server
+Severity: Critical
+Threshold: >90% disk usage on /var
+Action: Unix team receives alert to investigate and clean up
+```
+
+**Application Alert Example:**
+```
+Alert: Failed Sidekiq Jobs > Threshold
+Severity: Warning
+Threshold: >50 failed jobs in 15 minutes
+Action: App team receives alert to investigate background processing
+```
+
+This implementation provides comprehensive visibility into both the infrastructure and application layers of GitLab, with targeted alerting to ensure the right teams are notified for appropriate response.
