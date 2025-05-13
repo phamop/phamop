@@ -1,3 +1,22 @@
+# Instrumenting a TypeScript Microservice with OpenTelemetry (OTel) Collector
+
+Here's a comprehensive guide to instrumenting your TypeScript microservice with OpenTelemetry and sending traces/metrics to an OTel Collector:
+
+## 1. Install Required Packages
+
+```bash
+npm install --save @opentelemetry/api \
+                   @opentelemetry/sdk-node \
+                   @opentelemetry/auto-instrumentations-node \
+                   @opentelemetry/exporter-trace-otlp-grpc \ # or exporter-trace-otlp-http
+                   @opentelemetry/exporter-metrics-otlp-grpc \
+                   @opentelemetry/resources \
+                   @opentelemetry/semantic-conventions
+```
+
+## 2. Create a Tracer Provider Setup File (`tracing.ts`)
+
+```typescript
 import { NodeSDK } from '@opentelemetry/sdk-node';
 import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-grpc';
@@ -38,3 +57,105 @@ process.on('SIGTERM', () => {
 });
 
 export default sdk;
+```
+
+## 3. Import Tracer in Your Application Entrypoint
+
+Add this as the first line in your main application file (e.g., `index.ts` or `server.ts`):
+
+```typescript
+import './tracing';
+// Rest of your application code
+```
+
+## 4. Manual Instrumentation (Optional)
+
+For custom spans:
+
+```typescript
+import { trace } from '@opentelemetry/api';
+
+const tracer = trace.getTracer('your-instrumentation-name');
+
+// Create a custom span
+function yourFunction() {
+  return tracer.startActiveSpan('your-operation-name', (span) => {
+    try {
+      // Your business logic here
+      span.setAttribute('custom.attribute', 'value');
+      return result;
+    } catch (error) {
+      span.recordException(error);
+      span.setStatus({ code: SpanStatusCode.ERROR });
+      throw error;
+    } finally {
+      span.end();
+    }
+  });
+}
+```
+
+## 5. Docker Configuration (if applicable)
+
+Add these environment variables to your Dockerfile or docker-compose:
+
+```yaml
+environment:
+  - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
+  - OTEL_SERVICE_NAME=your-service-name
+  - OTEL_RESOURCE_ATTRIBUTES=deployment.environment=production
+```
+
+## 6. OTel Collector Configuration Example
+
+Here's a basic `otel-collector-config.yaml` for the collector:
+
+```yaml
+receivers:
+  otlp:
+    protocols:
+      grpc:
+      http:
+
+processors:
+  batch:
+    timeout: 10s
+    send_batch_size: 1000
+
+exporters:
+  logging:
+    logLevel: debug
+  # Add your actual exporters (Jaeger, Prometheus, etc.)
+  jaeger:
+    endpoint: "jaeger:14250"
+    tls:
+      insecure: true
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [logging, jaeger]
+    metrics:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [logging]
+```
+
+## 7. Run Your Application
+
+Start your application with Node.js:
+
+```bash
+node --require ./tracing.js your-app.js
+```
+
+## Key Considerations
+
+1. **Protocol Choice**: Choose between gRPC (OTLP-gRPC) or HTTP (OTLP-HTTP) based on your infrastructure
+2. **Sampling**: Configure sampling in the collector or client-side
+3. **Auto-Instrumentations**: The `auto-instrumentations-node` package instruments many popular libraries automatically
+4. **Environment Variables**: You can override many settings via environment variables
+
+Would you like me to elaborate on any specific part of this setup or provide additional configuration examples for specific use cases?
