@@ -1,0 +1,15 @@
+We will be performing an upgrade of our DEV GitLab instance from version 17.5 to 17.7 on [Date] at [Time].
+
+Impact:
+
+GitLab will be unavailable during the upgrade process
+
+All CI/CD pipelines will be paused
+
+Repository access will be temporarily interrupted
+
+Duration: Approximately [Estimated Downtime]
+
+We will send a follow-up notification once the upgrade is complete and services are restored. Please plan your work accordingly to minimize disruption.
+
+Thank you for your patience.
