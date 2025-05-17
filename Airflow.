@@ -1,5 +1,83 @@
-"@opentelemetry/api": "^1.9.0",
-    "@opentelemetry/auto-instrumentations-node": "^0.59.0",
+@startuml
+' Observability Architecture Diagram
+' This diagram illustrates the architecture of an observability solution
+' using OpenTelemetry, Azure Monitor, and Grafana.
+' It includes microservices, OpenTelemetry components, and data flow.
+
+' Components
+rectangle "Grafana\n(Visualization)" as Grafana #orange
+rectangle "OpenTelemetry Collector" as Collector #blue {
+  rectangle "Receivers" as Receivers
+  rectangle "Processors" as Processors
+  rectangle "Exporters" as Exporters
+}
+rectangle "Azure Monitor & App Insights" as Azure #lightblue {
+  database "Log Analytics" as Logs
+  database "Metrics Store" as Metrics
+  database "Application Insights" as AppInsights
+}
+rectangle "Microservices" as Services #lightgreen {
+  component "Messaging Service" as S1
+  component "Product Service" as S2
+  component "Orchestrator" as S3
+  component "Product Validation Service" as S4
+  component "Enterperise Service " as S5
+  component "Application Service " as S6
+  component "Property Service " as S7
+}
+
+' Connections
+S1 --> Receivers : Logs, Metrics, Traces
+S2 --> Receivers : Logs, Metrics, Traces
+S3 --> Receivers : Logs, Metrics, Traces
+S4 --> Receivers : Logs, Metrics, Traces
+S5 --> Receivers : Logs, Metrics, Traces
+S6 --> Receivers : Logs, Metrics, Traces
+S7 --> Receivers : Logs, Metrics, Traces
+
+Receivers --> Processors
+Processors --> Exporters
+Exporters --> Logs : Logs
+Exporters --> Metrics : Metrics
+Exporters --> AppInsights : Traces
+Grafana --> Logs : Query
+Grafana --> Metrics : Query
+Grafana --> AppInsights : Query
+
+' Notes
+note right of Services
+  Each microservice is instrumented
+  with OpenTelemetry SDK
+end note
+
+note right of Collector
+  OpenTelemetry Collector
+  collects, processes, and exports
+  telemetry data
+end note
+
+note right of Azure
+  Azure Monitor stores telemetry
+  and exposes query interfaces
+end note
+
+note right of Grafana
+  Grafana creates dashboards
+  and visualizations
+end note
+
+@enduml
+
+
+
+
+
+
+
+
+
+
+
 
 RUN apk update && apk add --no-cache \
 bash \
