@@ -1,12 +1,5 @@
-- name: HOST_IP
-              valueFrom:
-                fieldRef:
-                  fieldPath: status.hostIP
-            - name: OTEL_EXPORTER_OTLP_ENDPOINT
-              value: "http://$(HOST_IP):4318"
-            - name: OTEL_SERVICE_NAME
-              value: "ts-app"
-
+"@opentelemetry/api": "^1.9.0",
+    "@opentelemetry/auto-instrumentations-node": "^0.59.0",
 
 RUN apk update && apk add --no-cache \
 bash \
