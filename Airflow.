@@ -1,4 +1,11 @@
-
+- name: HOST_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "http://$(HOST_IP):4318"
+            - name: OTEL_SERVICE_NAME
+              value: "ts-app"
 
 
 RUN apk update && apk add --no-cache \
