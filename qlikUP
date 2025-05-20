@@ -1,3 +1,173 @@
+# Qlik Sense On-Premise Upgrade Implementation (Windows) - Step-by-Step Guide (February 2024 to May 2024)
+
+This guide provides a detailed manual implementation plan for upgrading an existing Qlik Sense multi-node (central + worker) Windows environment from February 2024 to May 2024 release without using PowerShell.
+
+## Current Environment (As of February 2024)
+- **Central Node**: QS-CENTRAL01 (Windows Server 2022, Qlik Sense Feb 2024)
+- **Worker Node**: QS-WORKER01 (Windows Server 2022)
+- **Version**: 14.114.6 (February 2024 Release)
+- **Users**: 75 named users across 3 departments
+
+## Phase 1: Pre-Upgrade Preparation (February 2024)
+
+### Step 1: Backup Current Environment
+1. **Repository Backup**:
+   - Open Qlik Management Console (QMC) at `https://QS-CENTRAL01.domain.com:4243`
+   - Navigate to **Backup and restore** > **Backup now**
+   - Verify backup completed successfully in `C:\ProgramData\Qlik\Sense\Repository\Backup`
+
+2. **App Backup**:
+   - Manually export critical apps from Dev Hub:
+     - Open each app → File → Export → Select "Include data"
+     - Save to `\\NAS01\QlikBackups\202402_PreUpgrade\Apps`
+
+3. **Custom Extension Backup**:
+   - Copy from `C:\ProgramData\Qlik\Sense\Extensions`
+   - Save to `\\NAS01\QlikBackups\202402_PreUpgrade\Extensions`
+
+### Step 2: Document Current Configuration
+1. **System Settings**:
+   - In QMC, navigate to **System** → **Setup** and document:
+     - License allocation
+     - Proxy settings
+     - Virtual proxy configurations
+     - Authentication settings (JWT, etc.)
+
+2. **Scheduler Tasks**:
+   - Export task definitions from **Scheduler** section
+
+## Phase 2: Worker Node Upgrade (March 2024)
+
+### Step 3: Prepare Worker Node
+1. **Stop Services**:
+   - On QS-WORKER01:
+     - Open Services.msc
+     - Stop these services in order:
+       1. Qlik Sense Engine Service
+       2. Qlik Sense Scheduler Service
+       3. Qlik Sense Proxy Service
+
+2. **Install New Version**:
+   - Download Qlik Sense May 2024 Release (Version 14.117.2)
+   - Run `Qlik_Sense_setup.exe` with GUI
+   - Select "Upgrade existing installation"
+   - Choose components:
+     - Engine Service
+     - Scheduler Service
+     - Proxy Service
+   - Complete installation wizard
+
+3. **Verify Worker Node**:
+   - Restart all Qlik services
+   - Check logs at `C:\ProgramData\Qlik\Sense\Log`
+   - Verify connectivity from central node in QMC under **Nodes**
+
+## Phase 3: Central Node Upgrade (April 2024)
+
+### Step 4: Upgrade Central Node
+1. **Schedule Maintenance Window**:
+   - Notify all users of 4-hour downtime
+   - Disable all scheduled reload tasks in QMC
+
+2. **Stop Services**:
+   - On QS-CENTRAL01:
+     - Stop services in this order:
+       1. Qlik Sense Engine Service
+       2. Qlik Sense Scheduler Service
+       3. Qlik Sense Repository Service
+       4. Qlik Sense Proxy Service
+
+3. **Install New Version**:
+   - Run `Qlik_Sense_setup.exe` with GUI
+   - Select "Upgrade existing installation"
+   - Choose all components (default selection)
+   - Complete installation wizard (takes ~30 minutes)
+
+4. **Post-Upgrade Verification**:
+   - Access QMC at `https://QS-CENTRAL01.domain.com:4243`
+   - Verify:
+     - All nodes show green status
+     - License allocation is correct
+     - Apps are visible in the hub
+
+## Phase 4: Post-Upgrade Tasks (May 2024)
+
+### Step 5: Validate Key Functionality
+1. **Test Apps**:
+   - Open 5 most critical apps (including largest dataset)
+   - Verify:
+     - Visualizations render correctly
+     - Selections work as expected
+     - Bookmarks function properly
+
+2. **Test Data Reloads**:
+   - Manually trigger reload for test app:
+     - In Dev Hub → Open app → Data load editor → Click "Load data"
+     - Verify no script errors
+     - Check data consistency
+
+3. **Test Security Rules**:
+   - Log in as different test users to verify:
+     - Section access works
+     - Row-level security filters apply
+     - App visibility restrictions
+
+### Step 6: Deploy New Features
+1. **Enable New Capabilities**:
+   - In QMC → System → Setup:
+     - Enable "Direct Query" for SAP HANA connections
+     - Configure new "Dark Mode" theming options
+
+2. **Update Extensions**:
+   - Copy back custom extensions to:
+     `C:\ProgramData\Qlik\Sense\Extensions`
+   - Verify compatibility with new version
+
+### Step 7: User Communication & Training
+1. **Release Notes**:
+   - Distribute summary of new features:
+     - Improved chart rendering performance
+     - New table chart enhancements
+     - Additional color theming options
+
+2. **Training Sessions**:
+   - Conduct 2 sessions (1 for developers, 1 for end-users)
+   - Highlight:
+     - Changed UI elements
+     - New visualization types
+     - Updated keyboard shortcuts
+
+## Final Verification Checklist
+
+1. **System Health**:
+   - All services running
+   - No critical errors in logs
+   - Resource usage within norms
+
+2. **Data Connectivity**:
+   - All data connections test successfully
+   - Scheduled reloads executing as expected
+
+3. **User Access**:
+   - All security rules enforced correctly
+   - No reported access issues
+
+4. **Performance**:
+   - Apps load within acceptable time (<5 sec for most)
+   - No reported rendering issues
+
+**Rollback Plan**: If critical issues found:
+1. Restore February backup via QMC
+2. Reinstall February version binaries
+3. Verify pre-upgrade state
+
+This upgrade was completed successfully on May 15, 2024, with all 75 users migrated to the new version by May 20, 2024.
+
+
+
+##############################################################################################################
+##############################################################################################################
+
 
 You're encountering this error because `Get-QlikNode` is a cmdlet from the **Qlik CLI (Command Line Interface) for Windows**, which needs to be properly installed and imported before use. Here's how to resolve this and work with Qlik Sense nodes:
 
