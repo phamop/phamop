@@ -1,3 +1,75 @@
+
+You're encountering this error because `Get-QlikNode` is a cmdlet from the **Qlik CLI (Command Line Interface) for Windows**, which needs to be properly installed and imported before use. Here's how to resolve this and work with Qlik Sense nodes:
+
+## Solution: Installing and Using Qlik CLI
+
+### 1. Install Qlik CLI for Windows
+Download from [Qlik's official site](https://qlik.dev/tools/qlik-cli) and install.
+
+### 2. Import the Module
+```powershell
+Import-Module "C:\Program Files\Qlik\Cli\Qlik-Cli.psd1"
+```
+
+### 3. Connect to Your Qlik Sense Server
+```powershell
+Connect-Qlik -ComputerName QS-CENTRAL01.company.com -TrustAllCerts
+```
+
+## Alternative Ways to Check Nodes
+
+### Option 1: Using Qlik Management Console (QMC)
+1. Access https://<your-qlik-server>:4243/qmc
+2. Navigate to "Nodes" under "System" section
+
+### Option 2: Using REST API
+```powershell
+$headers = @{
+    "X-Qlik-Xrfkey" = "0123456789abcdef"
+    "Authorization" = "Bearer $(Get-QlikTicket -Xrfkey "0123456789abcdef")"
+}
+$nodes = Invoke-RestMethod -Uri "https://QS-CENTRAL01.company.com:4243/qrs/node?xrfkey=0123456789abcdef" -Headers $headers
+$nodes | Select-Object name, hostName, roles, version
+```
+
+### Option 3: Using Service Control Manager
+```powershell
+Get-Service | Where-Object { $_.Name -like "Qlik*" } | Select-Object Name, Status, DisplayName
+```
+
+## Common Node Management Commands (After CLI Setup)
+
+```powershell
+# List all nodes
+Get-QlikNode
+
+# Get specific node details
+Get-QlikNode -filter "name eq 'QS-WORKER01'"
+
+# Restart node services
+Restart-QlikNode -id (Get-QlikNode -filter "name eq 'QS-WORKER01'").id
+
+# Check node status
+(Get-QlikNode -filter "name eq 'QS-WORKER01'").status
+```
+
+## Troubleshooting
+
+If you still can't use Qlik CLI commands:
+1. Verify the installation path: `Test-Path "C:\Program Files\Qlik\Cli\Qlik-Cli.psd1"`
+2. Check PowerShell execution policy: `Set-ExecutionPolicy RemoteSigned`
+3. Ensure you're running PowerShell as administrator
+
+Would you like me to provide more specific details about any of these approaches?
+
+
+
+
+
+#########################################################################################################################################################
+#########################################################################################################################################################
+
+
 # Qlik Sense On-Premise Multi-Node Upgrade Implementation (Windows) - February 2024 to May 2024
 
 This guide details the step-by-step implementation for upgrading and expanding an existing Qlik Sense February 2024 multi-node environment on Windows Server.
