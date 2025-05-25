@@ -4,6 +4,8 @@ https://learn.microsoft.com/en-us/azure/aks/aksarc/secrets-store-csi-driver
 
 https://github.com/kubernetes-sigs/secrets-store-csi-driver/blob/main/test/bats/tests/azure/azure_v1_secretproviderclass_ns.yaml
 
+https://azure.github.io/secrets-store-csi-driver-provider-azure/docs/configurations/sync-with-k8s-secrets/
+
 
 
 
