@@ -1,5 +1,21 @@
 https://www.yuribacciarini.com/secrets-store-csi-driver-vs-external-secrets-in-a-nutshel/
 
+https://learn.microsoft.com/en-us/azure/aks/aksarc/secrets-store-csi-driver
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 We’re excited to share that we’ve successfully deployed the External Secrets Operator (ESO) in our environment, leveraging Federated Identity Credentials (FIC) backed by Microsoft Entra ID for authentication.
 
 Key Benefits:
