@@ -11,6 +11,17 @@ https://azure.github.io/secrets-store-csi-driver-provider-azure/docs/configurati
 
 
 
+https://azure.github.io/secrets-store-csi-driver-provider-azure/docs/configurations/sync-with-k8s-secrets/
+https://github.com/kubernetes-sigs/secrets-store-csi-driver/blob/main/test/bats/tests/azure/azure_v1_secretproviderclass_ns.yaml
+https://stackoverflow.com/questions/70154936/secret-is-not-creating-in-aks-after-fetching-it-with-csi-driver
+https://github.com/kubernetes-sigs/secrets-store-csi-driver/blob/main/test/bats/tests/vault/pod-vault-inline-volume-secretproviderclass.yaml
+https://learn.microsoft.com/en-us/azure/aks/aksarc/secrets-store-csi-driver
+
+
+
+
+
+
 
 During the integration of the Azure Key Vault Provider for Secrets Store CSI Driver, I deployed a SecretProviderClass resource using the azure provider to fetch secrets from Key Vault. These secrets are intended to be used as environment variables for the Grafana Helm chart deployment.
 
