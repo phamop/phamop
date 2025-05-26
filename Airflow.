@@ -12,6 +12,36 @@ https://azure.github.io/secrets-store-csi-driver-provider-azure/docs/configurati
 
 
 
+During the integration of the Azure Key Vault Provider for Secrets Store CSI Driver, I deployed a SecretProviderClass resource using the azure provider to fetch secrets from Key Vault. These secrets are intended to be used as environment variables for the Grafana Helm chart deployment.
+
+As part of the process, I confirmed that the secrets are successfully pulled and mounted into a pod, which indicates that the SecretProviderClass is functional. However, the expected Kubernetes Secret resource is not being created, even though the secretObjects section is defined in the secrestore.yaml file.
+
+After reviewing the documentation (Azure CSI Provider: Sync with K8s Secrets), I believe the current Helm setup might be missing the following critical configuration:
+
+secrets-store-csi-driver.syncSecret.enabled=true
+
+This setting is required to enable the secret sync controller and to ensure that the Helm release provisions the necessary ClusterRole and ClusterRoleBinding for managing and syncing secrets from Azure Key Vault to native Kubernetes Secrets.
+
+Using only volume-mounted secrets is not suitable in this case because:
+* Grafana is deployed via Helm and configured using environment variables.
+* The secrets need to be available as native Kubernetes secrets to be referenced by the Helm chart as envFrom.secretRef, rather than being mounted into the pod’s filesystem.
+
+Action Request:
+Please review and update the Helm release values to explicitly enable secret syncing by setting:
+
+syncSecret:
+  enabled: true
+
+This should resolve the issue and ensure secrets are properly synced and consumable by Grafana as environment variables.
+
+Thanks,
+
+
+
+
+
+
+
 
 
 
