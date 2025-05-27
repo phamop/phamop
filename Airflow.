@@ -10,10 +10,18 @@ https://azure.github.io/secrets-store-csi-driver-provider-azure/docs/configurati
 
 
 
-I would like to inform the team about the schedule upgrade of production Gitlab to v17.7.7 from the current version of 17.5.5.
-The schedule upgrade will commence Friday May 30th 2025  by 9AM.  
-Gitlab will be unavailable during the window of the change and notification will be sent out once the upgrade is completed
-The new feature for this version are  disclosed in the link below
+We would like to inform you that our production GitLab instance will be upgraded from v17.5.5 to v17.7.7 on Wednesday, May 28, 2025, starting at 9:00 AM.
+
+Key Details:
+Downtime: GitLab will be unavailable during the upgrade window.
+
+Expected Duration: [Add estimated duration if available, e.g., "~1 hour"].
+
+Completion Notification: A confirmation email will be sent once the upgrade is finished and services are restored.
+
+New Features & Improvements:
+This release includes performance enhancements, security updates, and new features. For a full breakdown, refer to the GitLab 17.7.7 Release Notes.
+
 
 
 
