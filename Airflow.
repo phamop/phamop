@@ -10,6 +10,15 @@ https://azure.github.io/secrets-store-csi-driver-provider-azure/docs/configurati
 
 
 
+I would like to inform the team about the schedule upgrade of production Gitlab to v17.7.7 from the current version of 17.5.5.
+The schedule upgrade will commence Friday May 30th 2025  by 9AM.  
+Gitlab will be unavailable during the window of the change and notification will be sent out once the upgrade is completed
+The new feature for this version are  disclosed in the link below
+
+
+
+
+
 
 https://azure.github.io/secrets-store-csi-driver-provider-azure/docs/configurations/sync-with-k8s-secrets/
 https://github.com/kubernetes-sigs/secrets-store-csi-driver/blob/main/test/bats/tests/azure/azure_v1_secretproviderclass_ns.yaml
