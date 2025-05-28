@@ -10,18 +10,9 @@ https://azure.github.io/secrets-store-csi-driver-provider-azure/docs/configurati
 
 
 
-We would like to inform you that our production GitLab instance will be upgraded from v17.5.5 to v17.7.7 on Wednesday, May 28, 2025, starting at 9:00 AM.
+Due to current environmental constraints, the recommended solution cannot be implemented at this time. The existing CSI driver has a known limitation, as the SecretSync functionality does not appear to be enabled. Enabling this feature may require significant time and effort.
 
-Key Details:
-Downtime: GitLab will be unavailable during the upgrade window.
-
-Expected Duration: [Add estimated duration if available, e.g., "~1 hour"].
-
-Completion Notification: A confirmation email will be sent once the upgrade is finished and services are restored.
-
-New Features & Improvements:
-This release includes performance enhancements, security updates, and new features. For a full breakdown, refer to the GitLab 17.7.7 Release Notes.
-
+As a result, we will proceed with an alternative solution. A risk will be formally documented to highlight this environmental limitation and its implications.
 
 
 
