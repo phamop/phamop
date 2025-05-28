@@ -7,7 +7,7 @@ https://github.com/kubernetes-sigs/secrets-store-csi-driver/blob/main/test/bats/
 https://azure.github.io/secrets-store-csi-driver-provider-azure/docs/configurations/sync-with-k8s-secrets/
 
 
-
+I have reviewed Michel yaml file and it does not have the solution to the present challenge. Also, I have a had a meeting with Saqib to review and recommend solution.  During the meeting, I agreed there is a limitation to the current environment  that a risk should be raised to address this limitation.  Because it really doing to take significant time and effort, an alternative solution will be embraced.
 
 
 Due to current environmental constraints, the recommended solution cannot be implemented at this time. The existing CSI driver has a known limitation, as the SecretSync functionality does not appear to be enabled. Enabling this feature may require significant time and effort.
