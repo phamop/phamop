@@ -1,3 +1,70 @@
+
+
+
+
+**IT Risk: CSI Driver SecretSync Limitation Affecting Kubernetes Secret Creation During Helm Deployment**  
+
+**Risk Description:**  
+The CSI (Container Storage Interface) driver's `secretSync` feature is not enabled in the Kubernetes cluster, which is preventing the creation of necessary Kubernetes secrets during Helm deployments. As a result, the required `ClusterRoleBinding` (needed for proper secret synchronization in Azure Kubernetes Service) is not being automatically created, leading to failed or incomplete secret provisioning.  
+
+**Impact:**  
+- Helm deployments requiring Kubernetes secrets (e.g., for Azure Key Vault integration, storage credentials, or application secrets) may fail.  
+- Applications dependent on these secrets may experience runtime errors or fail to start.  
+- Manual intervention is required to create missing secrets or `ClusterRoleBinding`, increasing operational overhead and deployment delays.  
+
+**Root Cause:**  
+- The `secretSync` functionality in the CSI driver is either disabled or misconfigured.  
+- Without `secretSync`, the CSI driver does not automatically synchronize secrets from external sources (e.g., Azure Key Vault) into Kubernetes.  
+- The associated `ClusterRoleBinding` (required for proper RBAC permissions to sync secrets) is not created, breaking the secret provisioning workflow.  
+
+**Mitigation Steps:**  
+1. **Enable `secretSync` in the CSI Driver Configuration:**  
+   - Verify and enable the `secretSync` feature in the Azure CSI driver Helm chart or deployment manifest.  
+   - Example (for `secrets-store-csi-driver` Helm values):  
+     ```yaml
+     secretSync:
+       enabled: true
+     ```  
+2. **Manually Create Required `ClusterRoleBinding` (if auto-creation fails):**  
+   - Apply the necessary RBAC permissions manually:  
+     ```yaml
+     apiVersion: rbac.authorization.k8s.io/v1
+     kind: ClusterRoleBinding
+     metadata:
+       name: secrets-sync-crb
+     subjects:
+     - kind: ServiceAccount
+       name: secrets-store-csi-driver
+       namespace: kube-system
+     roleRef:
+       kind: ClusterRole
+       name: secrets-store-csi-driver-secret-sync
+       apiGroup: rbac.authorization.k8s.io
+     ```  
+3. **Validate Secret Synchronization:**  
+   - Deploy a test Helm chart with secret dependencies and verify secret creation.  
+   - Check logs of the CSI driver pod (`kubectl logs -n kube-system <csi-driver-pod>`) for sync errors.  
+
+**Risk Level:** **Medium-High** (Potential deployment failures and application disruptions)  
+
+**Owner:** [Specify Owner – e.g., DevOps/Platform Engineering Team]  
+
+**Next Steps:**  
+- Schedule a patch to enable `secretSync` in the CSI driver configuration.  
+- Document the manual workaround for `ClusterRoleBinding` until automation is fixed.  
+- Monitor Helm deployments for secret-related failures post-implementation.  
+
+**Reference:**  
+- [Azure CSI Secret Store Driver Documentation](https://docs.microsoft.com/en-us/azure/aks/csi-secrets-store-driver)  
+- Related Issue: [GitHub – CSI Driver SecretSync Missing RBAC](https://github.com/Azure/secrets-store-csi-driver-provider-azure/issues/XXX)  
+
+Let me know if you'd like to refine or add additional details!
+
+
+
+
+
+
 # Azure Monitor Insights and Grafana with AKS and Azure DevOps Pipeline - Detailed Walkthrough
 
 This comprehensive guide covers setting up monitoring for Azure Kubernetes Service (AKS) using Azure Monitor Insights and Grafana, along with deployment via Azure DevOps pipelines using Helm charts.
