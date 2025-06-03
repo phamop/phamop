@@ -7,15 +7,36 @@ https://github.com/kubernetes-sigs/secrets-store-csi-driver/blob/main/test/bats/
 https://azure.github.io/secrets-store-csi-driver-provider-azure/docs/configurations/sync-with-k8s-secrets/
 
 
-After reviewing the Kireet YAML file, I confirmed it does not resolve the current challenge. I also met with Sunday to evaluate potential solutions, and we identified a limitation in the current environment that requires mitigation.
+FROM alpine:3.19 AS certs
+RUN apk --update add ca-certificates
 
-Given the significant time and effort needed to address this limitation, we recommend:
+FROM golang:1.23.6 AS build-stage
+WORKDIR /usr/bin/otelcol
 
-Documenting a risk to formally track the environmental constraint.
+COPY collector/manifest.yaml manifest.yaml
+COPY collector/config.yaml config.yaml
+COPY protos/ protos
+COPY processors/ processors
+COPY extensions/ extensions
+RUN --mount=type=cache,target=/root/.cache/go-build GO111MODULE=on go install go.opentelemetry.io/collector/cmd/builder@v0.120.0
+RUN --mount=type=cache,target=/root/.cache/go-build builder --config manifest.yaml
 
-Proceeding with an alternative solution as an interim measure.
+RUN --mount=type=cache,target=/root/.cache/go-build ./_build/col validate --config config.yaml
 
-Next steps include finalizing the risk assessment and implementing the alternative approach.
+FROM gcr.io/distroless/base:latest
+
+ARG USER_UID=10001
+USER ${USER_UID}
+
+COPY --from=build-stage /usr/bin/otelcol/config.yaml /etc/otelcol/config.yaml
+COPY --from=certs /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+COPY --chmod=755 --from=build-stage /usr/bin/otelcol/_build/col /otelcol
+
+ENTRYPOINT ["/otelcol"]
+CMD ["--config", "/etc/otelcol/config.yaml"]
+# `4137` and `4318`: OTLP
+# `12001`: remotettap
+EXPOSE 4317 4318 12001
 
 
 
