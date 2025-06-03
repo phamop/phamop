@@ -6,3 +6,18 @@ COPY otel-config.yaml /etc/otel/config.yaml
 
 # Set the entrypoint to use your custom config
 CMD ["--config=/etc/otel/config.yaml"]
+
+
+
+-----
+
+version: '3'
+services:
+  otel-collector:
+    build: .
+    ports:
+      - "4317:4317"   # OTLP gRPC receiver
+      - "4318:4318"   # OTLP HTTP receiver
+      - "8888:8888"   # Prometheus metrics exposed by the collector
+    volumes:
+      - ./otel-collector-config.yaml:/etc/otel-collector-config.yaml
