@@ -7,6 +7,10 @@ https://github.com/kubernetes-sigs/secrets-store-csi-driver/blob/main/test/bats/
 https://azure.github.io/secrets-store-csi-driver-provider-azure/docs/configurations/sync-with-k8s-secrets/
 
 
+ gitlab-backup create STRATEGY=copy BACKUP=$(date "+%Y-%m-%d_%H.%M.%S")
+
+
+
 FROM alpine:3.19 AS certs
 RUN apk --update add ca-certificates
 
