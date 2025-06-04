@@ -1,49 +1,50 @@
-# Azure DevOps User Story: Deploy Grafana on AKS using Helm with Azure Monitor and Application Insights Integration
+# User Story: Deploy Grafana OSS on AKS with Azure Monitor and Application Insights Integration via Helm
 
-## User Story
-**Title**: Deploy Open Source Grafana on AKS using Helm with Azure Monitor and Application Insights Integration
+## Story Title
+As a DevOps Engineer, I want to deploy Grafana OSS on AKS using Helm with Azure Monitor and Application Insights integration so that we can visualize our Azure metrics and application data in an open-source dashboard solution.
 
-**As a** DevOps Engineer  
-**I want to** deploy Grafana OSS on our AKS cluster using Helm  
-**So that** we can visualize metrics from Azure Monitor and Application Insights in our existing Grafana setup  
+## User Story Description
+We currently have a Grafana deployment in AKS integrated with Azure Monitor and Application Insights using Helm. We want to replicate this setup using Grafana OSS (Open Source Software) to maintain open-source compliance while keeping all the existing Azure integrations functional.
 
 ## Acceptance Criteria
-1. **Grafana Deployment**:
-   - Grafana OSS is deployed on AKS using Helm chart in the `monitoring` namespace
-   - Deployment uses the official Grafana Helm chart from the stable repository
-   - Configuration is managed via values.yaml file stored in our infrastructure-as-code repository
 
-2. **Azure Integration**:
-   - Grafana is configured to use Azure AD for authentication (same as existing setup)
-   - Azure Monitor and Application Insights datasources are pre-configured
-   - Required Azure service principals and secrets are properly stored in Azure Key Vault
+1. **Grafana OSS Deployment**:
+   - Grafana OSS is successfully deployed on AKS via Helm
+   - Deployment uses the official Grafana Helm chart for OSS version
+   - All necessary Kubernetes resources (deployments, services, ingress, etc.) are created
 
-3. **Persistence**:
-   - Grafana configuration is persisted using a PVC (Persistent Volume Claim)
-   - Dashboard definitions are stored in a Git repository and automatically loaded
+2. **Azure Monitor Integration**:
+   - Grafana is configured to connect to Azure Monitor data source
+   - Service principal or managed identity is properly configured for authentication
+   - All existing Azure Monitor dashboards and queries work as before
 
-4. **Monitoring**:
-   - Grafana pod has resource limits and requests configured
-   - Grafana metrics are exposed to our existing Prometheus monitoring
-   - Health checks (liveness/readiness probes) are configured
+3. **Application Insights Integration**:
+   - Application Insights data source is properly configured in Grafana
+   - API keys or other authentication methods are correctly set up
+   - Existing Application Insights dashboards and queries function correctly
+
+4. **Persistence**:
+   - Dashboard configurations and user settings are persisted
+   - Proper storage configuration is implemented (PVC or Azure Disk)
 
 5. **Security**:
-   - Network policies restrict access to Grafana
-   - Pod runs with non-root user
-   - All secrets are managed via Azure Key Vault
+   - Network policies are in place to restrict access
+   - Authentication is properly configured (Azure AD or other)
+   - Secrets are managed securely (Key Vault or Kubernetes secrets)
 
-6. **Documentation**:
-   - Deployment process is documented in our internal wiki
-   - Helm chart values are documented with comments
-   - Access instructions are added to the team knowledge base
+6. **Monitoring**:
+   - Grafana instance itself is monitored
+   - Alerts are set up for Grafana availability
 
-## Technical Details
+## Technical Implementation Notes
+
+### Helm Configuration
 ```yaml
-# Example values.yaml snippet
+# values.yaml for Grafana OSS
 grafana:
   image:
-    repository: grafana/grafana
-    tag: latest-oss
+    repository: grafana/grafana-oss
+    tag: latest
   persistence:
     enabled: true
     storageClassName: azurefile
@@ -62,54 +63,49 @@ grafana:
         jsonData:
           subscriptionId: ${AZURE_SUBSCRIPTION_ID}
           cloudName: azuremonitor
-          azureAuthType: clientsecret
-          tenantId: ${AZURE_TENANT_ID}
-          clientId: ${AZURE_CLIENT_ID}
+          azureAuthType: msi
         secureJsonData:
           clientSecret: ${AZURE_CLIENT_SECRET}
       - name: AppInsights
-        type: applicationinsights
+        type: application-insights
         access: proxy
         orgId: 1
+        url: /api/datasources/proxy/2
         jsonData:
           appInsightsAppId: ${APP_INSIGHTS_APP_ID}
           appInsightsApiKey: ${APP_INSIGHTS_API_KEY}
-          azureAuthType: clientsecret
-          clientId: ${AZURE_CLIENT_ID}
-          cloudName: azuremonitor
-          subscriptionId: ${AZURE_SUBSCRIPTION_ID}
-          tenantId: ${AZURE_TENANT_ID}
-        secureJsonData:
-          clientSecret: ${AZURE_CLIENT_SECRET}
-  dashboardProviders:
-    dashboardproviders.yaml:
-      apiVersion: 1
-      providers:
-      - name: 'default'
-        orgId: 1
-        folder: ''
-        type: file
-        disableDeletion: false
-        editable: true
-        options:
-          path: /var/lib/grafana/dashboards/default
+          azureLogAnalyticsSameAs: true
 ```
 
-## Tasks
-1. [ ] Create Helm values file with Azure integration configuration
-2. [ ] Set up Azure Key Vault integration for secrets management
-3. [ ] Configure persistent storage for Grafana
-4. [ ] Implement network policies for Grafana access control
-5. [ ] Set up Azure AD authentication for Grafana
-6. [ ] Configure dashboards import from Git repository
-7. [ ] Implement health checks and resource limits
-8. [ ] Document deployment process and access instructions
-9. [ ] Create CI/CD pipeline for Grafana deployment
-10. [ ] Test end-to-end functionality with sample dashboards
+### Deployment Steps
+1. Add Grafana Helm repo:
+   ```bash
+   helm repo add grafana https://grafana.github.io/helm-charts
+   helm repo update
+   ```
+
+2. Install Grafana OSS:
+   ```bash
+   helm install grafana-oss grafana/grafana -f values.yaml
+   ```
+
+3. Configure ingress/network access as needed
+
+4. Set up authentication (Azure AD OAuth recommended)
 
 ## Dependencies
-- Existing AKS cluster with Helm/Tiller configured
-- Azure AD tenant for authentication
+- AKS cluster with proper permissions
 - Azure Monitor and Application Insights resources
-- Azure Key Vault for secret management
-- Storage class configured for persistent volumes
+- Helm installed and configured
+- kubectl configured to access the AKS cluster
+
+## Out of Scope
+- Migration of existing dashboards (to be handled in a separate story)
+- Custom plugin installation (can be added later if needed)
+
+## Value Proposition
+This implementation will provide:
+- Open-source compliant monitoring solution
+- Seamless integration with existing Azure monitoring infrastructure
+- Maintained visibility into application performance and infrastructure metrics
+- Flexibility to customize and extend as needed
