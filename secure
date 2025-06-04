@@ -1,0 +1,115 @@
+# Azure DevOps User Story: Deploy Grafana on AKS using Helm with Azure Monitor and Application Insights Integration
+
+## User Story
+**Title**: Deploy Open Source Grafana on AKS using Helm with Azure Monitor and Application Insights Integration
+
+**As a** DevOps Engineer  
+**I want to** deploy Grafana OSS on our AKS cluster using Helm  
+**So that** we can visualize metrics from Azure Monitor and Application Insights in our existing Grafana setup  
+
+## Acceptance Criteria
+1. **Grafana Deployment**:
+   - Grafana OSS is deployed on AKS using Helm chart in the `monitoring` namespace
+   - Deployment uses the official Grafana Helm chart from the stable repository
+   - Configuration is managed via values.yaml file stored in our infrastructure-as-code repository
+
+2. **Azure Integration**:
+   - Grafana is configured to use Azure AD for authentication (same as existing setup)
+   - Azure Monitor and Application Insights datasources are pre-configured
+   - Required Azure service principals and secrets are properly stored in Azure Key Vault
+
+3. **Persistence**:
+   - Grafana configuration is persisted using a PVC (Persistent Volume Claim)
+   - Dashboard definitions are stored in a Git repository and automatically loaded
+
+4. **Monitoring**:
+   - Grafana pod has resource limits and requests configured
+   - Grafana metrics are exposed to our existing Prometheus monitoring
+   - Health checks (liveness/readiness probes) are configured
+
+5. **Security**:
+   - Network policies restrict access to Grafana
+   - Pod runs with non-root user
+   - All secrets are managed via Azure Key Vault
+
+6. **Documentation**:
+   - Deployment process is documented in our internal wiki
+   - Helm chart values are documented with comments
+   - Access instructions are added to the team knowledge base
+
+## Technical Details
+```yaml
+# Example values.yaml snippet
+grafana:
+  image:
+    repository: grafana/grafana
+    tag: latest-oss
+  persistence:
+    enabled: true
+    storageClassName: azurefile
+    accessModes:
+      - ReadWriteOnce
+    size: 10Gi
+  datasources:
+    datasources.yaml:
+      apiVersion: 1
+      datasources:
+      - name: AzureMonitor
+        type: grafana-azure-monitor-datasource
+        access: proxy
+        orgId: 1
+        url: /api/datasources/proxy/1
+        jsonData:
+          subscriptionId: ${AZURE_SUBSCRIPTION_ID}
+          cloudName: azuremonitor
+          azureAuthType: clientsecret
+          tenantId: ${AZURE_TENANT_ID}
+          clientId: ${AZURE_CLIENT_ID}
+        secureJsonData:
+          clientSecret: ${AZURE_CLIENT_SECRET}
+      - name: AppInsights
+        type: applicationinsights
+        access: proxy
+        orgId: 1
+        jsonData:
+          appInsightsAppId: ${APP_INSIGHTS_APP_ID}
+          appInsightsApiKey: ${APP_INSIGHTS_API_KEY}
+          azureAuthType: clientsecret
+          clientId: ${AZURE_CLIENT_ID}
+          cloudName: azuremonitor
+          subscriptionId: ${AZURE_SUBSCRIPTION_ID}
+          tenantId: ${AZURE_TENANT_ID}
+        secureJsonData:
+          clientSecret: ${AZURE_CLIENT_SECRET}
+  dashboardProviders:
+    dashboardproviders.yaml:
+      apiVersion: 1
+      providers:
+      - name: 'default'
+        orgId: 1
+        folder: ''
+        type: file
+        disableDeletion: false
+        editable: true
+        options:
+          path: /var/lib/grafana/dashboards/default
+```
+
+## Tasks
+1. [ ] Create Helm values file with Azure integration configuration
+2. [ ] Set up Azure Key Vault integration for secrets management
+3. [ ] Configure persistent storage for Grafana
+4. [ ] Implement network policies for Grafana access control
+5. [ ] Set up Azure AD authentication for Grafana
+6. [ ] Configure dashboards import from Git repository
+7. [ ] Implement health checks and resource limits
+8. [ ] Document deployment process and access instructions
+9. [ ] Create CI/CD pipeline for Grafana deployment
+10. [ ] Test end-to-end functionality with sample dashboards
+
+## Dependencies
+- Existing AKS cluster with Helm/Tiller configured
+- Azure AD tenant for authentication
+- Azure Monitor and Application Insights resources
+- Azure Key Vault for secret management
+- Storage class configured for persistent volumes
