@@ -1,3 +1,34 @@
+
+- name: Loki
+      type: loki
+      access: proxy
+      url: http://loki:3100
+      isDefault: false
+      jsonData:
+        maxLines: 1000
+    - name: Jaeger
+      type: jaeger
+      access: proxy
+      url: http://jaeger-query:5775  # Jaeger Query Endpoint (for traces)
+      isDefault: false
+      jsonData:
+        traceDuration: 24h
+        traceURL: "/jaeger"
+      secureJsonData: {}
+    - name: Prometheus
+      type: prometheus
+      access: proxy
+      url: http://prometheus-server:9090  # Prometheus Endpoint
+      isDefault: true
+      jsonData:
+        timeInterval: "15s"
+
+
+
+
+
+
+
 You could add or update a Geo node database record, setting the name to match this machine's Geo node name 
 
 you could set this machine's Geo node name to match the name of an existing database record: 
