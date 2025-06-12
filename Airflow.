@@ -1,11 +1,29 @@
-These are the highlevel of thing am currently working
-Gitlab  DR Test Review tomorrow 
-GitLab DR Test Tuesday Implementation on Tuesday 17
-Qlik Nprinting upgrade in QA next week
-Plan for Informatica upgrade
-Review for Qlik Sense DB Migration tomorrow with all the resources
-Gitlab production migration from RHEL7 -RheL9 (waiting for server update from   len)
-Plan to upgrade Qlik sense in production
+Current Work in Progress
+GitLab DR Test
+
+Review scheduled for tomorrow
+
+Implementation planned for Tuesday, 17th
+
+Qlik NPrinting Upgrade
+
+QA testing scheduled for next week
+
+Informatica Upgrade
+
+Planning in progress
+
+Qlik Sense DB Migration
+
+Review meeting tomorrow with all resources
+
+GitLab Production Migration (RHEL7 → RHEL9)
+
+Awaiting server updates from Len
+
+Qlik Sense Production Upgrade
+
+Planning phase
 
 
 
