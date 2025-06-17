@@ -1,22 +1,27 @@
-target_config:
-  compactor:
-    working_directory: /tmp/loki/compactor
-    shared_store: filesystem
-  distributor:
-    ring:
-      kvstore:
-        store: inmemory
-  ingester:
-    lifecycler:
-      ring:
-        kvstore:
-          store: inmemory
-      replication_factor: 1
-    chunk_idle_period: 1h
-    max_transfer_retries: 0
-  querier:
-    query_ingesters_within: 3h
-
+curl -X POST http://localhost:4318/v1/logs \
+  -H "Content-Type: application/json" \
+  -d '{
+    "resourceLogs": [{
+      "resource": {
+        "attributes": [{
+          "key": "service.name",
+          "value": { "stringValue": "my-service" }
+        }]
+      },
+      "scopeLogs": [{
+        "scope": { "name": "my-scope" },
+        "logRecords": [{
+          "timeUnixNano": '"$(date +%s000000000)"',
+          "severityText": "INFO",
+          "body": { "stringValue": "Hello from curl!" },
+          "attributes": [{
+            "key": "log.level",
+            "value": { "stringValue": "info" }
+          }]
+        }]
+      }]
+    }]
+  }'
 
 
 
