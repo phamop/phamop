@@ -1,29 +1,21 @@
-Current Work in Progress
-GitLab DR Test
-
-Review scheduled for tomorrow
-
-Implementation planned for Tuesday, 17th
-
-Qlik NPrinting Upgrade
-
-QA testing scheduled for next week
-
-Informatica Upgrade
-
-Planning in progress
-
-Qlik Sense DB Migration
-
-Review meeting tomorrow with all resources
-
-GitLab Production Migration (RHEL7 → RHEL9)
-
-Awaiting server updates from Len
-
-Qlik Sense Production Upgrade
-
-Planning phase
+target_config:
+  compactor:
+    working_directory: /tmp/loki/compactor
+    shared_store: filesystem
+  distributor:
+    ring:
+      kvstore:
+        store: inmemory
+  ingester:
+    lifecycler:
+      ring:
+        kvstore:
+          store: inmemory
+      replication_factor: 1
+    chunk_idle_period: 1h
+    max_transfer_retries: 0
+  querier:
+    query_ingesters_within: 3h
 
 
 
