@@ -1,3 +1,4 @@
+"http://$(OTEL_COLLECTOR_SERVICE_HOST):4317"
 For monitoring AKS (Azure Kubernetes Service) resources with Prometheus, you'll want to use several exporters depending on what specific data you need to capture:
 
 ## Core Kubernetes Metrics
