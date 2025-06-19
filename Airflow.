@@ -1,27 +1,47 @@
-curl -X POST http://localhost:4318/v1/logs \
-  -H "Content-Type: application/json" \
-  -d '{
-    "resourceLogs": [{
-      "resource": {
-        "attributes": [{
-          "key": "service.name",
-          "value": { "stringValue": "my-service" }
-        }]
-      },
-      "scopeLogs": [{
-        "scope": { "name": "my-scope" },
-        "logRecords": [{
-          "timeUnixNano": '"$(date +%s000000000)"',
-          "severityText": "INFO",
-          "body": { "stringValue": "Hello from curl!" },
-          "attributes": [{
-            "key": "log.level",
-            "value": { "stringValue": "info" }
-          }]
-        }]
-      }]
-    }]
-  }'
+For monitoring AKS (Azure Kubernetes Service) resources with Prometheus, you'll want to use several exporters depending on what specific data you need to capture:
+
+## Core Kubernetes Metrics
+**kube-state-metrics** - This is the primary exporter for Kubernetes object state metrics. It provides information about:
+- Pod status, resource requests/limits
+- Deployment, ReplicaSet, Service status
+- Node conditions and capacity
+- Persistent Volume claims
+- ConfigMaps, Secrets, and other Kubernetes objects
+
+## Node-Level Metrics
+**node-exporter** - Captures host-level metrics from each node:
+- CPU, memory, disk, network utilization
+- Filesystem usage and availability
+- Hardware and OS metrics
+
+## Container Metrics
+**cAdvisor** - Built into kubelet, provides container-level metrics:
+- Container CPU and memory usage
+- Network and filesystem I/O
+- Container lifecycle events
+
+## Azure-Specific Metrics
+**azure-metrics-exporter** - For Azure-specific resources and services:
+- Azure Monitor metrics
+- AKS-specific Azure resource metrics
+- Integration with Azure services
+
+## Application Metrics
+**Custom application exporters** - Language-specific exporters for your applications:
+- Prometheus client libraries for Go, Java, Python, .NET, etc.
+- Application-specific metrics and business KPIs
+
+## Installation Approach
+The most common setup uses the **Prometheus Operator** or **kube-prometheus-stack** Helm chart, which bundles:
+- Prometheus server
+- kube-state-metrics
+- node-exporter
+- Grafana for visualization
+- AlertManager for notifications
+
+For AKS specifically, you might also consider **Azure Monitor for containers**, which can complement Prometheus by providing deeper integration with Azure services while still allowing you to export metrics to Prometheus.
+
+Which specific aspects of your AKS resources are you most interested in monitoring?
 
 
 
