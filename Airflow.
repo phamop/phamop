@@ -1,5 +1,19 @@
 "http://$(OTEL_COLLECTOR_SERVICE_HOST):4317"
 
+Error: UPGRADE FAILED: values don't meet the specifications of the schema(s) in the following chart(s):
+opentelemetry-collector:
+- presets.kubernetesAttributes: Additional property extract is not allowed
+- presets.kubernetesAttributes: Additional property pod_association is not allowed
+
+##[error]Error: UPGRADE FAILED: values don't meet the specifications of the schema(s) in the following chart(s):
+opentelemetry-collector:
+- presets.kubernetesAttributes: Additional property extract is not allowed
+- presets.kubernetesAttributes: Additional property pod_association is not allowed
+
+
+
+
+
 
 helm install my-opentelemetry-collector open-telemetry/opentelemetry-collector --set mode=<value> --set image.repository="ghcr.io/open-telemetry/opentelemetry-collector-releases/opentelemetry-collector-k8s" --set command.name="otelcol-k8s"
 
