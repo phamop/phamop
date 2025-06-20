@@ -1,3 +1,24 @@
+
+
+Error: UPGRADE FAILED: values don't meet the specifications of the schema(s) in the following chart(s):
+opentelemetry-collector:
+- (root): Additional property deploymentUpdateStrategy is not allowed
+
+##[error]Error: UPGRADE FAILED: values don't meet the specifications of the schema(s) in the following chart(s):
+opentelemetry-collector:
+- (root): Additional property deploymentUpdateStrategy is not allowed
+
+
+
+
+
+
+
+
+
+
+###################################################################
+
 # Optimized OpenTelemetry Collector Configuration
 mode: "deployment"
 
