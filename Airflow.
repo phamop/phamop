@@ -1,6 +1,14 @@
 "http://$(OTEL_COLLECTOR_SERVICE_HOST):4317"
 
 
+
+additionalChartEnvValues: |
+    { "name": "APP_NAME", "value": "flex-demo" },
+    { "name": "LOG_LEVEL", "value": "debug" },
+    { "name": "OTEL_EXPORTER_OTLP_ENDPOINT", "value": "http://$(HOST_IP):4317" },
+    { "name": "HOST_IP", "valueFrom": { "fieldRef": { "fieldPath": status.hostIP } } },
+    { "name": "OTEL_LOG_LEVEL", "value": "debug" }
+
 env:
   - name: OTEL_EXPORTER_OTLP_ENDPOINT
     value: "http://$(HOST_IP):4318"
