@@ -1,5 +1,7 @@
 "http://$(OTEL_COLLECTOR_SERVICE_HOST):4317"
 
+POD_NAME=$(kubectl get pods -n cicd -l app=host-access -o jsonpath='{.items[0].metadata.name}')
+
 additionalChartEnvValues: |
   - name: APP_NAME
     value: "flex-demo"
