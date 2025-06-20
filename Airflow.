@@ -1,11 +1,11 @@
 "http://$(OTEL_COLLECTOR_SERVICE_HOST):4317"
 
 
-We’ve been observing performance issues on our GitLab server, particularly during upgrades. For instance, our recent upgrade from version 17.7 to 17.8 took a minimum of 158 minutes to complete, and jobs have been experiencing delays of nearly 2 minutes before starting.
+helm install my-opentelemetry-collector open-telemetry/opentelemetry-collector --set mode=<value> --set image.repository="ghcr.io/open-telemetry/opentelemetry-collector-releases/opentelemetry-collector-k8s" --set command.name="otelcol-k8s"
 
-We’d like to understand the root cause of these issues so we can take corrective action. Please let us know what information or logs you might need from our side to assist with troubleshooting. Additionally, if a diagnostic session would be helpful, we’re happy to schedule one at your convenience.
 
-Looking forward to your guidance on resolving these concerns.
+
+
 POD_NAME=$(kubectl get pods -n cicd -l app=host-access -o jsonpath='{.items[0].metadata.name}')
 
 additionalChartEnvValues: |
