@@ -6,6 +6,12 @@ helm install my-opentelemetry-collector open-telemetry/opentelemetry-collector -
 
 
 
+/azp/agent/_work/_tool/helm/3.18.3/x64/linux-amd64/helm upgrade --namespace eddv3-hbt --install --values /azp/agent/_work/35/s/devops/helm-charts/grafana-monitor/otel-values-dev.yaml --wait --timeout 5m0s --create-namespace my-opentelemetry-collector open-telemetry/opentelemetry-collector
+Error: UPGRADE FAILED: deployments.apps "my-opentelemetry-collector" not found
+##[error]Error: UPGRADE FAILED: deployments.apps "my-opentelemetry-collector" not found
+
+
+
 POD_NAME=$(kubectl get pods -n cicd -l app=host-access -o jsonpath='{.items[0].metadata.name}')
 
 additionalChartEnvValues: |
