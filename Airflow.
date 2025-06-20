@@ -1,8 +1,11 @@
 "http://$(OTEL_COLLECTOR_SERVICE_HOST):4317"
 
 
-We are observing some slowness on our GitLab server. Our last upgrade took 158 mins minimum to complete an upgrade from 17.7 to 17 .8 also it took about almost 2 mins for job to start. Please we would like to understand and the root cause of this issue so that we can address. Please kindly let us know what you would need for us and if you would like a session. We will be more than happy to make room to address these concerns.
+We’ve been observing performance issues on our GitLab server, particularly during upgrades. For instance, our recent upgrade from version 17.7 to 17.8 took a minimum of 158 minutes to complete, and jobs have been experiencing delays of nearly 2 minutes before starting.
 
+We’d like to understand the root cause of these issues so we can take corrective action. Please let us know what information or logs you might need from our side to assist with troubleshooting. Additionally, if a diagnostic session would be helpful, we’re happy to schedule one at your convenience.
+
+Looking forward to your guidance on resolving these concerns.
 POD_NAME=$(kubectl get pods -n cicd -l app=host-access -o jsonpath='{.items[0].metadata.name}')
 
 additionalChartEnvValues: |
