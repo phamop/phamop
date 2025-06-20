@@ -1,5 +1,6 @@
-# OpenTelemetry Collector Configuration for Service Discovery
-mode: "daemonset"
+# Optimized OpenTelemetry Collector Configuration for AKS Service Discovery
+mode: "daemonset" # Deploy as a DaemonSet to run on each node for host-level telemetry
+
 presets:
   logsCollection:
     enabled: true
@@ -8,19 +9,40 @@ presets:
     maxRecombineLogSize: 102400
   hostMetrics:
     enabled: true
+  # Enable kubernetesAttributes to enrich telemetry with Kubernetes metadata.
+  # This is crucial for effective service discovery and correlation.
   kubernetesAttributes:
-    enabled: true  # Enable for service discovery
+    enabled: true
+    extract:
+      # Extract common Kubernetes resource attributes
+      - metadata.name
+      - metadata.namespace
+      - metadata.labels
+      - metadata.annotations
+      - spec.nodeName
+      - status.podIP
+    # Configure resolvers to identify pods by their IP addresses for attribute enrichment
+    pod_association:
+      - from: "connection"
+      - from: "resource_attribute"
+        name: "k8s.pod.ip" # This is the default, ensuring enrichment works if the IP is already an attribute
   kubeletMetrics:
     enabled: true
   kubernetesEvents:
-    enabled: true  # Enable for service discovery insights
+    # Enabling Kubernetes Events can be useful for comprehensive observability.
+    # Consider enabling if you need to track cluster events.
+    enabled: false
   clusterMetrics:
-    enabled: true  # Enable for service discovery visibility
+    # Enabling clusterMetrics requires appropriate RBAC permissions.
+    # It's useful for cluster-level insights (e.g., node conditions, deployments).
+    enabled: false
+
 configMap:
   create: true
-  existingName: ""
+  existingName: "" # Leave empty if you want the Helm chart to create it.
+
 internalTelemetryViaOTLP:
-  endpoint: ""
+  endpoint: "" # Keep empty if not exporting collector's internal telemetry via OTLP
   headers: []
   traces:
     enabled: false
@@ -28,211 +50,134 @@ internalTelemetryViaOTLP:
     enabled: false
   logs:
     enabled: false
+
 config:
   receivers:
     otlp:
       protocols:
         grpc:
-          endpoint: ${env:MY_POD_IP}:4317
+          # Bind to 0.0.0.0 to accept connections from other pods/services within the cluster
+          endpoint: "0.0.0.0:4317"
         http:
-          endpoint: ${env:MY_POD_IP}:4318
+          # Bind to 0.0.0.0 to accept connections from other pods/services within the cluster
+          endpoint: "0.0.0.0:4318"
     jaeger:
       protocols:
         grpc:
-          endpoint: ${env:MY_POD_IP}:14250
+          endpoint: "0.0.0.0:14250"
         thrift_http:
-          endpoint: ${env:MY_POD_IP}:14268
+          endpoint: "0.0.0.0:14268"
         thrift_compact:
-          endpoint: ${env:MY_POD_IP}:6831
+          endpoint: "0.0.0.0:6831"
     zipkin:
-      endpoint: ${env:MY_POD_IP}:9411
+      endpoint: "0.0.0.0:9411"
     kubeletstats:
+      # AKS Kubelet API uses self-signed certificates, so skip verification.
+      # Ensure your service account has the necessary permissions to access kubelet.
       insecure_skip_verify: true
-    k8s_cluster:
-      auth_type: serviceAccount
-      node: ${env:K8S_NODE_NAME}
-      collection_interval: 30s
-    k8s_events:
-      auth_type: serviceAccount
-      namespaces: [default, kube-system, monitoring]
+      collection_interval: 10s # Example: Adjust as needed
+      auth:
+        # Use service account token for authentication
+        token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+      metric_groups:
+        - "node"
+        - "pod"
     prometheus:
       config:
         scrape_configs:
+          # Scrape the OpenTelemetry Collector's own metrics
           - job_name: opentelemetry-collector
             scrape_interval: 10s
-            static_configs:
-              - targets:
-                - ${env:MY_POD_IP}:8888
-          # Service discovery configurations
-          - job_name: kubernetes-pods
+            # Use Kubernetes service discovery for the collector itself
             kubernetes_sd_configs:
               - role: pod
             relabel_configs:
+              # Target the collector's own metrics endpoint
+              - source_labels: [__meta_kubernetes_pod_name]
+                regex: ".*opentelemetry-collector.*" # Adjust if your collector pod name pattern differs
+                action: keep
+              - source_labels: [__meta_kubernetes_pod_container_port_name]
+                regex: "metrics" # Assuming the Prometheus metrics port is named "metrics"
+                action: keep
+              - source_labels: [__meta_kubernetes_pod_ip, __meta_kubernetes_pod_container_port_number]
+                regex: "(.+);(.+)"
+                replacement: "$${1}:$${2}"
+                target_label: __address__
+          # Example: Kubernetes Pod/Service discovery for application metrics
+          # This is the core for service discovery in AKS
+          - job_name: kubernetes-pods
+            scrape_interval: 30s # Adjust scrape interval as needed
+            kubernetes_sd_configs:
+              - role: pod
+            relabel_configs:
+              # Example: Only scrape pods with a specific annotation for Prometheus metrics
+              # Add this annotation to your application pods: prometheus.io/scrape: "true"
               - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
                 action: keep
-                regex: true
+                regex: "true"
+              # Example: Use the annotation prometheus.io/path to specify the metrics path
               - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
                 action: replace
                 target_label: __metrics_path__
                 regex: (.+)
+              # Example: Use the annotation prometheus.io/port to specify the metrics port
+              - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_port]
+                action: replace
+                target_label: __address__
+                regex: (.+)
+                replacement: "$${1}:$$2" # This will be the pod IP and annotated port
               - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
-                action: replace
-                regex: ([^:]+)(?::\d+)?;(\d+)
-                replacement: $1:$2
+                regex: "([^:]+)(?::\\d+)?;(\\d+)"
+                replacement: "$${1}:$${2}"
                 target_label: __address__
-              - action: labelmap
-                regex: __meta_kubernetes_pod_label_(.+)
+              # Add Kubernetes metadata as labels
               - source_labels: [__meta_kubernetes_namespace]
                 action: replace
                 target_label: kubernetes_namespace
               - source_labels: [__meta_kubernetes_pod_name]
                 action: replace
                 target_label: kubernetes_pod_name
-          - job_name: kubernetes-services
-            kubernetes_sd_configs:
-              - role: service
-            relabel_configs:
-              - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_scrape]
-                action: keep
-                regex: true
-              - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_scheme]
+              - source_labels: [__meta_kubernetes_container_name]
                 action: replace
-                target_label: __scheme__
-                regex: (https?)
-              - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_path]
-                action: replace
-                target_label: __metrics_path__
-                regex: (.+)
-              - source_labels: [__address__, __meta_kubernetes_service_annotation_prometheus_io_port]
-                action: replace
-                target_label: __address__
-                regex: ([^:]+)(?::\d+)?;(\d+)
-                replacement: $1:$2
-              - action: labelmap
-                regex: __meta_kubernetes_service_label_(.+)
-              - source_labels: [__meta_kubernetes_namespace]
-                action: replace
-                target_label: kubernetes_namespace
-              - source_labels: [__meta_kubernetes_service_name]
-                action: replace
-                target_label: kubernetes_service_name
-          - job_name: kubernetes-endpoints
-            kubernetes_sd_configs:
-              - role: endpoints
-            relabel_configs:
-              - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_scrape]
-                action: keep
-                regex: true
-              - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_scheme]
-                action: replace
-                target_label: __scheme__
-                regex: (https?)
-              - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_path]
-                action: replace
-                target_label: __metrics_path__
-                regex: (.+)
-              - source_labels: [__address__, __meta_kubernetes_service_annotation_prometheus_io_port]
-                action: replace
-                target_label: __address__
-                regex: ([^:]+)(?::\d+)?;(\d+)
-                replacement: $1:$2
-              - action: labelmap
-                regex: __meta_kubernetes_service_label_(.+)
-              - source_labels: [__meta_kubernetes_namespace]
-                action: replace
-                target_label: kubernetes_namespace
-              - source_labels: [__meta_kubernetes_service_name]
-                action: replace
-                target_label: kubernetes_service_name
-              - source_labels: [__meta_kubernetes_pod_name]
-                action: replace
-                target_label: kubernetes_pod_name
+                target_label: kubernetes_container_name
+              # You can add more relabelings to extract other Kubernetes metadata as labels
+
   processors:
     batch: {}
     memory_limiter:
       check_interval: 5s
       limit_percentage: 80
       spike_limit_percentage: 25
-    k8sattributes:
-      auth_type: serviceAccount
-      passthrough: false
-      filter:
-        node_from_env_var: K8S_NODE_NAME
-      extract:
-        metadata:
-          - k8s.pod.name
-          - k8s.pod.uid
-          - k8s.deployment.name
-          - k8s.namespace.name
-          - k8s.node.name
-          - k8s.pod.start_time
-          - k8s.service.name
-        labels:
-          - tag_name: app.label.component
-            key: app.kubernetes.io/component
-            from: pod
-          - tag_name: app.label.version
-            key: app.kubernetes.io/version
-            from: pod
-        annotations:
-          - tag_name: app.annotation.scrape
-            key: prometheus.io/scrape
-            from: pod
-      pod_association:
-        - sources:
-          - from: resource_attribute
-            name: k8s.pod.ip
-        - sources:
-          - from: resource_attribute
-            name: k8s.pod.uid
-        - sources:
-          - from: connection
-    resource:
-      attributes:
-        - key: service.name
-          from_attribute: k8s.deployment.name
-          action: insert
-        - key: service.version
-          from_attribute: app.label.version
-          action: insert
-        - key: service.namespace
-          from_attribute: k8s.namespace.name
-          action: insert
-        - key: service.instance.id
-          from_attribute: k8s.pod.name
-          action: insert
-    servicegraph:
-      metrics_exporter: prometheus
-      latency_histogram_buckets: [100us, 1ms, 2ms, 6ms, 10ms, 100ms, 250ms]
-      dimensions: [cluster, namespace, service, pod, node]
-      store:
-        ttl: 2s
-        max_items: 1000
+    # The kubernetesattributes processor is automatically enabled by the preset,
+    # but explicitly listing it here for clarity if you were to manage processors manually.
+    # kubernetesattributes:
+    #   extract:
+    #     - metadata.name
+    #     - metadata.namespace
+    #     - metadata.labels
+    #     - metadata.annotations
+    #     - spec.nodeName
+    #     - status.podIP
+    #   pod_association:
+    #     - from: "connection"
+    #     - from: "resource_attribute"
+    #       name: "k8s.pod.ip"
+
   exporters:
-    debug: {}
+    debug: {} # For debugging purposes, sends telemetry to stdout/stderr
     azuremonitor:
+      # Ensure your connection string is securely managed (e.g., Kubernetes Secret)
       connection_string: "InstrumentationKey=a04b4a5d-40f2-4508-885a-6ba32f28d17b;IngestionEndpoint=https://eastus-8.in.applicationinsights.azure.com/;LiveEndpoint=https://eastus.livediagnostics.monitor.azure.com/;ApplicationId=0cac2de8-d983-4211-8a7a-709d6363d032"
     otlphttp/loki:
-      endpoint: "http://loki:3100/otlp"
+      endpoint: "http://loki:3100/otlp" # Ensure Loki service is reachable at this endpoint
     prometheus:
-      endpoint: "0.0.0.0:8889"
-      namespace: "otel"
-      const_labels:
-        cluster: "production"
-    # Export service topology data
-    otlp/jaeger:
-      endpoint: "http://jaeger-collector:14250"
-      tls:
-        insecure: true
+      endpoint: "0.0.0.0:8889" # Expose Prometheus metrics from the collector itself
+
   extensions:
     health_check:
-      endpoint: ${env:MY_POD_IP}:13133
-    k8s_observer:
-      auth_type: serviceAccount
-      node: ${env:K8S_NODE_NAME}
-      observe_pods: true
-      observe_nodes: true
-      observe_services: true
+      # Bind to 0.0.0.0 for reachability within the pod
+      endpoint: "0.0.0.0:13133"
+
   service:
     telemetry:
       metrics:
@@ -240,20 +185,21 @@ config:
           - pull:
               exporter:
                 prometheus:
-                  host: ${env:MY_POD_IP}
+                  host: "0.0.0.0" # Bind to 0.0.0.0 for external access
                   port: 8888
     extensions:
       - health_check
-      - k8s_observer
     pipelines:
       logs:
         receivers:
           - otlp
+          # Add a filelog receiver for collecting container logs if needed.
+          # This typically works best with a DaemonSet.
+          # - filelog # Requires filelog receiver configuration
         processors:
           - memory_limiter
-          - k8sattributes
-          - resource
           - batch
+          - kubernetesattributes # Ensure k8s attributes are added to logs
         exporters:
           - debug
           - azuremonitor
@@ -262,13 +208,11 @@ config:
         receivers:
           - otlp
           - prometheus
-          - k8s_cluster
-          - kubeletstats
+          - kubeletstats # Add kubeletstats to the metrics pipeline
         processors:
           - memory_limiter
-          - k8sattributes
-          - resource
           - batch
+          - kubernetesattributes # Ensure k8s attributes are added to metrics
         exporters:
           - debug
           - azuremonitor
@@ -277,113 +221,81 @@ config:
         receivers:
           - otlp
           - jaeger
-          - zipkin
+          - zip
         processors:
           - memory_limiter
-          - k8sattributes
-          - resource
-          - servicegraph
           - batch
+          - kubernetesattributes # Ensure k8s attributes are added to traces
         exporters:
           - debug
           - azuremonitor
-          - otlp/jaeger
+          - otlp # Assuming you want to export traces to another OTLP endpoint (e.g., Azure Monitor is OTLP compatible)
+
 image:
   repository: "otel/opentelemetry-collector-contrib"
   pullPolicy: IfNotPresent
-  tag: "0.123.0"
+  tag: "0.123.0" # Use a specific, stable tag. Consider updating to the latest stable.
+
 resources:
   requests:
     cpu: 500m
-    memory: 1Gi
+    memory: 800Mi
   limits:
     cpu: 2000m
-    memory: 2Gi
+    memory: 2000Mi
+
 serviceAccount:
   create: true
-  annotations:
-    eks.amazonaws.com/role-arn: ""
-rbac:
-  create: true
-  clusterRole: true
-  rules:
-    - apiGroups: [""]
-      resources: ["pods", "services", "endpoints", "nodes", "namespaces", "events"]
-      verbs: ["get", "list", "watch"]
-    - apiGroups: ["apps"]
-      resources: ["deployments", "replicasets", "daemonsets", "statefulsets"]
-      verbs: ["get", "list", "watch"]
-    - apiGroups: ["extensions"]
-      resources: ["deployments", "replicasets"]
-      verbs: ["get", "list", "watch"]
-    - apiGroups: ["batch"]
-      resources: ["jobs", "cronjobs"]
-      verbs: ["get", "list", "watch"]
+  # Ensure the service account has necessary RBAC permissions for Kubernetes API access
+  # for kubernetesAttributes processor and kubeletstats receiver.
+  # This typically includes permissions to "get", "list", "watch" pods, nodes, services, endpoints.
+
 ports:
   otlp:
     enabled: true
     containerPort: 4317
-    servicePort: 4317
-    hostPort: 4317
+    servicePort: 4317 # Expose this as a Service to allow applications to send OTLP to the collector
+    hostPort: 4317 # If running as DaemonSet and you want host-level port exposure
   otlp-http:
     enabled: true
     containerPort: 4318
     servicePort: 4318
+    hostPort: 4318
   jaeger-compact:
     enabled: true
     containerPort: 6831
     protocol: UDP
+    hostPort: 6831
   jaeger-thrift:
     enabled: true
     containerPort: 14268
+    servicePort: 14268
+    hostPort: 14268
   jaeger-grpc:
     enabled: true
     containerPort: 14250
+    servicePort: 14250
+    hostPort: 14250
   zipkin:
     enabled: true
     containerPort: 9411
-  prometheus:
+    servicePort: 9411
+    hostPort: 9411
+  metrics: # Port for the collector's own internal Prometheus metrics
     enabled: true
-    containerPort: 8889
-    servicePort: 8889
-# Health check configuration
+    containerPort: 8888
+    servicePort: 8888
+    hostPort: 8888
+
 livenessProbe:
   httpGet:
     path: /
     port: 13133
-  initialDelaySeconds: 30
-  periodSeconds: 30
-  timeoutSeconds: 5
-  failureThreshold: 3
 readinessProbe:
   httpGet:
     path: /
     port: 13133
   initialDelaySeconds: 5
   periodSeconds: 10
-  timeoutSeconds: 5
-  failureThreshold: 3
-# Environment variables for service discovery
-env:
-  - name: K8S_NODE_NAME
-    valueFrom:
-      fieldRef:
-        fieldPath: spec.nodeName
-  - name: K8S_POD_NAME
-    valueFrom:
-      fieldRef:
-        fieldPath: metadata.name
-  - name: K8S_POD_NAMESPACE
-    valueFrom:
-      fieldRef:
-        fieldPath: metadata.namespace
-  - name: K8S_POD_IP
-    valueFrom:
-      fieldRef:
-        fieldPath: status.podIP
+
 useGOMEMLIMIT: true
-# Service annotations for service discovery
-serviceAnnotations:
-  prometheus.io/scrape: "true"
-  prometheus.io/port: "8889"
-  prometheus.io/path: "/metrics"
