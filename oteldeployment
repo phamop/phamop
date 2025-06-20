@@ -1,32 +1,8 @@
-
-
-Error: UPGRADE FAILED: values don't meet the specifications of the schema(s) in the following chart(s):
-opentelemetry-collector:
-- (root): Additional property deploymentUpdateStrategy is not allowed
-
-##[error]Error: UPGRADE FAILED: values don't meet the specifications of the schema(s) in the following chart(s):
-opentelemetry-collector:
-- (root): Additional property deploymentUpdateStrategy is not allowed
-
-
-
-
-
-
-
-
-
-
-###################################################################
-
 # Optimized OpenTelemetry Collector Configuration
 mode: "deployment"
 
 # Deployment-specific settings
 replicaCount: 2
-
-# Strategy for rolling updates
-deploymentUpdateStrategy: RollingUpdate
 
 presets:
   logsCollection:
@@ -172,11 +148,7 @@ resources:
 serviceAccount:
   create: true
 
-# Service configuration for deployment
-service:
-  enabled: true
-  type: ClusterIP
-  
+# Service configuration is handled automatically by the chart
 ports:
   otlp:
     enabled: true
@@ -218,15 +190,3 @@ readinessProbe:
   periodSeconds: 10
 
 useGOMEMLIMIT: true
-
-# Deployment-specific configurations
-autoscaling:
-  enabled: false
-  minReplicas: 2
-  maxReplicas: 10
-  targetCPUUtilizationPercentage: 80
-
-# Pod disruption budget for high availability
-podDisruptionBudget:
-  enabled: true
-  minAvailable: 1
