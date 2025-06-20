@@ -1,4 +1,5 @@
 # Optimized OpenTelemetry Collector Configuration for AKS Service Discovery
+# Corrected for Helm Chart Schema Validation
 mode: "daemonset" # Deploy as a DaemonSet to run on each node for host-level telemetry
 
 presets:
@@ -9,32 +10,18 @@ presets:
     maxRecombineLogSize: 102400
   hostMetrics:
     enabled: true
-  # Enable kubernetesAttributes to enrich telemetry with Kubernetes metadata.
-  # This is crucial for effective service discovery and correlation.
+  # *** CHANGE START ***
+  # Remove 'extract' and 'pod_association' from presets.kubernetesAttributes
+  # as per the error message. The chart likely configures this internally
+  # or expects it under the main 'config' block.
   kubernetesAttributes:
     enabled: true
-    extract:
-      # Extract common Kubernetes resource attributes
-      - metadata.name
-      - metadata.namespace
-      - metadata.labels
-      - metadata.annotations
-      - spec.nodeName
-      - status.podIP
-    # Configure resolvers to identify pods by their IP addresses for attribute enrichment
-    pod_association:
-      - from: "connection"
-      - from: "resource_attribute"
-        name: "k8s.pod.ip" # This is the default, ensuring enrichment works if the IP is already an attribute
+  # *** CHANGE END ***
   kubeletMetrics:
     enabled: true
   kubernetesEvents:
-    # Enabling Kubernetes Events can be useful for comprehensive observability.
-    # Consider enabling if you need to track cluster events.
     enabled: false
   clusterMetrics:
-    # Enabling clusterMetrics requires appropriate RBAC permissions.
-    # It's useful for cluster-level insights (e.g., node conditions, deployments).
     enabled: false
 
 configMap:
@@ -56,10 +43,8 @@ config:
     otlp:
       protocols:
         grpc:
-          # Bind to 0.0.0.0 to accept connections from other pods/services within the cluster
           endpoint: "0.0.0.0:4317"
         http:
-          # Bind to 0.0.0.0 to accept connections from other pods/services within the cluster
           endpoint: "0.0.0.0:4318"
     jaeger:
       protocols:
@@ -72,12 +57,9 @@ config:
     zipkin:
       endpoint: "0.0.0.0:9411"
     kubeletstats:
-      # AKS Kubelet API uses self-signed certificates, so skip verification.
-      # Ensure your service account has the necessary permissions to access kubelet.
       insecure_skip_verify: true
       collection_interval: 10s # Example: Adjust as needed
       auth:
-        # Use service account token for authentication
         token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
       metric_groups:
         - "node"
@@ -88,11 +70,9 @@ config:
           # Scrape the OpenTelemetry Collector's own metrics
           - job_name: opentelemetry-collector
             scrape_interval: 10s
-            # Use Kubernetes service discovery for the collector itself
             kubernetes_sd_configs:
               - role: pod
             relabel_configs:
-              # Target the collector's own metrics endpoint
               - source_labels: [__meta_kubernetes_pod_name]
                 regex: ".*opentelemetry-collector.*" # Adjust if your collector pod name pattern differs
                 action: keep
@@ -103,34 +83,29 @@ config:
                 regex: "(.+);(.+)"
                 replacement: "$${1}:$${2}"
                 target_label: __address__
-          # Example: Kubernetes Pod/Service discovery for application metrics
-          # This is the core for service discovery in AKS
+
+          # Kubernetes Pod/Service discovery for application metrics
           - job_name: kubernetes-pods
             scrape_interval: 30s # Adjust scrape interval as needed
             kubernetes_sd_configs:
               - role: pod
             relabel_configs:
-              # Example: Only scrape pods with a specific annotation for Prometheus metrics
-              # Add this annotation to your application pods: prometheus.io/scrape: "true"
               - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
                 action: keep
                 regex: "true"
-              # Example: Use the annotation prometheus.io/path to specify the metrics path
               - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
                 action: replace
                 target_label: __metrics_path__
                 regex: (.+)
-              # Example: Use the annotation prometheus.io/port to specify the metrics port
               - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_port]
                 action: replace
                 target_label: __address__
                 regex: (.+)
-                replacement: "$${1}:$$2" # This will be the pod IP and annotated port
+                replacement: "$${1}:$$2"
               - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
                 regex: "([^:]+)(?::\\d+)?;(\\d+)"
                 replacement: "$${1}:$${2}"
                 target_label: __address__
-              # Add Kubernetes metadata as labels
               - source_labels: [__meta_kubernetes_namespace]
                 action: replace
                 target_label: kubernetes_namespace
@@ -140,7 +115,6 @@ config:
               - source_labels: [__meta_kubernetes_container_name]
                 action: replace
                 target_label: kubernetes_container_name
-              # You can add more relabelings to extract other Kubernetes metadata as labels
 
   processors:
     batch: {}
@@ -148,34 +122,36 @@ config:
       check_interval: 5s
       limit_percentage: 80
       spike_limit_percentage: 25
-    # The kubernetesattributes processor is automatically enabled by the preset,
-    # but explicitly listing it here for clarity if you were to manage processors manually.
-    # kubernetesattributes:
-    #   extract:
-    #     - metadata.name
-    #     - metadata.namespace
-    #     - metadata.labels
-    #     - metadata.annotations
-    #     - spec.nodeName
-    #     - status.podIP
-    #   pod_association:
-    #     - from: "connection"
-    #     - from: "resource_attribute"
-    #       name: "k8s.pod.ip"
+    # *** CHANGE START ***
+    # If the preset `kubernetesAttributes: enabled: true` doesn't fully configure
+    # the processor as needed, you might need to explicitly define it here
+    # under the 'processors' section, *if the chart allows custom processor definitions*.
+    # If the error persists, it implies the chart takes full control of this processor.
+    kubernetesattributes: # Define the processor explicitly if needed and allowed by chart
+      extract:
+        - metadata.name
+        - metadata.namespace
+        - metadata.labels
+        - metadata.annotations
+        - spec.nodeName
+        - status.podIP
+      pod_association:
+        - from: "connection"
+        - from: "resource_attribute"
+          name: "k8s.pod.ip"
+    # *** CHANGE END ***
 
   exporters:
-    debug: {} # For debugging purposes, sends telemetry to stdout/stderr
+    debug: {}
     azuremonitor:
-      # Ensure your connection string is securely managed (e.g., Kubernetes Secret)
       connection_string: "InstrumentationKey=a04b4a5d-40f2-4508-885a-6ba32f28d17b;IngestionEndpoint=https://eastus-8.in.applicationinsights.azure.com/;LiveEndpoint=https://eastus.livediagnostics.monitor.azure.com/;ApplicationId=0cac2de8-d983-4211-8a7a-709d6363d032"
     otlphttp/loki:
-      endpoint: "http://loki:3100/otlp" # Ensure Loki service is reachable at this endpoint
+      endpoint: "http://loki:3100/otlp"
     prometheus:
-      endpoint: "0.0.0.0:8889" # Expose Prometheus metrics from the collector itself
+      endpoint: "0.0.0.0:8889"
 
   extensions:
     health_check:
-      # Bind to 0.0.0.0 for reachability within the pod
       endpoint: "0.0.0.0:13133"
 
   service:
@@ -185,7 +161,7 @@ config:
           - pull:
               exporter:
                 prometheus:
-                  host: "0.0.0.0" # Bind to 0.0.0.0 for external access
+                  host: "0.0.0.0"
                   port: 8888
     extensions:
       - health_check
@@ -193,13 +169,10 @@ config:
       logs:
         receivers:
           - otlp
-          # Add a filelog receiver for collecting container logs if needed.
-          # This typically works best with a DaemonSet.
-          # - filelog # Requires filelog receiver configuration
         processors:
           - memory_limiter
           - batch
-          - kubernetesattributes # Ensure k8s attributes are added to logs
+          - kubernetesattributes # Reference the processor defined above
         exporters:
           - debug
           - azuremonitor
@@ -208,11 +181,11 @@ config:
         receivers:
           - otlp
           - prometheus
-          - kubeletstats # Add kubeletstats to the metrics pipeline
+          - kubeletstats
         processors:
           - memory_limiter
           - batch
-          - kubernetesattributes # Ensure k8s attributes are added to metrics
+          - kubernetesattributes # Reference the processor defined above
         exporters:
           - debug
           - azuremonitor
@@ -221,20 +194,20 @@ config:
         receivers:
           - otlp
           - jaeger
-          - zip
+          - zipkin
         processors:
           - memory_limiter
           - batch
-          - kubernetesattributes # Ensure k8s attributes are added to traces
+          - kubernetesattributes # Reference the processor defined above
         exporters:
           - debug
           - azuremonitor
-          - otlp # Assuming you want to export traces to another OTLP endpoint (e.g., Azure Monitor is OTLP compatible)
+          - otlp
 
 image:
   repository: "otel/opentelemetry-collector-contrib"
   pullPolicy: IfNotPresent
-  tag: "0.123.0" # Use a specific, stable tag. Consider updating to the latest stable.
+  tag: "0.123.0"
 
 resources:
   requests:
@@ -246,16 +219,13 @@ resources:
 
 serviceAccount:
   create: true
-  # Ensure the service account has necessary RBAC permissions for Kubernetes API access
-  # for kubernetesAttributes processor and kubeletstats receiver.
-  # This typically includes permissions to "get", "list", "watch" pods, nodes, services, endpoints.
 
 ports:
   otlp:
     enabled: true
     containerPort: 4317
-    servicePort: 4317 # Expose this as a Service to allow applications to send OTLP to the collector
-    hostPort: 4317 # If running as DaemonSet and you want host-level port exposure
+    servicePort: 4317
+    hostPort: 4317
   otlp-http:
     enabled: true
     containerPort: 4318
@@ -281,7 +251,7 @@ ports:
     containerPort: 9411
     servicePort: 9411
     hostPort: 9411
-  metrics: # Port for the collector's own internal Prometheus metrics
+  metrics:
     enabled: true
     containerPort: 8888
     servicePort: 8888
