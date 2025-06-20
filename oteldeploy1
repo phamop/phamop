@@ -1,0 +1,389 @@
+# OpenTelemetry Collector Configuration for Service Discovery
+mode: "daemonset"
+presets:
+  logsCollection:
+    enabled: true
+    includeCollectorLogs: false
+    storeCheckpoints: false
+    maxRecombineLogSize: 102400
+  hostMetrics:
+    enabled: true
+  kubernetesAttributes:
+    enabled: true  # Enable for service discovery
+  kubeletMetrics:
+    enabled: true
+  kubernetesEvents:
+    enabled: true  # Enable for service discovery insights
+  clusterMetrics:
+    enabled: true  # Enable for service discovery visibility
+configMap:
+  create: true
+  existingName: ""
+internalTelemetryViaOTLP:
+  endpoint: ""
+  headers: []
+  traces:
+    enabled: false
+  metrics:
+    enabled: false
+  logs:
+    enabled: false
+config:
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: ${env:MY_POD_IP}:4317
+        http:
+          endpoint: ${env:MY_POD_IP}:4318
+    jaeger:
+      protocols:
+        grpc:
+          endpoint: ${env:MY_POD_IP}:14250
+        thrift_http:
+          endpoint: ${env:MY_POD_IP}:14268
+        thrift_compact:
+          endpoint: ${env:MY_POD_IP}:6831
+    zipkin:
+      endpoint: ${env:MY_POD_IP}:9411
+    kubeletstats:
+      insecure_skip_verify: true
+    k8s_cluster:
+      auth_type: serviceAccount
+      node: ${env:K8S_NODE_NAME}
+      collection_interval: 30s
+    k8s_events:
+      auth_type: serviceAccount
+      namespaces: [default, kube-system, monitoring]
+    prometheus:
+      config:
+        scrape_configs:
+          - job_name: opentelemetry-collector
+            scrape_interval: 10s
+            static_configs:
+              - targets:
+                - ${env:MY_POD_IP}:8888
+          # Service discovery configurations
+          - job_name: kubernetes-pods
+            kubernetes_sd_configs:
+              - role: pod
+            relabel_configs:
+              - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+                action: keep
+                regex: true
+              - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+                action: replace
+                target_label: __metrics_path__
+                regex: (.+)
+              - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+                action: replace
+                regex: ([^:]+)(?::\d+)?;(\d+)
+                replacement: $1:$2
+                target_label: __address__
+              - action: labelmap
+                regex: __meta_kubernetes_pod_label_(.+)
+              - source_labels: [__meta_kubernetes_namespace]
+                action: replace
+                target_label: kubernetes_namespace
+              - source_labels: [__meta_kubernetes_pod_name]
+                action: replace
+                target_label: kubernetes_pod_name
+          - job_name: kubernetes-services
+            kubernetes_sd_configs:
+              - role: service
+            relabel_configs:
+              - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_scrape]
+                action: keep
+                regex: true
+              - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_scheme]
+                action: replace
+                target_label: __scheme__
+                regex: (https?)
+              - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_path]
+                action: replace
+                target_label: __metrics_path__
+                regex: (.+)
+              - source_labels: [__address__, __meta_kubernetes_service_annotation_prometheus_io_port]
+                action: replace
+                target_label: __address__
+                regex: ([^:]+)(?::\d+)?;(\d+)
+                replacement: $1:$2
+              - action: labelmap
+                regex: __meta_kubernetes_service_label_(.+)
+              - source_labels: [__meta_kubernetes_namespace]
+                action: replace
+                target_label: kubernetes_namespace
+              - source_labels: [__meta_kubernetes_service_name]
+                action: replace
+                target_label: kubernetes_service_name
+          - job_name: kubernetes-endpoints
+            kubernetes_sd_configs:
+              - role: endpoints
+            relabel_configs:
+              - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_scrape]
+                action: keep
+                regex: true
+              - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_scheme]
+                action: replace
+                target_label: __scheme__
+                regex: (https?)
+              - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_path]
+                action: replace
+                target_label: __metrics_path__
+                regex: (.+)
+              - source_labels: [__address__, __meta_kubernetes_service_annotation_prometheus_io_port]
+                action: replace
+                target_label: __address__
+                regex: ([^:]+)(?::\d+)?;(\d+)
+                replacement: $1:$2
+              - action: labelmap
+                regex: __meta_kubernetes_service_label_(.+)
+              - source_labels: [__meta_kubernetes_namespace]
+                action: replace
+                target_label: kubernetes_namespace
+              - source_labels: [__meta_kubernetes_service_name]
+                action: replace
+                target_label: kubernetes_service_name
+              - source_labels: [__meta_kubernetes_pod_name]
+                action: replace
+                target_label: kubernetes_pod_name
+  processors:
+    batch: {}
+    memory_limiter:
+      check_interval: 5s
+      limit_percentage: 80
+      spike_limit_percentage: 25
+    k8sattributes:
+      auth_type: serviceAccount
+      passthrough: false
+      filter:
+        node_from_env_var: K8S_NODE_NAME
+      extract:
+        metadata:
+          - k8s.pod.name
+          - k8s.pod.uid
+          - k8s.deployment.name
+          - k8s.namespace.name
+          - k8s.node.name
+          - k8s.pod.start_time
+          - k8s.service.name
+        labels:
+          - tag_name: app.label.component
+            key: app.kubernetes.io/component
+            from: pod
+          - tag_name: app.label.version
+            key: app.kubernetes.io/version
+            from: pod
+        annotations:
+          - tag_name: app.annotation.scrape
+            key: prometheus.io/scrape
+            from: pod
+      pod_association:
+        - sources:
+          - from: resource_attribute
+            name: k8s.pod.ip
+        - sources:
+          - from: resource_attribute
+            name: k8s.pod.uid
+        - sources:
+          - from: connection
+    resource:
+      attributes:
+        - key: service.name
+          from_attribute: k8s.deployment.name
+          action: insert
+        - key: service.version
+          from_attribute: app.label.version
+          action: insert
+        - key: service.namespace
+          from_attribute: k8s.namespace.name
+          action: insert
+        - key: service.instance.id
+          from_attribute: k8s.pod.name
+          action: insert
+    servicegraph:
+      metrics_exporter: prometheus
+      latency_histogram_buckets: [100us, 1ms, 2ms, 6ms, 10ms, 100ms, 250ms]
+      dimensions: [cluster, namespace, service, pod, node]
+      store:
+        ttl: 2s
+        max_items: 1000
+  exporters:
+    debug: {}
+    azuremonitor:
+      connection_string: "InstrumentationKey=a04b4a5d-40f2-4508-885a-6ba32f28d17b;IngestionEndpoint=https://eastus-8.in.applicationinsights.azure.com/;LiveEndpoint=https://eastus.livediagnostics.monitor.azure.com/;ApplicationId=0cac2de8-d983-4211-8a7a-709d6363d032"
+    otlphttp/loki:
+      endpoint: "http://loki:3100/otlp"
+    prometheus:
+      endpoint: "0.0.0.0:8889"
+      namespace: "otel"
+      const_labels:
+        cluster: "production"
+    # Export service topology data
+    otlp/jaeger:
+      endpoint: "http://jaeger-collector:14250"
+      tls:
+        insecure: true
+  extensions:
+    health_check:
+      endpoint: ${env:MY_POD_IP}:13133
+    k8s_observer:
+      auth_type: serviceAccount
+      node: ${env:K8S_NODE_NAME}
+      observe_pods: true
+      observe_nodes: true
+      observe_services: true
+  service:
+    telemetry:
+      metrics:
+        readers:
+          - pull:
+              exporter:
+                prometheus:
+                  host: ${env:MY_POD_IP}
+                  port: 8888
+    extensions:
+      - health_check
+      - k8s_observer
+    pipelines:
+      logs:
+        receivers:
+          - otlp
+        processors:
+          - memory_limiter
+          - k8sattributes
+          - resource
+          - batch
+        exporters:
+          - debug
+          - azuremonitor
+          - otlphttp/loki
+      metrics:
+        receivers:
+          - otlp
+          - prometheus
+          - k8s_cluster
+          - kubeletstats
+        processors:
+          - memory_limiter
+          - k8sattributes
+          - resource
+          - batch
+        exporters:
+          - debug
+          - azuremonitor
+          - prometheus
+      traces:
+        receivers:
+          - otlp
+          - jaeger
+          - zipkin
+        processors:
+          - memory_limiter
+          - k8sattributes
+          - resource
+          - servicegraph
+          - batch
+        exporters:
+          - debug
+          - azuremonitor
+          - otlp/jaeger
+image:
+  repository: "otel/opentelemetry-collector-contrib"
+  pullPolicy: IfNotPresent
+  tag: "0.123.0"
+resources:
+  requests:
+    cpu: 500m
+    memory: 1Gi
+  limits:
+    cpu: 2000m
+    memory: 2Gi
+serviceAccount:
+  create: true
+  annotations:
+    eks.amazonaws.com/role-arn: ""
+rbac:
+  create: true
+  clusterRole: true
+  rules:
+    - apiGroups: [""]
+      resources: ["pods", "services", "endpoints", "nodes", "namespaces", "events"]
+      verbs: ["get", "list", "watch"]
+    - apiGroups: ["apps"]
+      resources: ["deployments", "replicasets", "daemonsets", "statefulsets"]
+      verbs: ["get", "list", "watch"]
+    - apiGroups: ["extensions"]
+      resources: ["deployments", "replicasets"]
+      verbs: ["get", "list", "watch"]
+    - apiGroups: ["batch"]
+      resources: ["jobs", "cronjobs"]
+      verbs: ["get", "list", "watch"]
+ports:
+  otlp:
+    enabled: true
+    containerPort: 4317
+    servicePort: 4317
+    hostPort: 4317
+  otlp-http:
+    enabled: true
+    containerPort: 4318
+    servicePort: 4318
+  jaeger-compact:
+    enabled: true
+    containerPort: 6831
+    protocol: UDP
+  jaeger-thrift:
+    enabled: true
+    containerPort: 14268
+  jaeger-grpc:
+    enabled: true
+    containerPort: 14250
+  zipkin:
+    enabled: true
+    containerPort: 9411
+  prometheus:
+    enabled: true
+    containerPort: 8889
+    servicePort: 8889
+# Health check configuration
+livenessProbe:
+  httpGet:
+    path: /
+    port: 13133
+  initialDelaySeconds: 30
+  periodSeconds: 30
+  timeoutSeconds: 5
+  failureThreshold: 3
+readinessProbe:
+  httpGet:
+    path: /
+    port: 13133
+  initialDelaySeconds: 5
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+# Environment variables for service discovery
+env:
+  - name: K8S_NODE_NAME
+    valueFrom:
+      fieldRef:
+        fieldPath: spec.nodeName
+  - name: K8S_POD_NAME
+    valueFrom:
+      fieldRef:
+        fieldPath: metadata.name
+  - name: K8S_POD_NAMESPACE
+    valueFrom:
+      fieldRef:
+        fieldPath: metadata.namespace
+  - name: K8S_POD_IP
+    valueFrom:
+      fieldRef:
+        fieldPath: status.podIP
+useGOMEMLIMIT: true
+# Service annotations for service discovery
+serviceAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "8889"
+  prometheus.io/path: "/metrics"
