@@ -175,7 +175,7 @@ config:
     azuremonitor:
       connection_string: "${env:APPLICATIONINSIGHTS_CONNECTION_STRING}"
     otlphttp/loki:
-      endpoint: "http://loki-gateway.good9009.svc.cluster.local:3100/otlp"
+      endpoint: "http://loki-gateway.eddv3-hbt.svc.cluster.local:3100/otlp"
       headers:
         "Content-Type": "application/x-protobuf"
     prometheus:
