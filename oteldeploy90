@@ -54,7 +54,7 @@ config:
     kubeletstats:
       collection_interval: 10s
       auth_type: "serviceAccount"
-      endpoint: "https://${env:K8S_NODE_NAME}:10250"
+      endpoint: "https://kubernetes.default.svc:443"
       insecure_skip_verify: true
       metric_groups:
         - node
@@ -142,8 +142,6 @@ config:
     k8sattributes:
       auth_type: "serviceAccount"
       passthrough: false
-      filter:
-        node_from_env_var: KUBE_NODE_NAME
       extract:
         metadata:
           - k8s.pod.name
@@ -173,7 +171,7 @@ config:
     debug:
       verbosity: basic
     azuremonitor:
-      connection_string: "${env:APPLICATIONINSIGHTS_CONNECTION_STRING}"
+      connection_string: "InstrumentationKey=a04b4a5d-40f2-4508-885a-6ba32f28d17b;IngestionEndpoint=https://eastus-8.in.applicationinsights.azure.com/;LiveEndpoint=https://eastus.livediagnostics.monitor.azure.com/;ApplicationId=0cac2de8-d983-4211-8a7a-709d6363d032"
     otlphttp/loki:
       endpoint: "http://loki-gateway.good9009.svc.cluster.local:3100/otlp"
       headers:
@@ -324,32 +322,5 @@ readinessProbe:
 
 useGOMEMLIMIT: true
 
-# Additional pod environment variables
-podEnv:
-  - name: K8S_NODE_NAME
-    valueFrom:
-      fieldRef:
-        apiVersion: v1
-        fieldPath: spec.nodeName
-  - name: KUBE_NODE_NAME
-    valueFrom:
-      fieldRef:
-        apiVersion: v1
-        fieldPath: spec.nodeName
-  - name: MY_POD_IP
-    valueFrom:
-      fieldRef:
-        apiVersion: v1
-        fieldPath: status.podIP
-  - name: MY_POD_NAME
-    valueFrom:
-      fieldRef:
-        apiVersion: v1
-        fieldPath: metadata.name
-  - name: MY_POD_NAMESPACE
-    valueFrom:
-      fieldRef:
-        apiVersion: v1
-        fieldPath: metadata.namespace
-  - name: APPLICATIONINSIGHTS_CONNECTION_STRING
-    value: "InstrumentationKey=a04b4a5d-40f2-4508-885a-6ba32f28d17b;IngestionEndpoint=https://eastus-8.in.applicationinsights.azure.com/;LiveEndpoint=https://eastus.livediagnostics.monitor.azure.com/;ApplicationId=0cac2de8-d983-4211-8a7a-709d6363d032"
+# Environment variables will be handled by the chart's preset configurations
+# The chart automatically provides necessary env vars when presets are enabled
