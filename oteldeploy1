@@ -144,9 +144,10 @@ config:
   exporters:
     debug: {}
     azuremonitor:
-      connection_string: "InstrumentationKey=a04b4a5d-40f2-4508-885a-6ba32f28d17b;IngestionEndpoint=https://eastus-8.in.applicationinsights.azure.com/;LiveEndpoint=https://eastus.livediagnostics.monitor.azure.com/;ApplicationId=0cac2de8-d983-4211-8a7a-709d6363d032"
+        
     otlphttp/loki:
-      endpoint: "http://loki:3100/otlp"
+     endpoint: "http://loki-gateway.good9009.svc.cluster.local:3100/otlp"
+    # endpoint: http://loki-gateway.good9009.svc.cluster.local:3100/otlp
     prometheus:
       endpoint: "0.0.0.0:8889"
 
@@ -211,11 +212,11 @@ image:
 
 resources:
   requests:
-    cpu: 500m
-    memory: 800Mi
+    cpu: 200m
+    memory: 260Mi
   limits:
-    cpu: 2000m
-    memory: 2000Mi
+    cpu: 1000m
+    memory: 1000Mi
 
 serviceAccount:
   create: true
