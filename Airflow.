@@ -1,14 +1,11 @@
 "http://$(OTEL_COLLECTOR_SERVICE_HOST):4317"
 
-Error: UPGRADE FAILED: values don't meet the specifications of the schema(s) in the following chart(s):
-opentelemetry-collector:
-- presets.kubernetesAttributes: Additional property extract is not allowed
-- presets.kubernetesAttributes: Additional property pod_association is not allowed
-
-##[error]Error: UPGRADE FAILED: values don't meet the specifications of the schema(s) in the following chart(s):
-opentelemetry-collector:
-- presets.kubernetesAttributes: Additional property extract is not allowed
-- presets.kubernetesAttributes: Additional property pod_association is not allowed
+state:
+        waiting:
+          reason: CrashLoopBackOff
+          message: >-
+            back-off 2m40s restarting failed container=opentelemetry-collector
+            pod=my-opentelemetry-collector-agent-8rkwh_eddv3-hbt(fc95d441-075e-4cfe-8d81-3489daad9cca)
 
 
 
