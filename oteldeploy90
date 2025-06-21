@@ -175,7 +175,7 @@ config:
     azuremonitor:
       connection_string: "${env:APPLICATIONINSIGHTS_CONNECTION_STRING}"
     otlphttp/loki:
-      endpoint: "http://loki-gateway.eddv3-hbt.svc.cluster.local:3100/otlp"
+      endpoint: "http://loki-gateway.good9009.svc.cluster.local:3100/otlp"
       headers:
         "Content-Type": "application/x-protobuf"
     prometheus:
@@ -256,9 +256,6 @@ resources:
 serviceAccount:
   create: true
 
-rbac:
-  create: true
-
 ports:
   otlp:
     enabled: true
@@ -325,7 +322,10 @@ readinessProbe:
   timeoutSeconds: 3
   failureThreshold: 3
 
-env:
+useGOMEMLIMIT: true
+
+# Additional pod environment variables
+podEnv:
   - name: K8S_NODE_NAME
     valueFrom:
       fieldRef:
@@ -353,5 +353,3 @@ env:
         fieldPath: metadata.namespace
   - name: APPLICATIONINSIGHTS_CONNECTION_STRING
     value: "InstrumentationKey=a04b4a5d-40f2-4508-885a-6ba32f28d17b;IngestionEndpoint=https://eastus-8.in.applicationinsights.azure.com/;LiveEndpoint=https://eastus.livediagnostics.monitor.azure.com/;ApplicationId=0cac2de8-d983-4211-8a7a-709d6363d032"
-
-useGOMEMLIMIT: true
