@@ -1,11 +1,15 @@
 "http://$(OTEL_COLLECTOR_SERVICE_HOST):4317"
 
-state:
-        waiting:
-          reason: CrashLoopBackOff
-          message: >-
-            back-off 2m40s restarting failed container=opentelemetry-collector
-            pod=my-opentelemetry-collector-agent-8rkwh_eddv3-hbt(fc95d441-075e-4cfe-8d81-3489daad9cca)
+/azp/agent/_work/_tool/helm/3.18.3/x64/linux-amd64/helm upgrade --namespace good9009 --install --values /azp/agent/_work/35/s/devops/helm-charts/grafana-monitor/otel-values-dev.yaml --wait --timeout 5m0s --create-namespace my-opentelemetry-collector open-telemetry/opentelemetry-collector
+Error: UPGRADE FAILED: values don't meet the specifications of the schema(s) in the following chart(s):
+opentelemetry-collector:
+- (root): Additional property rbac is not allowed
+- (root): Additional property env is not allowed
+
+##[error]Error: UPGRADE FAILED: values don't meet the specifications of the schema(s) in the following chart(s):
+opentelemetry-collector:
+- (root): Additional property rbac is not allowed
+- (root): Additional property env is not allowed
 
 
 
