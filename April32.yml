@@ -1,3 +1,154 @@
+
+# values.yaml
+mode: deployment  # Changed from daemonset to deployment
+
+replicaCount: 3  # Number of replicas for the deployment
+
+# Disable presets not needed in deployment mode
+presets:
+  logsCollection:
+    enabled: false
+  hostMetrics:
+    enabled: false
+  kubernetesAttributes:
+    enabled: true  # Keep this to enrich metrics with k8s metadata
+  kubeletMetrics:
+    enabled: false
+  kubernetesEvents:
+    enabled: false
+  clusterMetrics:
+    enabled: false
+
+config:
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: "0.0.0.0:4317"
+        http:
+          endpoint: "0.0.0.0:4318"
+  
+  processors:
+    batch: {}
+    memory_limiter:
+      check_interval: 1s
+      limit_percentage: 75
+      spike_limit_percentage: 15
+  
+  exporters:
+    logging:
+      verbosity: detailed
+    otlphttp:
+      endpoint: "http://your-backend:4318"  # Replace with your actual backend
+  
+  extensions:
+    health_check:
+      endpoint: "0.0.0.0:13133"
+    zpages:
+      endpoint: "0.0.0.0:55679"
+  
+  service:
+    telemetry:
+      logs:
+        level: info
+    extensions: [health_check, zpages]
+    pipelines:
+      traces:
+        receivers: [otlp]
+        processors: [memory_limiter, batch]
+        exporters: [logging, otlphttp]
+      metrics:
+        receivers: [otlp]
+        processors: [memory_limiter, batch]
+        exporters: [logging, otlphttp]
+      logs:
+        receivers: [otlp]
+        processors: [memory_limiter, batch]
+        exporters: [logging, otlphttp]
+
+image:
+  repository: otel/opentelemetry-collector-contrib
+  tag: 0.96.0  # Using a recent stable version
+  pullPolicy: IfNotPresent
+
+resources:
+  requests:
+    cpu: 200m
+    memory: 512Mi
+  limits:
+    cpu: 1000m
+    memory: 2Gi
+
+serviceAccount:
+  create: true
+
+# Port configurations
+ports:
+  otlp-grpc:
+    enabled: true
+    containerPort: 4317
+    servicePort: 4317
+  otlp-http:
+    enabled: true
+    containerPort: 4318
+    servicePort: 4318
+  metrics:
+    enabled: true
+    containerPort: 8888
+    servicePort: 8888
+
+# Probes using the health check extension
+livenessProbe:
+  httpGet:
+    path: /
+    port: 13133
+  initialDelaySeconds: 15
+  timeoutSeconds: 5
+
+readinessProbe:
+  httpGet:
+    path: /
+    port: 13133
+  initialDelaySeconds: 5
+  timeoutSeconds: 3
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 60
+  targetMemoryUtilizationPercentage: 60
+
+service:
+  type: ClusterIP
+  annotations: {}
+  # If you need NodePort for external access:
+  # type: NodePort
+  # nodePorts:
+  #   otlp-grpc: 30001
+  #   otlp-http: 30002
+
+# Optional: Ingress for HTTP endpoints
+ingress:
+  enabled: false
+  # className: nginx
+  # annotations:
+  #   cert-manager.io/cluster-issuer: letsencrypt-prod
+  # hosts:
+  #   - host: otel.example.com
+  #     paths:
+  #       - path: /
+  #         pathType: Prefix
+  # tls:
+  #   - secretName: otel-tls
+  #     hosts:
+  #       - otel.example.com
+
+
+
+
+
+
 https://jessitron.com/2023/09/08/testing-an-opentelemetry-collector-deployed-as-a-daemonset-in-kubernetes/
 
 https://opentelemetry.io/docs/collector/configuration/
