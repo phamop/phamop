@@ -1,9 +1,9 @@
-opentelemetry-collector:
-- (root): Additional property clusterMetrics is not allowed
-- (root): Additional property kubernetesEvents is not allowed
-- service: Additional property name is not allowed
-- service: Additional property ports is not allowed
+Error: failed to get config: cannot unmarshal the configuration: decoding failed due to the following error(s):
 
+error decoding 'exporters': the logging exporter has been deprecated, use the debug exporter instead
+2025/06/23 23:15:21 collector server run finished with error: failed to get config: cannot unmarshal the configuration: decoding failed due to the following error(s):
+
+error decoding 'exporters': the logging exporter has been deprecated, use the debug exporter instead
 
 
 
