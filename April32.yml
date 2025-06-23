@@ -15,8 +15,7 @@ presets:
   logsCollection:
     enabled: true
     includeCollectorLogs: false
-    storeCheckpoints: false
-    maxRecombineLogsSize: 102400
+    # Removed maxRecombineLogsSize as it's not in schema
   hostMetrics:
     enabled: true
   kubernetesAttributes:
@@ -84,54 +83,46 @@ resources:
 serviceAccount:
   create: true
 
-# Ports configuration at root level
 ports:
   otlp:
     enabled: true
     containerPort: 4317
     servicePort: 4317
     hostPort: 4317
-    protocol: TCP
   otlp-http:
     enabled: true
     containerPort: 4318
     servicePort: 4318
     hostPort: 4318
-    protocol: TCP
   jaeger-compact:
     enabled: true
     containerPort: 6831
-    protocol: UDP
     hostPort: 6831
+    protocol: UDP
   jaeger-thrift:
     enabled: true
     containerPort: 14268
     servicePort: 14268
     hostPort: 14268
-    protocol: TCP
   jaeger-grpc:
     enabled: true
     containerPort: 14250
     servicePort: 14250
     hostPort: 14250
-    protocol: TCP
   zipkin:
     enabled: true
     containerPort: 9411
     servicePort: 9411
     hostPort: 9411
-    protocol: TCP
   metrics:
     enabled: true
     containerPort: 8888
     servicePort: 8888
     hostPort: 8888
-    protocol: TCP
   prometheus:
     enabled: true
     containerPort: 8889
     servicePort: 8889
-    protocol: TCP
 
 livenessProbe:
   httpGet:
@@ -151,21 +142,11 @@ readinessProbe:
   timeoutSeconds: 3
   failureThreshold: 3
 
-useGOMEMLIMIT: true
-
-# Correct service configuration
+# Minimal service configuration
 service:
   type: ClusterIP
-  annotations: {}
-  labels: {}
-
-
-
-
-
-
-
-
+  # Removed labels as they're not in schema
+  # Removed annotations as they're not in schema
 
 
 
