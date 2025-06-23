@@ -13,187 +13,171 @@ opentelemetry-collector:
 Here's the corrected and properly formatted YAML configuration for deploying the OpenTelemetry Collector in DaemonSet mode with a corresponding Service:
 
 ```yaml
-apiVersion: apps/v1
-kind: DaemonSet
-metadata:
-  name: my-opentelemetry-collector
-  namespace: good9009
-  labels:
-    app: opentelemetry
-    component: collector
-spec:
-  selector:
-    matchLabels:
-      app: opentelemetry
-      component: collector
-  template:
-    metadata:
-      labels:
-        app: opentelemetry
-        component: collector
-    spec:
-      serviceAccountName: my-opentelemetry-collector
-      containers:
-      - name: otel-collector
-        image: otel/opentelemetry-collector-contrib:0.123.0
-        imagePullPolicy: IfNotPresent
-        ports:
-        - name: otlp-grpc
-          containerPort: 4317
-          hostPort: 4317
-          protocol: TCP
-        - name: otlp-http
-          containerPort: 4318
-          hostPort: 4318
-          protocol: TCP
-        - name: jaeger-compact
-          containerPort: 6831
-          hostPort: 6831
-          protocol: UDP
-        - name: jaeger-thrift
-          containerPort: 14268
-          hostPort: 14268
-          protocol: TCP
-        - name: jaeger-grpc
-          containerPort: 14250
-          hostPort: 14250
-          protocol: TCP
-        - name: zipkin
-          containerPort: 9411
-          hostPort: 9411
-          protocol: TCP
-        - name: metrics
-          containerPort: 8888
-          hostPort: 8888
-          protocol: TCP
-        - name: prometheus
-          containerPort: 8889
-          protocol: TCP
-        resources:
-          requests:
-            cpu: 200m
-            memory: 260Mi
-          limits:
-            cpu: 1000m
-            memory: 1000Mi
-        livenessProbe:
-          httpGet:
-            path: /
-            port: 13133
-          initialDelaySeconds: 15
-          periodSeconds: 20
-          timeoutSeconds: 5
-          failureThreshold: 3
-        readinessProbe:
-          httpGet:
-            path: /
-            port: 13133
-          initialDelaySeconds: 5
-          periodSeconds: 10
-          timeoutSeconds: 3
-          failureThreshold: 3
-        env:
-        - name: GOMEMLIMIT
-          value: "90%"
-        volumeMounts:
-        - name: config
-          mountPath: /etc/otel-config.yaml
-          subPath: otel-config.yaml
-      volumes:
-      - name: config
-        configMap:
-          name: otel-config
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: otel-config
-  namespace: good9009
-data:
-  otel-config.yaml: |
-    receivers:
-      otlp:
-        protocols:
-          grpc:
-            endpoint: "0.0.0.0:4317"
-          http:
-            endpoint: "0.0.0.0:4318"
 
-    processors:
-      transform:
-        error_mode: ignore
-        log_statements:
-          - context: log
-            statements:
-              - set(resource.attributes["service.name"], attributes["service.name"])
-              - delete_key(attributes, "service.name")
+mode: daemonset
 
-    exporters:
-      debug:
-        verbosity: detailed
-      otlphttp:
-        endpoint: http://loki-gateway.good9009.svc.cluster.local:3100/otlp
+presets:
+  logsCollection:
+    enabled: true
+    includeCollectorLogs: false
+    storeCheckpoints: false
+    maxRecombineLogSize: 102400
+  hostMetrics:
+    enabled: true
+  kubernetesAttributes:
+    enabled: true
+  kubeletMetrics:
+    enabled: true
+  kubernetesEvents:
+    enabled: false
+  clusterMetrics:
+    enabled: false
 
+config:
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: "0.0.0.0:4317"
+        http:
+          endpoint: "0.0.0.0:4318"
+  
+  processors:
+    transform:
+      error_mode: ignore
+      log_statements:
+        - context: log
+          statements:
+            - set(resource.attributes["service.name"], attributes["service.name"])
+            - delete_key(attributes, "service.name")
+  
+  exporters:
+    debug:
+      verbosity: detailed
+    otlphttp:
+      endpoint: http://loki-gateway.good9009.svc.cluster.local:3100/otlp
+  
+  extensions:
+    health_check:
+      endpoint: 0.0.0.0:13133
+  
+  service:
+    telemetry:
+      logs:
+        level: debug
     extensions:
-      health_check:
-        endpoint: 0.0.0.0:13133
+      - health_check
+    pipelines:
+      logs:
+        receivers: [otlp]
+        processors: [transform]
+        exporters: [debug, otlphttp]
 
-    service:
-      telemetry:
-        logs:
-          level: debug
-      extensions:
-        - health_check
-      pipelines:
-        logs:
-          receivers: [otlp]
-          processors: [transform]
-          exporters: [debug, otlphttp]
----
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: my-opentelemetry-collector
-  namespace: good9009
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: my-opentelemetry-collector
-  namespace: good9009
-  labels:
-    app: opentelemetry
-    component: collector
-spec:
-  selector:
-    app: opentelemetry
-    component: collector
-  ports:
-    - name: metrics
-      protocol: TCP
-      port: 8888
-      targetPort: 8888
-    - name: otlp-grpc
-      protocol: TCP
-      port: 4317
-      targetPort: 4317
-    - name: otlp-http
-      protocol: TCP
-      port: 4318
-      targetPort: 4318
-    - name: zipkin
-      protocol: TCP
-      port: 9411
-      targetPort: 9411
-    - name: jaeger-thrift
-      protocol: TCP
-      port: 6831
-      targetPort: 6831
-    - name: jaeger-grpc
-      protocol: TCP
-      port: 14250
-      targetPort: 14250
+image:
+  repository: otel/opentelemetry-collector-contrib
+  tag: 0.123.0
+  pullPolicy: IfNotPresent
+
+resources:
+  requests:
+    cpu: 200m
+    memory: 260Mi
+  limits:
+    cpu: 1000m
+    memory: 1000Mi
+
+serviceAccount:
+  create: true
+
+ports:
+  otlp:
+    enabled: true
+    containerPort: 4317
+    servicePort: 4317
+    hostPort: 4317
+    protocol: TCP
+  otlp-http:
+    enabled: true
+    containerPort: 4318
+    servicePort: 4318
+    hostPort: 4318
+    protocol: TCP
+  jaeger-compact:
+    enabled: true
+    containerPort: 6831
+    protocol: UDP
+    hostPort: 6831
+  jaeger-thrift:
+    enabled: true
+    containerPort: 14268
+    servicePort: 14268
+    hostPort: 14268
+    protocol: TCP
+  jaeger-grpc:
+    enabled: true
+    containerPort: 14250
+    servicePort: 14250
+    hostPort: 14250
+    protocol: TCP
+  zipkin:
+    enabled: true
+    containerPort: 9411
+    servicePort: 9411
+    hostPort: 9411
+    protocol: TCP
+  metrics:
+    enabled: true
+    containerPort: 8888
+    servicePort: 8888
+    hostPort: 8888
+    protocol: TCP
+  prometheus:
+    enabled: true
+    containerPort: 8889
+    servicePort: 8889
+    protocol: TCP
+
+livenessProbe:
+  httpGet:
+    path: /
+    port: 13133
+  initialDelaySeconds: 15
+  periodSeconds: 20
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /
+    port: 13133
+  initialDelaySeconds: 5
+  periodSeconds: 10
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+useGOMEMLIMIT: true
+
+service:
   type: ClusterIP
+  ports:
+    metrics:
+      enabled: true
+      port: 8888
+    otlp-grpc:
+      enabled: true
+      port: 4317
+    otlp-http:
+      enabled: true
+      port: 4318
+    zipkin:
+      enabled: true
+      port: 9411
+    jaeger-thrift:
+      enabled: true
+      port: 6831
+    jaeger-grpc:
+      enabled: true
+      port: 14250
 
 
 
@@ -201,17 +185,6 @@ spec:
 
 
 
-
-
-
-
-
-
-To deploy this configuration:
-1. Save the file as `otel-daemonset.yaml`
-2. Apply it with: `kubectl apply -f otel-daemonset.yaml`
-
-This configuration will deploy the OpenTelemetry Collector as a DaemonSet with all the specified ports and configurations, along with a corresponding Service for accessing it.
 
 
 
