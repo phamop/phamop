@@ -8,7 +8,6 @@ opentelemetry-collector:
 Here's the corrected and properly formatted YAML configuration for deploying the OpenTelemetry Collector in DaemonSet mode with a corresponding Service:
 
 ```yaml
-
 mode: daemonset
 
 presets:
@@ -16,7 +15,7 @@ presets:
     enabled: true
     includeCollectorLogs: false
     storeCheckpoints: false
-    maxRecombineLogSize: 102400
+    maxRecombineLogsSize: 102400
   hostMetrics:
     enabled: true
   kubernetesAttributes:
@@ -84,6 +83,7 @@ resources:
 serviceAccount:
   create: true
 
+# Ports configuration at root level
 ports:
   otlp:
     enabled: true
@@ -152,28 +152,11 @@ readinessProbe:
 
 useGOMEMLIMIT: true
 
+# Correct service configuration
 service:
   type: ClusterIP
-  ports:
-    metrics:
-      enabled: true
-      port: 8888
-    otlp-grpc:
-      enabled: true
-      port: 4317
-    otlp-http:
-      enabled: true
-      port: 4318
-    zipkin:
-      enabled: true
-      port: 9411
-    jaeger-thrift:
-      enabled: true
-      port: 6831
-    jaeger-grpc:
-      enabled: true
-      port: 14250
-
+  annotations: {}
+  labels: {}
 
 
 
