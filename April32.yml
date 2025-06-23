@@ -1,5 +1,6 @@
 opentelemetry-collector:
-- service: Additional property ports is not allowed
+- service: Additional property labels is not allowed
+- presets.logsCollection: Additional property maxRecombineLogsSize is not allowed
 
 
 
