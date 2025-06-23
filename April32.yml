@@ -1,3 +1,5 @@
+https://jessitron.com/2023/09/08/testing-an-opentelemetry-collector-deployed-as-a-daemonset-in-kubernetes/
+
 opentelemetry-collector:
 - service: Additional property labels is not allowed
 - presets.logsCollection: Additional property maxRecombineLogsSize is not allowed
