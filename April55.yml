@@ -1,3 +1,17 @@
+opentelemetry-collector:
+- (root): Additional property clusterMetrics is not allowed
+- (root): Additional property kubernetesEvents is not allowed
+- service: Additional property name is not allowed
+- service: Additional property ports is not allowed
+
+
+
+
+
+
+
+
+################################################
 # Azure Monitor Insights Integration with Grafana on AKS: Implementation Guide
 
 This guide provides a detailed implementation plan for integrating Azure Monitor Insights metrics with Grafana on an existing AKS cluster, using Azure Key Vault for secrets management, without Istio, and using Azure DevOps pipelines with Helm charts.
