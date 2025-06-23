@@ -1,3 +1,66 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+
+processors:
+  batch:
+  transform:
+    error_mode: ignore
+    log_statements:
+      - context: log
+        statements:
+          - set(resource.attributes["service.name"], attributes["service.name"])
+          - delete_key(attributes, "service.name")
+
+exporters:
+  debug:
+    verbosity: detailed
+  otlp/jaeger:
+    endpoint: jaeger:4317
+    tls:
+      insecure: true
+  otlphttp:
+    endpoint: http://loki:3100/otlp
+    tls:
+      insecure: true
+  prometheus:
+    endpoint: 0.0.0.0:9464
+
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+
+service:
+  extensions: [health_check]
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [otlp/jaeger, debug]
+    logs:
+      receivers: [otlp]
+      processors: [batch, transform]
+      exporters: [otlphttp, debug]
+    metrics:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [prometheus, debug]
+  telemetry:
+    logs:
+      level: debug
+ 
+
+
+
+
+
+
+
+
+
+
 "http://$(OTEL_COLLECTOR_SERVICE_HOST):4317"
 
 /azp/agent/_work/_tool/helm/3.18.3/x64/linux-amd64/helm upgrade --namespace good9009 --install --values /azp/agent/_work/35/s/devops/helm-charts/grafana-monitor/otel-values-dev.yaml --wait --timeout 5m0s --create-namespace my-opentelemetry-collector open-telemetry/opentelemetry-collector
