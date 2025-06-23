@@ -1,170 +1,160 @@
 
-mode: "daemonset"
 
-presets:
-  logsCollection:
-    enabled: true
-    includeCollectorLogs: false
-    storeCheckpoints: false
-    maxRecombineLogSize: 102400
-  hostMetrics:
-    enabled: true
-  kubernetesAttributes:
-    enabled: true
-  kubeletMetrics:
-    enabled: true
-  kubernetesEvents:
-    enabled: false
-  clusterMetrics:
-    enabled: false
 
-configMap:
-  create: true
-  existingName: ""
 
-internalTelemetryViaOTLP:
-  endpoint: ""
-  headers: []
-  traces:
-    enabled: false
-  metrics:
-    enabled: false
-  logs:
-    enabled: false
+# Fixed OpenTelemetry Collector DaemonSet and Service Configuration
 
-config:
-  receivers:
-    otlp:
-      protocols:
-        grpc:
-          endpoint: "0.0.0.0:4317"
-        http:
-          endpoint: "0.0.0.0:4318"
+Here's the corrected and properly formatted YAML configuration for deploying the OpenTelemetry Collector in DaemonSet mode with a corresponding Service:
 
-  processors:
-    transform:
-      error_mode: ignore
-      log_statements:
-        - context: log
-          statements:
-            - set(resource.attributes["service.name"], attributes["service.name"])
-            - delete_key(attributes, "service.name")
+```yaml
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: my-opentelemetry-collector
+  namespace: good9009
+  labels:
+    app: opentelemetry
+    component: collector
+spec:
+  selector:
+    matchLabels:
+      app: opentelemetry
+      component: collector
+  template:
+    metadata:
+      labels:
+        app: opentelemetry
+        component: collector
+    spec:
+      serviceAccountName: my-opentelemetry-collector
+      containers:
+      - name: otel-collector
+        image: otel/opentelemetry-collector-contrib:0.123.0
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: otlp-grpc
+          containerPort: 4317
+          hostPort: 4317
+          protocol: TCP
+        - name: otlp-http
+          containerPort: 4318
+          hostPort: 4318
+          protocol: TCP
+        - name: jaeger-compact
+          containerPort: 6831
+          hostPort: 6831
+          protocol: UDP
+        - name: jaeger-thrift
+          containerPort: 14268
+          hostPort: 14268
+          protocol: TCP
+        - name: jaeger-grpc
+          containerPort: 14250
+          hostPort: 14250
+          protocol: TCP
+        - name: zipkin
+          containerPort: 9411
+          hostPort: 9411
+          protocol: TCP
+        - name: metrics
+          containerPort: 8888
+          hostPort: 8888
+          protocol: TCP
+        - name: prometheus
+          containerPort: 8889
+          protocol: TCP
+        resources:
+          requests:
+            cpu: 200m
+            memory: 260Mi
+          limits:
+            cpu: 1000m
+            memory: 1000Mi
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 13133
+          initialDelaySeconds: 15
+          periodSeconds: 20
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 13133
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 3
+          failureThreshold: 3
+        env:
+        - name: GOMEMLIMIT
+          value: "90%"
+        volumeMounts:
+        - name: config
+          mountPath: /etc/otel-config.yaml
+          subPath: otel-config.yaml
+      volumes:
+      - name: config
+        configMap:
+          name: otel-config
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: otel-config
+  namespace: good9009
+data:
+  otel-config.yaml: |
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: "0.0.0.0:4317"
+          http:
+            endpoint: "0.0.0.0:4318"
 
-  exporters:
-    debug:
-      verbosity: detailed
-    otlphttp:
-      endpoint: http://loki-gateway.eddv3-hbt.svc.cluster.local:3100/otlp
+    processors:
+      transform:
+        error_mode: ignore
+        log_statements:
+          - context: log
+            statements:
+              - set(resource.attributes["service.name"], attributes["service.name"])
+              - delete_key(attributes, "service.name")
 
-  extensions:
-    health_check:
-      endpoint: 0.0.0.0:13133
+    exporters:
+      debug:
+        verbosity: detailed
+      otlphttp:
+        endpoint: http://loki-gateway.good9009.svc.cluster.local:3100/otlp
 
-  service:
-    telemetry:
-      logs:
-        level: debug
     extensions:
-      - health_check
-    pipelines:
-      logs:
-        receivers: [otlp]
-        processors: [transform]
-        exporters: [debug, otlphttp]
+      health_check:
+        endpoint: 0.0.0.0:13133
 
-image:
-  #repository: "otel/opentelemetry-collector-k8s"
-  repository: "otel/opentelemetry-collector-contrib"
-
-  pullPolicy: IfNotPresent
-  # tag: "0.128.0
-  tag: "0.123.0"
-
-resources:
-  requests:
-    cpu: 200m
-    memory: 260Mi
-  limits:
-    cpu: 1000m
-    memory: 1000Mi
-
-serviceAccount:
-  create: true
-
-ports:
-  otlp:
-    enabled: true
-    containerPort: 4317
-    servicePort: 4317
-    hostPort: 4317
-    protocol: TCP
-  otlp-http:
-    enabled: true
-    containerPort: 4318
-    servicePort: 4318
-    hostPort: 4318
-    protocol: TCP
-  jaeger-compact:
-    enabled: true
-    containerPort: 6831
-    protocol: UDP
-    hostPort: 6831
-  jaeger-thrift:
-    enabled: true
-    containerPort: 14268
-    servicePort: 14268
-    hostPort: 14268
-    protocol: TCP
-  jaeger-grpc:
-    enabled: true
-    containerPort: 14250
-    servicePort: 14250
-    hostPort: 14250
-    protocol: TCP
-  zipkin:
-    enabled: true
-    containerPort: 9411
-    servicePort: 9411
-    hostPort: 9411
-    protocol: TCP
-  metrics:
-    enabled: true
-    containerPort: 8888
-    servicePort: 8888
-    hostPort: 8888
-    protocol: TCP
-  prometheus:
-    enabled: true
-    containerPort: 8889
-    servicePort: 8889
-    protocol: TCP
-
-livenessProbe:
-  httpGet:
-    path: /
-    port: 13133
-  initialDelaySeconds: 15
-  periodSeconds: 20
-  timeoutSeconds: 5
-  failureThreshold: 3
-
-readinessProbe:
-  httpGet:
-    path: /
-    port: 13133
-  initialDelaySeconds: 5
-  periodSeconds: 10
-  timeoutSeconds: 3
-  failureThreshold: 3
-
-useGOMEMLIMIT: true
-
+    service:
+      telemetry:
+        logs:
+          level: debug
+      extensions:
+        - health_check
+      pipelines:
+        logs:
+          receivers: [otlp]
+          processors: [transform]
+          exporters: [debug, otlphttp]
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: my-opentelemetry-collector
+  namespace: good9009
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: my-opentelemetry-collector
-  namespace: eddv3-hbt #your desired namespace
+  namespace: good9009
   labels:
     app: opentelemetry
     component: collector
@@ -173,31 +163,57 @@ spec:
     app: opentelemetry
     component: collector
   ports:
-    - name: metrics      # For Prometheus metrics endpoint
+    - name: metrics
       protocol: TCP
       port: 8888
       targetPort: 8888
-    - name: otlp-grpc    # Primary OTLP receiver port
+    - name: otlp-grpc
       protocol: TCP
       port: 4317
       targetPort: 4317
-    - name: otlp-http    # HTTP OTLP receiver port
+    - name: otlp-http
       protocol: TCP
       port: 4318
       targetPort: 4318
-    - name: zipkin       # Zipkin receiver port
+    - name: zipkin
       protocol: TCP
       port: 9411
       targetPort: 9411
-    - name: jaeger-thrift # Jaeger thrift receiver
+    - name: jaeger-thrift
       protocol: TCP
       port: 6831
       targetPort: 6831
-    - name: jaeger-grpc   # Jaeger gRPC receiver
+    - name: jaeger-grpc
       protocol: TCP
       port: 14250
       targetPort: 14250
   type: ClusterIP
+
+
+
+
+
+
+
+
+
+
+
+
+
+To deploy this configuration:
+1. Save the file as `otel-daemonset.yaml`
+2. Apply it with: `kubectl apply -f otel-daemonset.yaml`
+
+This configuration will deploy the OpenTelemetry Collector as a DaemonSet with all the specified ports and configurations, along with a corresponding Service for accessing it.
+
+
+
+
+
+
+
+
 
 
 
