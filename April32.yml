@@ -1,3 +1,9 @@
+Error: UPGRADE FAILED: values don't meet the specifications of the schema(s) in the following chart(s):
+opentelemetry-collector:
+- (root): Additional property apiVersion is not allowed
+- (root): Additional property kind is not allowed
+- (root): Additional property spec is not allowed
+- (root): Additional property metadata is not allowed
 
 
 
