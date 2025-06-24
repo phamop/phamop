@@ -1,3 +1,11 @@
+
+Error: execution error at (loki/templates/validate.yaml:15:4): Cannot run more than 1 Single Binary replica without an object storage backend.
+Release "loki" does not exist. Installing it now.
+##[error]Error: execution error at (loki/templates/validate.yaml:15:4): Cannot run more than 1 Single Binary replica without an object storage backend.
+
+
+
+
 # loki-pvc-values.yaml
 loki:
   commonConfig:
