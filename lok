@@ -1,7 +1,3 @@
-
-[error] 9#9: unexpected DNS response for loki.good9009.svc.cluster.local
-2025/06/24 04:06:09 [error] 9#9: unexpected DNS response for loki.good9009.svc.cluster.local
-2025/06/24 04:06:09 [error] 9#9: *17 connect() failed (111: Connection refused) while connecting to upstream, client: 10.244.3.145, server: , request: "POST /loki/api/v1/push HTTP/1.1", upstream: "http://10.0.0.120:3100/loki/api/v1/push", host: "loki-gateway.good9009.svc.cluster.local.:80"
 # Loki Helm Chart Configuration - Validated for Deployment
 loki:
   commonConfig:
