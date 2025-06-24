@@ -1,19 +1,15 @@
 deploymentMode: SimpleScalable
 
-# Enable scalable deployment groups
+# WRITE COMPONENT
 write:
   enabled: true
   replicas: 2
   persistence:
     enabled: true
-    size: 10Gi
-    storageClass: standard
+    storageClass: standard # <-- change if you use a different StorageClass
     accessModes:
       - ReadWriteOnce
-    volumes:
-      data:
-        mountPath: /var/loki
-        subPath: ""
+    size: 10Gi
   resources:
     requests:
       cpu: 200m
@@ -22,30 +18,28 @@ write:
       cpu: 500m
       memory: 1Gi
 
+# READ COMPONENT
 read:
   enabled: true
   replicas: 2
   resources:
     requests:
-      cpu: 100m
+      cpu: 200m
       memory: 256Mi
     limits:
-      cpu: 250m
+      cpu: 500m
       memory: 512Mi
 
+# BACKEND COMPONENT
 backend:
   enabled: true
   replicas: 1
   persistence:
     enabled: true
-    size: 10Gi
     storageClass: standard
     accessModes:
       - ReadWriteOnce
-    volumes:
-      data:
-        mountPath: /var/loki
-        subPath: ""
+    size: 10Gi
   resources:
     requests:
       cpu: 200m
@@ -54,18 +48,19 @@ backend:
       cpu: 500m
       memory: 1Gi
 
+# GATEWAY (frontend reverse proxy)
 gateway:
   enabled: true
   replicas: 1
   resources:
     requests:
       cpu: 100m
-      memory: 256Mi
+      memory: 128Mi
     limits:
-      cpu: 250m
-      memory: 512Mi
+      cpu: 200m
+      memory: 256Mi
 
-# Loki configuration
+# LOKI CONFIGURATION
 loki:
   auth_enabled: false
 
@@ -95,10 +90,12 @@ loki:
     retention_period: 7d
     reject_old_samples: true
     reject_old_samples_max_age: 168h
+    max_query_lookback: 24h
 
   chunk_store_config:
     max_look_back_period: 24h
 
+# SERVICE SETTINGS
 service:
   type: ClusterIP
   port: 3100
