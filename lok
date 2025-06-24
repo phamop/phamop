@@ -1,3 +1,5 @@
+error: error from server (NotFound): pods "lokiloki-gateway-b67f477b5-5bpdf" not found in namespace "eddv3-hbt"
+
 # Loki Helm Chart Configuration - Validated for Deployment
 loki:
   commonConfig:
