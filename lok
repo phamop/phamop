@@ -1,106 +1,42 @@
-
-Error: execution error at (loki/templates/validate.yaml:31:4): You have more than zero replicas configured for both the single binary and simple scalable targets. If this was intentional change the deploymentMode to the transitional 'SingleBinary<->SimpleScalable' mode
-Release "loki" does not exist. Installing it now.
-##[error]Error: execution error at (loki/templates/validate.yaml:31:4): You have more than zero replicas configured for both the single binary and simple scalable targets. If this was intentional change the deploymentMode to the transitional 'SingleBinary<->SimpleScalable' mode
-
-
-.
-
-
-
-
-# loki-pvc-values.yaml
 loki:
-  commonConfig:
-    replication_factor: 1
-  storage:
-    type: 'filesystem'  # Using PVC for storage
-    bucketNames:
-      chunks: loki-chunks
-      ruler: loki-rules
-      admin: loki-admin
-  schemaConfig:
-    configs:
-      - from: "2024-04-01"
-        store: tsdb
-        object_store: filesystem
-        schema: v13
-        index:
-          prefix: loki_index_
-          period: 24h
-  storage_config:
-    filesystem:
-      directory: /var/loki/storage  # PVC mount path
-  limits_config:
-    ingestion_rate_mb: 4
-    ingestion_burst_size_mb: 6
-    retention_period: "168h"  # 7 days retention
-
-# Disable unnecessary components
-minio:
-  enabled: false
-gateway:
-  enabled: false
-
-# Single Binary mode with PVC
-deploymentMode: SingleBinary
-singleBinary:
-  replicas: 2  # For basic HA
   persistence:
     enabled: true
-    storageClass: managed-csi-premium  # Azure Premium SSD
     accessModes:
       - ReadWriteOnce
-    size: 100Gi  # Minimum recommended for production
-    annotations:
-      volume.beta.kubernetes.io/storage-class: managed-csi-premium
-  securityContext:
-    fsGroup: 10001
-    runAsUser: 10001
-    runAsGroup: 10001
-  resources:
-    requests:
-      cpu: "1"
-      memory: "4Gi"
-    limits:
-      cpu: "2"
-      memory: "8Gi"
-  podAnnotations:
-    cluster-autoscaler.kubernetes.io/safe-to-evict: "false"  # Prevent eviction during scaling
+    size: 20Gi
+    storageClassName: standard # or your specific StorageClass
 
-# Monitoring and health checks
-monitoring:
-  enabled: true
-  serviceMonitor:
-    enabled: true
-  livenessProbe:
-    httpGet:
-      path: /ready
-      port: http-metrics
-    initialDelaySeconds: 45
-    periodSeconds: 10
-  readinessProbe:
-    httpGet:
-      path: /ready
-      port: http-metrics
-    initialDelaySeconds: 15
-    periodSeconds: 5
+  config:
+    table_manager:
+      retention_deletes_enabled: true
+      retention_period: 7d
 
-# Service configuration
-service:
-  type: ClusterIP
-  ports:
-    - name: http-metrics
-      port: 3100
-      targetPort: http-metrics
-    - name: grpc
-      port: 9095
-      targetPort: grpc
+    schema_config:
+      configs:
+        - from: 2023-01-01
+          store: boltdb-shipper
+          object_store: filesystem
+          schema: v11
+          index:
+            prefix: index_
+            period: 24h
 
-# PVC retention policy (requires Kubernetes 1.23+)
-persistentVolume:
-  reclaimPolicy: Retain  # Prevents accidental data loss
+    storage_config:
+      boltdb_shipper:
+        active_index_directory: /var/loki/index
+        shared_store: filesystem
+      filesystem:
+        directory: /var/loki/chunks
 
-# Recommended for AKS
-podDisruptionBudget:
-  maxUnavailable: 1
+    compactor:
+      working_directory: /var/loki/compactor
+      shared_store: filesystem
+
+  volumeMounts:
+    - name: storage
+      mountPath: /var/loki
+
+  volumes:
+    - name: storage
+      persistentVolumeClaim:
+        claimName: loki-pvc
