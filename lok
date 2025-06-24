@@ -1,3 +1,10 @@
+Error: execution error at (loki/templates/validate.yaml:19:4): Cannot run scalable targets (backend, read, write) or distributed targets without an object storage backend.
+Release "loki" does not exist. Installing it now.
+##[error]Error: execution error at (loki/templates/validate.yaml:19:4): Cannot run scalable targets (backend, read, write) or distributed targets without an object storage backend.
+
+
+
+
 deploymentMode: SimpleScalable
 
 # WRITE COMPONENT
