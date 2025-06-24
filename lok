@@ -1,22 +1,78 @@
-Error: execution error at (loki/templates/validate.yaml:19:4): Cannot run scalable targets (backend, read, write) or distributed targets without an object storage backend.
-Release "loki" does not exist. Installing it now.
-##[error]Error: execution error at (loki/templates/validate.yaml:19:4): Cannot run scalable targets (backend, read, write) or distributed targets without an object storage backend.
+accessKey:
+  password: loki-access-key
 
+secretKey:
+  password: loki-secret-key
+
+defaultBuckets: loki
+
+persistence:
+  enabled: true
+  size: 10Gi
+  storageClass: standard
+
+service:
+  type: ClusterIP
+  port: 9000
+
+##################
+
+
+helm repo add bitnami https://charts.bitnami.com/bitnami
+helm repo update
+
+helm install minio bitnami/minio \
+  --namespace loki --create-namespace \
+  -f minio-values.yaml
+
+
+#######################
 
 
 
 deploymentMode: SimpleScalable
 
-# WRITE COMPONENT
+loki:
+  auth_enabled: false
+
+  commonConfig:
+    replication_factor: 2
+
+  storage:
+    type: s3
+    s3:
+      endpoint: minio.loki.svc.cluster.local:9000
+      bucketnames: loki
+      access_key_id: loki-access-key
+      secret_access_key: loki-secret-key
+      s3forcepathstyle: true
+      insecure: true
+
+  schemaConfig:
+    configs:
+      - from: "2024-01-01"
+        store: tsdb
+        object_store: s3
+        schema: v13
+        index:
+          prefix: index_
+          period: 24h
+
+  compactor:
+    working_directory: /var/loki/compactor
+    shared_store: s3
+
+  limits_config:
+    retention_period: 7d
+    reject_old_samples: true
+    reject_old_samples_max_age: 168h
+
+  chunk_store_config:
+    max_look_back_period: 24h
+
 write:
   enabled: true
   replicas: 2
-  persistence:
-    enabled: true
-    storageClass: standard # <-- change if you use a different StorageClass
-    accessModes:
-      - ReadWriteOnce
-    size: 10Gi
   resources:
     requests:
       cpu: 200m
@@ -25,7 +81,6 @@ write:
       cpu: 500m
       memory: 1Gi
 
-# READ COMPONENT
 read:
   enabled: true
   replicas: 2
@@ -37,16 +92,9 @@ read:
       cpu: 500m
       memory: 512Mi
 
-# BACKEND COMPONENT
 backend:
   enabled: true
   replicas: 1
-  persistence:
-    enabled: true
-    storageClass: standard
-    accessModes:
-      - ReadWriteOnce
-    size: 10Gi
   resources:
     requests:
       cpu: 200m
@@ -55,7 +103,6 @@ backend:
       cpu: 500m
       memory: 1Gi
 
-# GATEWAY (frontend reverse proxy)
 gateway:
   enabled: true
   replicas: 1
@@ -67,42 +114,6 @@ gateway:
       cpu: 200m
       memory: 256Mi
 
-# LOKI CONFIGURATION
-loki:
-  auth_enabled: false
-
-  commonConfig:
-    replication_factor: 2
-
-  storage:
-    type: filesystem
-    filesystem:
-      directory: /var/loki/chunks
-
-  schemaConfig:
-    configs:
-      - from: "2024-01-01"
-        store: tsdb
-        object_store: filesystem
-        schema: v13
-        index:
-          prefix: index_
-          period: 24h
-
-  compactor:
-    working_directory: /var/loki/compactor
-    shared_store: filesystem
-
-  limits_config:
-    retention_period: 7d
-    reject_old_samples: true
-    reject_old_samples_max_age: 168h
-    max_query_lookback: 24h
-
-  chunk_store_config:
-    max_look_back_period: 24h
-
-# SERVICE SETTINGS
 service:
   type: ClusterIP
   port: 3100
