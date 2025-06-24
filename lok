@@ -1,9 +1,13 @@
-# Minimal Loki configuration - only updateable StatefulSet fields
+# Loki Helm Chart Configuration - Validated for Deployment
 loki:
   commonConfig:
     replication_factor: 1
   storage:
     type: 'filesystem'
+    bucketNames:
+      chunks: chunks
+      ruler: ruler
+      admin: admin
   schemaConfig:
     configs:
       - from: "2024-04-01"
@@ -13,16 +17,48 @@ loki:
         index:
           prefix: loki_index_
           period: 24h
+  storage_config:
+    filesystem:
+      directory: /var/loki/chunks  # Changed from /tmp for persistence
+  pattern_ingester:
+    enabled: true
+  limits_config:
+    allow_structured_metadata: true
+    volume_enabled: true
+    # Add recommended limits for production stability
+    ingestion_rate_mb: 4
+    ingestion_burst_size_mb: 6
+    max_streams_per_user: 10000
+    max_line_size: "256KB"
+    retention_period: "168h"  # 7 days
+  ruler:
+    enable_api: true
+    storage:
+      type: local
+      local:
+        directory: /var/loki/rules
   auth_enabled: false
 
+# Explicitly disable MinIO since using filesystem storage
 minio:
   enabled: false
-      
+
+# Single Binary deployment mode for simplified setup
 deploymentMode: SingleBinary
 
 singleBinary:
   replicas: 1
-  # Only modify template section for StatefulSet updates
+  persistence:
+    enabled: true  # Explicitly enable persistence
+    storageClass: default
+    accessModes:
+      - ReadWriteOnce
+    size: 20Gi
+  # Add security context for proper file permissions
+  securityContext:
+    runAsUser: 10001
+    runAsGroup: 10001
+    fsGroup: 10001
   resources:
     requests:
       cpu: "1"
@@ -30,15 +66,54 @@ singleBinary:
     limits:
       cpu: "2"
       memory: "4Gi"
-  
-  # Keep existing persistence settings - don't change storageClass
-  persistence:
-    enabled: true
-    size: 20Gi
+  # Add volume mounts for proper data persistence
+  extraVolumeMounts:
+    - name: data
+      mountPath: /var/loki
+      subPath: loki-data
 
+# Configure sidecar properly for rules management
+sidecar:
+  rules:
+    enabled: false  # Disable rules sidecar
+    # If you need rules sidecar, configure it properly:
+    # enabled: true
+    # searchNamespace: ALL
+    # folder: /tmp/scratch
+    # folderAnnotation: loki_rule
+  datasources:
+    enabled: false  # Disable datasources sidecar
+
+# Properly disable distributed components for SingleBinary mode
 backend:
   replicas: 0
 read:
   replicas: 0
 write:
   replicas: 0
+
+# Configure chunks cache with proper units
+chunksCache:
+  allocatedMemory: 512  # In MB
+
+# Add monitoring and health checks
+monitoring:
+  enabled: true
+  serviceMonitor:
+    enabled: false  # Set to true if using Prometheus Operator
+
+# Configure service for access
+service:
+  type: ClusterIP
+  port: 3100
+  targetPort: 3100
+
+# Add ingress configuration (optional)
+ingress:
+  enabled: false  # Set to true and configure if needed
+  # className: nginx
+  # hosts:
+  #   - host: loki.example.com
+  #     paths:
+  #       - path: /
+  #         pathType: Prefix
