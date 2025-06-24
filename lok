@@ -1,23 +1,14 @@
-Error: execution error at (loki/templates/validate.yaml:31:4): You have more than zero replicas configured for both the single binary and simple scalable targets. If this was intentional change the deploymentMode to the transitional 'SingleBinary<->SimpleScalable' mode
-Release "loki" does not exist. Installing it now.
-##[error]Error: execution error at (loki/templates/validate.yaml:31:4): You have more than zero replicas configured for both the single binary and simple scalable targets. If this was intentional change the deploymentMode to the transitional 'SingleBinary<->SimpleScalable' mode
-
-
-
-
-# Set the deployment mode
 deploymentMode: SingleBinary
 
-# Single binary setup
 singleBinary:
+  enabled: true
   replicas: 1
   persistence:
     enabled: true
+    storageClass: standard
     accessModes:
       - ReadWriteOnce
     size: 10Gi
-    storageClass: standard # Change this if you're using a different storage class
-
   resources:
     requests:
       cpu: 100m
@@ -25,7 +16,6 @@ singleBinary:
     limits:
       cpu: 500m
       memory: 512Mi
-
   readinessProbe:
     httpGet:
       path: /ready
@@ -34,30 +24,35 @@ singleBinary:
     periodSeconds: 10
     failureThreshold: 3
 
-# Disable components from other deployment modes
+# Disable all scalable components
 distributor:
-  replicas: 0
+  enabled: false
 ingester:
-  replicas: 0
+  enabled: false
 querier:
-  replicas: 0
+  enabled: false
 queryFrontend:
-  replicas: 0
+  enabled: false
+compactor:
+  enabled: false
+indexGateway:
+  enabled: false
+ruler:
+  enabled: false
+tableManager:
+  enabled: false
 gateway:
-  replicas: 0
+  enabled: false
 
-# Loki configuration
+# Loki specific config
 loki:
   auth_enabled: false
-
   commonConfig:
     replication_factor: 1
-
   storage:
     type: filesystem
     filesystem:
       directory: /var/loki/chunks
-
   schemaConfig:
     configs:
       - from: 2024-01-01
@@ -67,52 +62,15 @@ loki:
         index:
           prefix: index_
           period: 24h
-
   compactor:
     working_directory: /var/loki/compactor
     shared_store: filesystem
-
   limits_config:
     retention_period: 7d
-    max_query_length: 24h
-    max_query_parallelism: 32
     reject_old_samples: true
-    reject_old_samples_max_age: 168h # 7 days
+    reject_old_samples_max_age: 168h
 
-# Service settings
+# Service
 service:
   type: ClusterIP
   port: 3100
-
-# Enable PVC
-persistence:
-  enabled: true
-  existingClaim: "" # Optional: reference pre-created PVC
-  storageClassName: standard
-  accessModes:
-    - ReadWriteOnce
-  size: 10Gi
-
-# Enable Loki ingress if needed (optional)
-# ingress:
-#   enabled: true
-#   annotations: {}
-#   hosts:
-#     - host: loki.yourdomain.com
-#       paths:
-#         - path: /
-#           pathType: ImplementationSpecific
-#   tls: []
-
-# Use standard pod annotations for Azure Workload Identity or others if needed
-podAnnotations: {}
-
-# Mount path inside the pod
-volumeMounts:
-  - name: storage
-    mountPath: /var/loki
-
-volumes:
-  - name: storage
-    persistentVolumeClaim:
-      claimName: loki-pvc # Match the PVC name or leave blank for dynamic provisioning
