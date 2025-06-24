@@ -1,13 +1,13 @@
-# Loki Helm Chart Configuration - Validated for Deployment
+# loki-pvc-values.yaml
 loki:
   commonConfig:
     replication_factor: 1
   storage:
-    type: 'filesystem'
+    type: 'filesystem'  # Using PVC for storage
     bucketNames:
-      chunks: chunks
-      ruler: ruler
-      admin: admin
+      chunks: loki-chunks
+      ruler: loki-rules
+      admin: loki-admin
   schemaConfig:
     configs:
       - from: "2024-04-01"
@@ -19,113 +19,77 @@ loki:
           period: 24h
   storage_config:
     filesystem:
-      directory: /var/loki/chunks  # Changed from /tmp for persistence
-  pattern_ingester:
-    enabled: true
+      directory: /var/loki/storage  # PVC mount path
   limits_config:
-    allow_structured_metadata: true
-    volume_enabled: true
-    # Add recommended limits for production stability
     ingestion_rate_mb: 4
     ingestion_burst_size_mb: 6
-    max_streams_per_user: 10000
-    max_line_size: "256KB"
-    retention_period: "168h"  # 7 days
-  ruler:
-    enable_api: true
-    storage:
-      type: local
-      local:
-        directory: /var/loki/rules
-  auth_enabled: false
+    retention_period: "168h"  # 7 days retention
 
-# Explicitly disable MinIO since using filesystem storage
+# Disable unnecessary components
 minio:
   enabled: false
+gateway:
+  enabled: false
 
-# Single Binary deployment mode for simplified setup
+# Single Binary mode with PVC
 deploymentMode: SingleBinary
-
 singleBinary:
-  replicas: 1
+  replicas: 2  # For basic HA
   persistence:
-    enabled: true  # Explicitly enable persistence
-    storageClass: default
+    enabled: true
+    storageClass: managed-csi-premium  # Azure Premium SSD
     accessModes:
       - ReadWriteOnce
-    size: 20Gi
-  # Add security context for proper file permissions
+    size: 100Gi  # Minimum recommended for production
+    annotations:
+      volume.beta.kubernetes.io/storage-class: managed-csi-premium
   securityContext:
+    fsGroup: 10001
     runAsUser: 10001
     runAsGroup: 10001
-    fsGroup: 10001
   resources:
     requests:
       cpu: "1"
-      memory: "2Gi"
+      memory: "4Gi"
     limits:
       cpu: "2"
-      memory: "4Gi"
-  # Add volume mounts for proper data persistence
-  extraVolumeMounts:
-    - name: data
-      mountPath: /var/loki
-      subPath: loki-data
+      memory: "8Gi"
+  podAnnotations:
+    cluster-autoscaler.kubernetes.io/safe-to-evict: "false"  # Prevent eviction during scaling
 
-# Configure sidecar properly for rules management
-sidecar:
-  rules:
-    enabled: false  # Disable rules sidecar
-    # If you need rules sidecar, configure it properly:
-    # enabled: true
-    # searchNamespace: ALL
-    # folder: /tmp/scratch
-    # folderAnnotation: loki_rule
-  datasources:
-    enabled: false  # Disable datasources sidecar
-
-# Properly disable distributed components for SingleBinary mode
-backend:
-  replicas: 0
-read:
-  replicas: 0
-write:
-  replicas: 0
-
-# Configure chunks cache with proper units
-chunksCache:
-  allocatedMemory: 512  # In MB
-
-# Add monitoring and health checks
+# Monitoring and health checks
 monitoring:
   enabled: true
   serviceMonitor:
-    enabled: false  # Set to true if using Prometheus Operator
+    enabled: true
+  livenessProbe:
+    httpGet:
+      path: /ready
+      port: http-metrics
+    initialDelaySeconds: 45
+    periodSeconds: 10
+  readinessProbe:
+    httpGet:
+      path: /ready
+      port: http-metrics
+    initialDelaySeconds: 15
+    periodSeconds: 5
 
-# Configure service for access
+# Service configuration
 service:
   type: ClusterIP
-  port: 3100
-  targetPort: 3100
+  ports:
+    - name: http-metrics
+      port: 3100
+      targetPort: http-metrics
+    - name: grpc
+      port: 9095
+      targetPort: grpc
 
-# Gateway configuration - use defaults
-gateway:
-  enabled: true
-  replicas: 1
-  resources:
-    requests:
-      cpu: 100m
-      memory: 128Mi
-    limits:
-      cpu: 200m
-      memory: 256Mi
+# PVC retention policy (requires Kubernetes 1.23+)
+persistentVolume:
+  reclaimPolicy: Retain  # Prevents accidental data loss
 
-# Add ingress configuration (optional)
-ingress:
-  enabled: false  # Set to true and configure if needed
-  # className: nginx
-  # hosts:
-  #   - host: loki.example.com
-  #     paths:
-  #       - path: /
-  #         pathType: Prefix
+# Recommended for AKS
+podDisruptionBudget:
+  maxUnavailable: 1
