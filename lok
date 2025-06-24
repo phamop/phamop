@@ -1,5 +1,3 @@
-[error] 11#11: *69 connect() failed (111: Connection refused) while connecting to upstream, client: 10.244.4.111, server: , request: "GET /loki/api/v1/query_range?start=1750736714463188418&end=1750736734463188418&query=%7Bstream%3D%22stdout%22%2Cpod%3D%22loki-canary-hmp6w%22%7D+&limit=1000 HTTP/1.1", upstream: "http://10.0.0.65:3100/loki/api/v1/query_range?start=1750736714463188418&end=1750736734463188418&query=%7Bstream%3D%22stdout%22%2Cpod%3D%22loki-canary-hmp6w%22%7D+&limit=1000", host: "loki-gateway.good9009.svc.cluster.local.:80"
-
 # Loki Helm Chart Configuration - Validated for Deployment
 loki:
   commonConfig:
@@ -109,6 +107,27 @@ service:
   type: ClusterIP
   port: 3100
   targetPort: 3100
+
+# Gateway configuration
+gateway:
+  enabled: true
+  replicas: 1
+  service:
+    type: ClusterIP
+    port: 80
+  # Ensure proper upstream configuration
+  nginxConfig:
+    httpSnippet: |
+      resolver kube-dns.kube-system.svc.cluster.local;
+    serverSnippet: |
+      client_max_body_size 100M;
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
 
 # Add ingress configuration (optional)
 ingress:
