@@ -1,3 +1,10 @@
+
+/docker-entrypoint.sh: No files found in /docker-entrypoint.d/, skipping configuration
+2025/06/24 03:57:38 [emerg] 1#1: "resolver" directive is duplicate in /etc/nginx/nginx.conf:34
+nginx: [emerg] "resolver" directive is duplicate in /etc/nginx/nginx.conf:34
+
+
+
 # Loki Helm Chart Configuration - Validated for Deployment
 loki:
   commonConfig:
