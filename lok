@@ -1,46 +1,111 @@
-Error: execution error at (loki/templates/validate.yaml:31:4): You have more than zero replicas configured for both the single binary and simple scalable targets. If this was intentional change the deploymentMode to the transitional 'SingleBinary<->SimpleScalable' mode
-Release "loki" does not exist. Installing it now.
-##[error]Error: execution error at (loki/templates/validate.yaml:31:
+# Set the deployment mode
+deploymentMode: SingleBinary
 
-loki:
+# Single binary setup
+singleBinary:
+  replicas: 1
   persistence:
     enabled: true
     accessModes:
       - ReadWriteOnce
-    size: 20Gi
-    storageClassName: standard # or your specific StorageClass
+    size: 10Gi
+    storageClass: standard # Change this if you're using a different storage class
 
-  config:
-    table_manager:
-      retention_deletes_enabled: true
-      retention_period: 7d
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
 
-    schema_config:
-      configs:
-        - from: 2023-01-01
-          store: boltdb-shipper
-          object_store: filesystem
-          schema: v11
-          index:
-            prefix: index_
-            period: 24h
+  readinessProbe:
+    httpGet:
+      path: /ready
+      port: http
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    failureThreshold: 3
 
-    storage_config:
-      boltdb_shipper:
-        active_index_directory: /var/loki/index
-        shared_store: filesystem
-      filesystem:
-        directory: /var/loki/chunks
+# Disable components from other deployment modes
+distributor:
+  replicas: 0
+ingester:
+  replicas: 0
+querier:
+  replicas: 0
+queryFrontend:
+  replicas: 0
+gateway:
+  replicas: 0
 
-    compactor:
-      working_directory: /var/loki/compactor
-      shared_store: filesystem
+# Loki configuration
+loki:
+  auth_enabled: false
 
-  volumeMounts:
-    - name: storage
-      mountPath: /var/loki
+  commonConfig:
+    replication_factor: 1
 
-  volumes:
-    - name: storage
-      persistentVolumeClaim:
-        claimName: loki-pvc
+  storage:
+    type: filesystem
+    filesystem:
+      directory: /var/loki/chunks
+
+  schemaConfig:
+    configs:
+      - from: 2024-01-01
+        store: boltdb-shipper
+        object_store: filesystem
+        schema: v11
+        index:
+          prefix: index_
+          period: 24h
+
+  compactor:
+    working_directory: /var/loki/compactor
+    shared_store: filesystem
+
+  limits_config:
+    retention_period: 7d
+    max_query_length: 24h
+    max_query_parallelism: 32
+    reject_old_samples: true
+    reject_old_samples_max_age: 168h # 7 days
+
+# Service settings
+service:
+  type: ClusterIP
+  port: 3100
+
+# Enable PVC
+persistence:
+  enabled: true
+  existingClaim: "" # Optional: reference pre-created PVC
+  storageClassName: standard
+  accessModes:
+    - ReadWriteOnce
+  size: 10Gi
+
+# Enable Loki ingress if needed (optional)
+# ingress:
+#   enabled: true
+#   annotations: {}
+#   hosts:
+#     - host: loki.yourdomain.com
+#       paths:
+#         - path: /
+#           pathType: ImplementationSpecific
+#   tls: []
+
+# Use standard pod annotations for Azure Workload Identity or others if needed
+podAnnotations: {}
+
+# Mount path inside the pod
+volumeMounts:
+  - name: storage
+    mountPath: /var/loki
+
+volumes:
+  - name: storage
+    persistentVolumeClaim:
+      claimName: loki-pvc # Match the PVC name or leave blank for dynamic provisioning
