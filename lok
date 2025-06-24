@@ -1,10 +1,3 @@
-
-Error: execution error at (loki/templates/validate.yaml:31:4): You have more than zero replicas configured for both the single binary and simple scalable targets. If this was intentional change the deploymentMode to the transitional 'SingleBinary<->SimpleScalable' mode
-Release "loki" does not exist. Installing it now.
-##[error]Error: execution error at (loki/templates/validate.yaml:31:4): You have more than zero replicas configured for both the single binary and simple scalable targets. If this was intentional change the deploymentMode to the transitional 'SingleBinary<->SimpleScalable' mode
-
-
-
 deploymentMode: SingleBinary
 
 singleBinary:
@@ -12,7 +5,7 @@ singleBinary:
   replicas: 1
   persistence:
     enabled: true
-    storageClass: standard
+    storageClass: standard  # Update if you use a different class
     accessModes:
       - ReadWriteOnce
     size: 10Gi
@@ -23,43 +16,47 @@ singleBinary:
     limits:
       cpu: 500m
       memory: 512Mi
-  readinessProbe:
-    httpGet:
-      path: /ready
-      port: http
-    initialDelaySeconds: 10
-    periodSeconds: 10
-    failureThreshold: 3
 
-# Disable all scalable components
+# Force-disable ALL scalable components
 distributor:
   enabled: false
+
 ingester:
   enabled: false
+
 querier:
   enabled: false
+
 queryFrontend:
   enabled: false
+
 compactor:
   enabled: false
+
 indexGateway:
   enabled: false
+
 ruler:
   enabled: false
+
 tableManager:
   enabled: false
+
 gateway:
   enabled: false
 
-# Loki specific config
+# Loki configuration
 loki:
   auth_enabled: false
+
   commonConfig:
     replication_factor: 1
+
   storage:
     type: filesystem
     filesystem:
       directory: /var/loki/chunks
+
   schemaConfig:
     configs:
       - from: 2024-01-01
@@ -69,15 +66,16 @@ loki:
         index:
           prefix: index_
           period: 24h
+
   compactor:
     working_directory: /var/loki/compactor
     shared_store: filesystem
+
   limits_config:
     retention_period: 7d
     reject_old_samples: true
     reject_old_samples_max_age: 168h
 
-# Service
 service:
   type: ClusterIP
   port: 3100
