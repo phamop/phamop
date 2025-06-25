@@ -1,10 +1,6 @@
-Regarding the high extraction frequency, what recommendations do you suggest to ensure it does not negatively impact system performance?
+"stack":"Error: 14 UNAVAILABLE: sending queue is full\n    at callErrorFromStatus
 
-We want to proactively optimize the process to maintain stability, particularly for GitLab, where performance delays are already affecting users. Could you advise on best practices—such as throttling, scheduling during off-peak hours, or resource allocation adjustments?
-
-
-
-
+node_modules/@grpc/grpc-js/build/src/client-interceptors.js:324:181)\n    at /home/node/app/node_modules/@grpc/grpc-js/build/src/resolving-call.js:135:78\n    at process.processTicksAndRejections (node:internal/process/task_queues:85:11)\nfor call at\n    at ServiceClientImpl.makeUnaryRequest (/home/node/app/node_modules/@grpc/grpc-js/build/src/client.js:161:32)\n    at ServiceClientImpl.<anonymous> (/home/node/app/node_modules/@grpc/grpc-js/build/src/make-client.js:105:19)\n    at /home/node/app/node_modules/@opentelemetry/instrume
 
 
 
