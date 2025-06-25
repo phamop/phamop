@@ -9,16 +9,65 @@ provisionDataStore:
 networkPolicy:
   enabled: false
 
+# Enable individual components instead of all-in-one
 allInOne:
+  enabled: false
+
+# Enable Jaeger Collector to receive from OTel
+collector:
   enabled: true
-storage:
-  type: memory
+  service:
+    # Enable OTLP receiver ports
+    otlp:
+      grpc:
+        port: 4317
+      http:
+        port: 4318
+    # Traditional Jaeger ports (optional, for direct Jaeger clients)
+    jaeger:
+      thrift:
+        port: 14268
+      grpc:
+        port: 14250
+  # Configure OTLP receiver
+  config:
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317
+          http:
+            endpoint: 0.0.0.0:4318
+      # Keep Jaeger receiver for backward compatibility
+      jaeger:
+        protocols:
+          thrift_http:
+            endpoint: 0.0.0.0:14268
+          grpc:
+            endpoint: 0.0.0.0:14250
+
+# Enable Query service for UI
+query:
+  enabled: true
+  service:
+    type: ClusterIP
+    port: 16686
+
+# Keep agent disabled since OTel Collector replaces it
 agent:
   enabled: false
-collector:
-  enabled: false
-query:
-  enabled: false
+
+storage:
+  type: memory
+
+# Optional: Configure resource limits
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
 
 
 https://blog.gitguardian.com/how-to-handle-secrets-with-azure-key-vault/
