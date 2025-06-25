@@ -1,7 +1,24 @@
-"stack":"Error: 14 UNAVAILABLE: sending queue is full\n    at callErrorFromStatus
+global:
+  imageRegistry:
 
-node_modules/@grpc/grpc-js/build/src/client-interceptors.js:324:181)\n    at /home/node/app/node_modules/@grpc/grpc-js/build/src/resolving-call.js:135:78\n    at process.processTicksAndRejections (node:internal/process/task_queues:85:11)\nfor call at\n    at ServiceClientImpl.makeUnaryRequest (/home/node/app/node_modules/@grpc/grpc-js/build/src/client.js:161:32)\n    at ServiceClientImpl.<anonymous> (/home/node/app/node_modules/@grpc/grpc-js/build/src/make-client.js:105:19)\n    at /home/node/app/node_modules/@opentelemetry/instrume
+provisionDataStore:
+  cassandra: false
+  elasticsearch: false
+  kafka: false
 
+networkPolicy:
+  enabled: false
+
+allInOne:
+  enabled: true
+storage:
+  type: memory
+agent:
+  enabled: false
+collector:
+  enabled: false
+query:
+  enabled: false
 
 
 https://blog.gitguardian.com/how-to-handle-secrets-with-azure-key-vault/
