@@ -1,8 +1,6 @@
-Could you please clarify whether the service we have disabled (or that is not enabled) is still consuming system resources? Upon checking the server, I confirmed that the service is not enabled. If it is indeed using resources, what steps should we take to resolve this issue?
+Regarding the high extraction frequency, what recommendations do you suggest to ensure it does not negatively impact system performance?
 
-Currently, this is impacting GitLab's performance, causing users to experience longer-than-expected wait times. Your assistance in addressing this matter would be greatly appreciated.
-
-Looking forward to your guidance.
+We want to proactively optimize the process to maintain stability, particularly for GitLab, where performance delays are already affecting users. Could you advise on best practices—such as throttling, scheduling during off-peak hours, or resource allocation adjustments?
 
 
 
