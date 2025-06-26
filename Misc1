@@ -1,9 +1,6 @@
 
-"caller":"grpc@v1.60.0/server.go:983","msg":"[core][Server #1] grpc: Server.Serve failed to create ServerTransport: connection error: desc = \"transport: http2Server.HandleStreams received bogus greeting from client: \\\"GET /api/services 
-
-caller":"grpc@v1.56.1/clientconn.go:1287","msg":"[core][Channel #2 SubChannel #3] Subchannel Connectivity change to TRANSIENT_FAILURE, last error: connection error: desc = \"transport: Error while dialing: dial tcp :16685: connect: connection refused\"","system":"grpc","grpc_log":true}
-
-
+Error: invalid configuration: service::pipelines::logs: references exporter "otlphttp" which is not configured
+2025/06/26 03:38:15 collector server run finished with error: invalid configuration: service::pipelines::logs: references exporter "otlphttp" which 
 global:
   imageRegistry:
 
