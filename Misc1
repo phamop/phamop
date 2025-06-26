@@ -1,5 +1,30 @@
 
- issues were with daemonset and why deployment mode is the preferred soluiton. This will be vital for our production planning.
+issues were with daemonset and why deployment mode is the preferred soluiton. in otel-collector
+
+
+DaemonSets and Deployments serve different purposes in OpenTelemetry Collector architecture, each with distinct tradeoffs.
+Issues with DaemonSet Mode
+
+Resource Consumption: DaemonSets run one collector pod per node, which can be wasteful in clusters with many nodes but light telemetry loads. Each pod consumes baseline CPU/memory regardless of actual workload.
+
+Scaling Limitations: You can't scale DaemonSets based on telemetry volume - you're locked to one pod per node. This creates bottlenecks when individual nodes generate high telemetry volumes.
+
+Configuration Complexity: Managing DaemonSet configurations across heterogeneous node types becomes complex. Different node classes may need different collector configurations, but DaemonSets apply uniform configs.
+
+Upgrade Challenges: Rolling updates of DaemonSets can be disruptive since they affect every node simultaneously. Failed updates impact the entire cluster's observability.
+
+Network Overhead: Each DaemonSet pod typically sends data directly to backends, creating many concurrent connections and potentially overwhelming downstream systems.
+Why Deployment Mode is Preferred
+
+Flexible Scaling: Deployments can scale horizontally based on actual telemetry volume rather than node count. You can run multiple replicas behind a load balancer and scale up/down as needed.
+
+Resource Efficiency: Deployments allow better resource utilization by consolidating telemetry processing. Fewer pods handling larger volumes is often more efficient than many small pods.
+
+Simplified Architecture: Deployments work well with service discovery and load balancing. Applications send telemetry to a service endpoint rather than node-local collectors.
+
+Easier Management: Single deployment configuration, centralized updates, and standard Kubernetes deployment patterns make operations simpler.
+
+Backend Connection Pooling: Fewer collector instances mean fewer connections to backend systems, reducing connection overhead and improving backend performance.
 
 
 global:
