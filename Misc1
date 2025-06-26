@@ -1,6 +1,7 @@
 
-Error: invalid configuration: service::pipelines::logs: references exporter "otlphttp" which is not configured
-2025/06/26 03:38:15 collector server run finished with error: invalid configuration: service::pipelines::logs: references exporter "otlphttp" which 
+ issues were with daemonset and why deployment mode is the preferred soluiton. This will be vital for our production planning.
+
+
 global:
   imageRegistry:
 
