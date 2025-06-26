@@ -14,6 +14,9 @@ https://stackoverflow.com/questions/78362832/exporting-opentelemetry-data-in-nod
 https://www.npmjs.com/package/%40opentelemetry/exporter-logs-otlp-http
 
 
+https://www.npmjs.com/package/%40opentelemetry/exporter-logs-otlp-grpc
+
+
 https://opentelemetry.io/docs/languages/sdk-configuration/otlp-exporter/
 
 
