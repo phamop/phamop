@@ -1,42 +1,6 @@
-
-apiVersion: v1
-kind: Service
-metadata:
-  name: otel-collector
-  namespace: monitoring  # Change to your desired namespace
-  labels:
-    app: opentelemetry
-    component: collector
-spec:
-  selector:
-    app: opentelemetry
-    component: collector
-  ports:
-    - name: metrics      # For Prometheus metrics endpoint
-      protocol: TCP
-      port: 8888
-      targetPort: 8888
-    - name: otlp-grpc    # Primary OTLP receiver port
-      protocol: TCP
-      port: 4317
-      targetPort: 4317
-    - name: otlp-http    # HTTP OTLP receiver port
-      protocol: TCP
-      port: 4318
-      targetPort: 4318
-    - name: zipkin       # Zipkin receiver port
-      protocol: TCP
-      port: 9411
-      targetPort: 9411
-    - name: jaeger-thrift # Jaeger thrift receiver
-      protocol: TCP
-      port: 6831
-      targetPort: 6831
-    - name: jaeger-grpc   # Jaeger gRPC receiver
-      protocol: TCP
-      port: 14250
-      targetPort: 14250
-  type: ClusterIP
+2025-06-26T17:04:13.187Z	debug	otlphttpexporter@v0.123.0/otlp.go:177	Preparing to make HTTP request	{"url": "http://loki-gateway.eddv3-hbt.svc.cluster.local:3100/otlp/v1/metrics"}
+2025-06-26T17:04:13.188Z	info	internal/retry_sender.go:133	Exporting failed. Will retry the request after interval.	{"error": "failed to make an HTTP request: Post \"http://loki-gateway.eddv3-hbt.svc.cluster.local:3100/otlp/v1/metrics\": context deadline exceeded", "interval": "4.869718034s"}
+2025-06-26T17:04:16.107Z	info	internal/retry_sender.go:133	Exporting failed. Will retry the request after interval.	{"error": "failed to make an HTTP reque
 
 
 
