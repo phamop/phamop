@@ -8,6 +8,8 @@ Jaeger
 ======
 Data source connected, but no services received. Verify that Jaeger is configured properly.  
 
+https://stackoverflow.com/questions/78362832/exporting-opentelemetry-data-in-node-js-to-otlp-endpoint-and-to-local-console
+
 
 https://opentelemetry.io/docs/languages/sdk-configuration/otlp-exporter/
 
