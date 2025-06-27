@@ -1,3 +1,12 @@
+The lack of comprehensive documentation for Loki can indeed make integration frustrating. Based on extensive real-world experience, here's a battle-tested approach to make Loki work with OTEL Collector and Grafana.
+Misconfigured Loki data source in Grafana
+Incorrect OTEL Collector pipeline configuration
+
+
+
+
+
+
 otel-collector
 =============
 2025-06-26T17:04:13.187Z	debug	otlphttpexporter@v0.123.0/otlp.go:177	Preparing to make HTTP request	{"url": "http://loki-gateway.eddv3-hbt.svc.cluster.local:3100/otlp/v1/metrics"}
