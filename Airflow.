@@ -1,4 +1,6 @@
 
+
+kubectl get ingress --all-namespaces -o jsonpath='{range .items[*]}{.metadata.namespace}/{.metadata.name}{"\n"}{range .spec.rules[*]}{"  Host: "}{.host}{"\n"}{range .http.paths[*]}{"    "}{.path} → {.backend.service.name}:{.backend.service.port.number}{"\n"}{end}{end}{end}'
 for file in *; do [ -f "$file" ] && echo "=== $file ===" && cat "$file"; done
 
 Integrating Loki with OTEL Collector and Grafana frequently encounters obstacles due to sparse documentation and complex configuration requirements. Based on my experience with active deployments and tested implementation approaches, the most prevalent integration challenges observed include:
