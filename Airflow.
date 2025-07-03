@@ -1,3 +1,10 @@
+Thank you for your guidance on this matter. I’ve implemented the suggested changes, but they only reduced the upgrade time by 20 minutes.
+
+During the recent upgrade from 17.8 to 17.11, the process took 140 minutes on the primary and 148 minutes on the secondary, indicating that the adjustments had minimal impact.
+
+Do you have any additional recommendations to help optimize the performance of our GitLab upgrades? Your insights would be greatly appreciated.
+
+
 - path: /grafana(/|$)(.*)
         pathType: ImplementationSpecific
         backend:
