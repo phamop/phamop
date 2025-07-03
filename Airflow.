@@ -1,8 +1,21 @@
-Thank you for your guidance on this matter. I’ve implemented the suggested changes, but they only reduced the upgrade time by 20 minutes.
+We’re encountering an issue where the GitLab Runner is failing with errors related to concurrent DNS lookups (/dns). This is causing pipeline jobs to fail intermittently, particularly when multiple runners attempt DNS resolution simultaneously.
 
-During the recent upgrade from 17.8 to 17.11, the process took 140 minutes on the primary and 148 minutes on the secondary, indicating that the adjustments had minimal impact.
+Error observed: [Include exact error message if available, e.g., failed to resolve DNS, concurrent /dns limit exceeded, etc.]
 
-Do you have any additional recommendations to help optimize the performance of our GitLab upgrades? Your insights would be greatly appreciated.
+Impact: Pipeline delays/failures due to DNS resolution timeouts.
+
+Environment: [Specify if this occurs in Kubernetes, Docker, shell executor, etc.]
+
+Troubleshooting steps taken so far:
+
+Verified DNS server availability and response times.
+
+Adjusted concurrent job limits in config.toml (if applicable).
+
+[Add any other relevant steps attempted.]
+
+Could you provide guidance on resolving this issue? Possible considerations:
+
 
 
 - path: /grafana(/|$)(.*)
