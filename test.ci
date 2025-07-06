@@ -1,3 +1,70 @@
+#######
+#jaeger-values.yaml
+agent:
+  enabled: false
+allInOne:
+  enabled: true
+  image:
+    tag: '1.53'
+collector:
+  enabled: false
+query:
+  enabled: false
+storage:
+  type: memory
+strategy: allInOne
+
+#prometheus-values.yaml
+
+alertmanager:
+  enabled: true
+grafana:
+  adminPassword: admin
+  enabled: true
+  service:
+    type: ClusterIP
+prometheus:
+  prometheusSpec:
+    evaluationInterval: 30s
+    podMonitorSelectorNilUsesHelmValues: false
+    scrapeInterval: 30s
+    serviceMonitorSelectorNilUsesHelmValues: false
+
+# loki-values.yaml
+
+loki:
+  config:
+    schema_config:
+      configs:
+      - from: '2022-01-01'
+        index:
+          period: 24h
+          prefix: index_
+        object_store: filesystem
+        schema: v11
+        store: boltdb-shipper
+    storage_config:
+      boltdb_shipper:
+        active_index_directory: /var/loki/index
+        cache_location: /var/loki/cache
+        shared_store: filesystem
+      filesystem:
+        directory: /var/loki/chunks
+    table_manager:
+      retention_deletes_enabled: true
+      retention_period: 24h
+  enabled: true
+persistence:
+  accessModes:
+  - ReadWriteOnce
+  enabled: true
+  size: 10Gi
+  storageClassName: default
+promtail:
+  enabled: true
+
+
+
 trigger:
 - main
 
