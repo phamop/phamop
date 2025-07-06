@@ -1,0 +1,44 @@
+trigger:
+- main
+
+variables:
+  namespace: observability
+  helmVersion: '3.12.0'
+
+pool:
+  vmImage: ubuntu-latest
+
+stages:
+- stage: DeployObservabilityStack
+  jobs:
+  - job: HelmInstall
+    steps:
+    - task: AzureCLI@2
+      inputs:
+        azureSubscription: 'AzureConnection'
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          az aks get-credentials --resource-group myResourceGroup --name myAksCluster
+
+    - task: HelmInstaller@1
+      inputs:
+        helmVersionToInstall: $(helmVersion)
+
+    - script: |
+        helm upgrade --install prometheus prometheus-community/kube-prometheus-stack \
+          --namespace $(namespace) --create-namespace \
+          -f values/prometheus-values.yaml
+
+        helm upgrade --install loki grafana/loki-stack \
+          --namespace $(namespace) \
+          -f values/loki-values.yaml
+
+        helm upgrade --install jaeger jaegertracing/jaeger-operator \
+          --namespace $(namespace) \
+          -f values/jaeger-values.yaml
+
+        helm upgrade --install otel-operator open-telemetry/opentelemetry-operator \
+          --namespace $(namespace) \
+          -f values/otel-values.yaml
+      displayName: 'Install Observability Stack'
