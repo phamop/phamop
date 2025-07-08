@@ -1,7 +1,7 @@
 
-error decoding 'receivers': unknown type: "kubeletstats" for id: "kubeletstats" (valid values: [otlp hostmetrics jaeger kafka opencensus prometheus zipkin nop])
- collector server run finished with error: failed to get config: cannot unmarshal the configuration: decoding failed due to the following error(s):
-Error: failed to get config: cannot unmarshal the configuration: decoding failed due to the following error(s):
+debug Scrape failed {"scrape_pool": "opentelemetry-collector", "target": "http://0.0.0.0:8888/metrics", "err": "Get \"http://0.0.0.0:8888/metrics\": dial tcp 0.0.0.0:8888: connect: connection refused"}
+
+warn internal/transaction.go:137 Failed to scrape Prometheus endpoint {"scrape_timestamp": 1751995973625, "target_labels": "{__name__=\"up\", instance=\"0.0.0.0:8888\", job=\"opentelemetry-collector\"}"}
 
 ########
 service:
