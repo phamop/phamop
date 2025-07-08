@@ -1,4 +1,9 @@
 
+error decoding 'receivers': unknown type: "kubeletstats" for id: "kubeletstats" (valid values: [otlp hostmetrics jaeger kafka opencensus prometheus zipkin nop])
+ collector server run finished with error: failed to get config: cannot unmarshal the configuration: decoding failed due to the following error(s):
+Error: failed to get config: cannot unmarshal the configuration: decoding failed due to the following error(s):
+
+########
 service:
     telemetry:
       logs: 
