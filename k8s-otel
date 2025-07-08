@@ -1,3 +1,31 @@
+
+service:
+    telemetry:
+      logs: 
+        level: debug
+    extensions:
+      - health_check
+    pipelines: 
+      metrics:
+        receivers: [otlp, prometheus]
+        processors: [batch]
+        exporters: [debug, prometheus]
+      traces:
+        receivers: [otlp, jaeger]
+        processors: [batch]
+        exporters: [debug, otlp]
+
+
+##################################
+
+
+
+
+
+
+
+
+
 # OpenTelemetry Collector Helm Values Configuration
 # Deploy with: helm install otel-collector open-telemetry/opentelemetry-collector -f values.yaml
 
