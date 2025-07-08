@@ -1,3 +1,33 @@
+
+- task: HelmDeploy@0
+  displayName: 'Deploy kube-prometheus-stack with OTEL Collector scraping'
+  inputs:
+    azureSubscription: $(azureSubscription)
+    command: 'upgrade'
+    chartType: 'Name'
+    chartName: 'prometheus-community/kube-prometheus-stack'
+    chartVersion: 'latest'
+    kubernetesCluster: $(clusterName)
+    azureResourceGroup: $(resourceGroup)
+    namespace: $(k8sNamespace)
+    releaseName: 'kube-prometheus-stack'
+    install: true
+    waitForExecution: true
+    arguments: |
+      --timeout 5m0s 
+      --create-namespace 
+      --set grafana.enabled=false 
+      --set installCRDs=true
+      --set prometheus.prometheusSpec.additionalScrapeConfigs[0].job_name=otel-collector
+      --set prometheus.prometheusSpec.additionalScrapeConfigs[0].scrape_interval=10s
+      --set prometheus.prometheusSpec.additionalScrapeConfigs[0].static_configs[0].targets[0]="otel-collector:9464"
+      --set prometheus.prometheusSpec.additionalScrapeConfigs[0].metrics_path=/metrics
+      --set prometheus.prometheusSpec.additionalScrapeConfigs[0].honor_labels=true
+
+####################
+
+
+
 # prometheus/values.yaml
 server:
   global:
