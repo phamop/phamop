@@ -1,4 +1,8 @@
 
+
+ kubectl get svc -n monitoring | findstr opentelemetry-collector
+opentelemetry-collector                          ClusterIP   10.0.0.29    <none>        6831/UDP,14250/TCP,14268/TCP,8888/TCP,4317/TCP,4318/TCP,8889/TCP,9411/TCP   25h
+
 kubectl get svc -n monitoring | findstr prometheus
 kube-prometheus-stack-alertmanager               ClusterIP   10.0.0.78    <none>        9093/TCP,8080/TCP                                                           46h
 kube-prometheus-stack-kube-state-metrics         ClusterIP   10.0.0.120   <none>        8080/TCP                                                                    46h
