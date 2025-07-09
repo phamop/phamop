@@ -1,3 +1,14 @@
+
+Error: failed to get config: cannot unmarshal the configuration: decoding failed due to the following error(s):
+
+error decoding 'processors': unknown type: "resourcedetection" for id: "resourcedetection" (valid values: [resource span probabilistic_sampler filter batch memory_limiter attributes])
+2025/07/09 23:21:34 collector server run finished with error: failed to get config: cannot unmarshal the configuration: decoding failed due to the following error(s):
+
+error decoding 'processors': unknown type: "resourcedetection" for id: "resourcedetection" (valid values: [resource span probabilistic_sampler filter batch memory_limiter attributes])
+
+
+
+
 prometheus:
   additionalServiceMonitors:
     - name: otel-collector-monitor
