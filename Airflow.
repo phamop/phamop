@@ -1,3 +1,6 @@
+The current alternative doesn’t fully work because of system constraints. Internal exposure via our app is still required—and we have no other options at this time
+
+
 
 The redeployment involved shifting all observability-related resources and code to the monitoring namespace."
 
