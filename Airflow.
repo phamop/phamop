@@ -1,4 +1,10 @@
-
+ prometheus:
+      endpoint: "0.0.0.0:9090"
+      namespace: "monitoring"
+      const_labels:
+        k8s_cluster: "EDDVAKSCLUS01"
+      send_timestamps: true 
+      enable_open_metrics: true 
 
     debug   prometheusexporter@v0.123.0/accumulator.go:226  Accumulate histogram.....
 2025-07-09T20:47:07.138Z        debug   prometheusexporter@v0.123.0/accumulator.go:79   accumulating metric: otelcol_processor_batch_metadata_cardinality
