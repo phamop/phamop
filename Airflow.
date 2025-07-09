@@ -1,5 +1,5 @@
 
-The outcome redeployment was for all the resources and code for the observability to be deployed in the monitoring namespace
+The redeployment involved shifting all observability-related resources and code to the monitoring namespace."
 
 We’re encountering an issue where the GitLab Runner is failing with errors related to concurrent DNS lookups (/dns). This is causing pipeline jobs to fail intermittently, particularly when multiple runners attempt DNS resolution simultaneously.
 
