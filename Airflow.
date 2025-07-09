@@ -1,5 +1,4 @@
-The current alternative doesn’t fully work because of system constraints. Internal exposure via grafana instance  is still required—and we have no other options at this time.  Even the SSO ticket can not be completed at this time because it needs a URL to grafana instance but that is not available due to the discussed constriant
-
+Due to system constraints, the current workaround is nonviable. Internal Grafana access is still needed, but unavailable—blocking both direct use and SSO integration (which requires a Grafana URL). No alternatives exist presently.
 
 The current alternative doesn’t fully work because of system constraints. Internal exposure via our app is still required—and we have no other options at this time
 The redeployment involved shifting all observability-related resources and code to the monitoring namespace."
