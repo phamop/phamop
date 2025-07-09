@@ -1,12 +1,255 @@
+# OpenTelemetry Collector Helm Values Configuration
+# Deploy with: helm install otel-collector open-telemetry/opentelemetry-collector -f values.yaml
 
-Error: failed to get config: cannot unmarshal the configuration: decoding failed due to the following error(s):
-
-error decoding 'processors': unknown type: "resourcedetection" for id: "resourcedetection" (valid values: [resource span probabilistic_sampler filter batch memory_limiter attributes])
-2025/07/09 23:21:34 collector server run finished with error: failed to get config: cannot unmarshal the configuration: decoding failed due to the following error(s):
-
-error decoding 'processors': unknown type: "resourcedetection" for id: "resourcedetection" (valid values: [resource span probabilistic_sampler filter batch memory_limiter attributes])
+mode: "deployment"
+nameOverride: "opentelemetry-collector"
+fullnameOverride: "opentelemetry-collector"
+replicaCount: 2
 
 
+configMap:
+  create: true
+  existingName: ""
+
+internalTelemetryViaOTLP:
+  endpoint: ""
+  headers: []
+  traces:
+    enabled: false
+  metrics:
+    enabled: false
+  logs:
+    enabled: false
+
+config:
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: 0.0.0.0:4317
+        http:
+          endpoint: 0.0.0.0:4318
+    jaeger:
+      protocols:
+        grpc:
+          endpoint: 0.0.0.0:14250
+        thrift_http:
+          endpoint: 0.0.0.0:14268
+        thrift_compact:
+          endpoint: 0.0.0.0:6831
+    # kubeletstats:
+    #   insecure_skip_verify: true
+    # prometheus:
+    #   config:
+    #     scrape_configs:
+    #       - job_name: opentelemetry-collector
+    #         scrape_interval: 10s
+    #         static_configs:
+    #           - targets:
+    #             - 0.0.0.0:8888 
+
+    prometheus:
+      config:
+        scrape_configs:
+          - job_name: "otentelemetry-collector"
+            scrape_interval: 10s
+            static_configs:
+              - targets: ["opentelemetry-collector:8888"]
+            relabel_configs:
+              - source_labels: [__address__]
+                target_label: __tmp_hash
+                modulus: 1
+                action: hashmod
+              - source_labels: [__tmp_hash]
+                regex: "0"
+                action: keep
+
+  processors:
+    batch: 
+      timeout: 200ms
+      send_batch_size: 1024 
+      send_batch_max_size: 4096
+    # resourcedetection:
+    #   detectors: [env, system, azure]
+    #   timeout: 2s 
+    #   override: false
+    # transform:
+    #   error_mode: ignore
+    #   log_statements:
+    #     - context: log
+    #       statements: 
+    #         - set(resource.attributes["service.name"], attributes["service_name"])
+    #         - delete_key(attributes, "service_name")
+    # Uncomment and configure memory limiter if needed
+    memory_limiter:
+      check_interval: 5s
+      limit_percentage: 80
+      spike_limit_mib: 64
+      limit_mib: 512
+
+  exporters:
+    debug: 
+      verbosity: basic
+    otlphttp:
+      endpoint: "http://loki-write.monitoring.svc.cluster.local:3100/otlp"
+      tls:
+        insecure: true
+    prometheus:
+      endpoint: "0.0.0.0:8889"
+      namespace: "monitoring"
+      const_labels:
+        k8s_cluster: "EDDVAKSCLUS01"
+      send_timestamps: true 
+      enable_open_metrics: true 
+    otlp:
+      endpoint: "http://jaeger-collector.monitoring.svc.cluster.local:4317"
+      tls:
+        insecure: true
+    # Named OTLP exporter for Jaeger
+    otlp/jaeger:
+      endpoint: "http://jaeger-collector.monitoring.svc.cluster.local:4317"
+      tls:
+        insecure: true
+  
+  extensions:
+    health_check:
+      endpoint: 0.0.0.0:13133
+
+  service:
+    telemetry:
+      logs: 
+        level: debug
+    extensions:
+      - health_check
+    pipelines: 
+      metrics:
+        receivers: [otlp, prometheus]
+        processors: [memory_limiter, batch]
+        exporters: [debug, prometheus]
+      traces:
+        receivers: [otlp, jaeger]
+        processors: [memory_limiter, batch]
+        exporters: [debug, otlp/jaeger]
+      logs:
+        receivers: [otlp]
+        processors: [memory_limiter, batch]
+        exporters: [debug, otlphttp]
+
+image:
+  repository: "otel/opentelemetry-collector"
+  pullPolicy: IfNotPresent
+  tag: "0.123.0"
+
+resources:
+  requests:
+    cpu: 500m
+    memory: 800Mi
+  limits:
+    cpu: 1000m
+    memory: 1600Mi
+
+serviceAccount:
+  create: true
+
+ports:
+  otlp:
+    enabled: true
+    containerPort: 4317
+    servicePort: 4317
+    hostPort: 4317
+  otlp-http:
+    enabled: true
+    containerPort: 4318
+    servicePort: 4318
+  jaeger-compact:
+    enabled: true
+    containerPort: 6831
+    protocol: UDP
+  jaeger-thrift:
+    enabled: true
+    containerPort: 14268
+  jaeger-grpc:
+    enabled: true
+    containerPort: 14250
+  metrics:
+    enabled: true
+    containerPort: 8888
+    servicePort: 8888
+    hostPort: 8888
+    protocol: TCP 
+  prometheus:
+    enabled: true
+    containerPort: 8889
+    servicePort: 8889
+    hostPort: 8889
+    protocol: TCP 
+
+extraEnvs:
+  - name: POD_IP
+    valueFrom:
+      fieldRef:
+        fieldPath: status.podIP
+
+livenessProbe:
+  httpGet:
+    path: /
+    port: 13133
+  initialDelaySeconds: 15
+  periodSeconds: 20
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /
+    port: 13133
+  initialDelaySeconds: 5
+  periodSeconds: 10
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 7
+  targetCPUUtilizationPercentage: 90
+  targetMemoryUtilizationPercentage: 90
+
+useGOMEMLIMIT: true
+
+---
+prometheus:
+  prometheusSpec:
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    additionalScrapeConfigs:
+      - job_name: 'opentelemetry-collector'
+        scrape_interval: 10s
+        static_configs:
+          - targets: ["opentelemetry-collector.monitoring.svc.cluster.local:8889"]
+
+---
+
+prometheus:
+  additionalServiceMonitors:
+    - name: otel-collector-monitor
+      selector:
+        matchLabels:
+          app.kubernetes.io/name: opentelemetry-collector
+      namespaceSelector:
+        matchNames:
+          - monitoring
+      endpoints:
+        - port: prometheus
+          interval: 10s
+
+
+
+
+
+
+
+########################################################################################################
 
 
 prometheus:
