@@ -1,7 +1,7 @@
+The current alternative doesn’t fully work because of system constraints. Internal exposure via grafana instance  is still required—and we have no other options at this time.  Even the SSO ticket can not be completed at this time because it needs a URL to grafana instance but that is not available due to the discussed constriant
+
+
 The current alternative doesn’t fully work because of system constraints. Internal exposure via our app is still required—and we have no other options at this time
-
-
-
 The redeployment involved shifting all observability-related resources and code to the monitoring namespace."
 
 We’re encountering an issue where the GitLab Runner is failing with errors related to concurrent DNS lookups (/dns). This is causing pipeline jobs to fail intermittently, particularly when multiple runners attempt DNS resolution simultaneously.
