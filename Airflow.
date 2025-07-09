@@ -1,4 +1,34 @@
 
+
+    debug   prometheusexporter@v0.123.0/accumulator.go:226  Accumulate histogram.....
+2025-07-09T20:47:07.138Z        debug   prometheusexporter@v0.123.0/accumulator.go:79   accumulating metric: otelcol_processor_batch_metadata_cardinality
+2025-07-09T20:47:07.138Z        debug   prometheusexporter@v0.123.0/accumulator.go:79   accumulating metric: otelcol_processor_batch_timeout_trigger_send_total
+2025-07-09T20:47:07.138Z        debug   prometheusexporter@v0.123.0/accumulator.go:79   accumulating metric: otelcol_processor_incoming_items_total
+2025-07-09T20:47:07.138Z        debug   prometheusexporter@v0.123.0/accumulator.go:79   accumulating metric: otelcol_processor_outgoing_items_total
+2025-07-09T20:47:07.138Z        debug   prometheusexporter@v0.123.0/accumulator.go:79   accumulating metric: otelcol_receiver_accepted_metric_points_total
+2025-07-09T20:47:07.138Z        debug   prometheusexporter@v0.123.0/accumulator.go:79   accumulating metric: otelcol_receiver_refused_metric_points_total
+2025-07-09T20:47:07.138Z        debug   prometheusexporter@v0.123.0/accumulator.go:79   accumulating metric: promhttp_metric_handler_errors_total
+2025-07-09T20:47:07.138Z        debug   prometheusexporter@v0.123.0/accumulator.go:79   accumulating metric: up
+2025-07-09T20:47:07.138Z        debug   prometheusexporter@v0.123.0/accumulator.go:79   accumulating metric: scrape_duration_seconds
+2025-07-09T20:47:07.138Z        debug   prometheusexporter@v0.123.0/accumulator.go:79   accumulating metric: scrape_samples_scraped
+2025-07-09T20:47:07.138Z        debug   prometheusexporter@v0.123.0/accumulator.go:79   accumulating metric: scrape_samples_post_metric_relabeling
+2025-07-09T20:47:07.138Z        debug   prometheusexporter@v0.123.0/accumulator.go:79   accumulating metric: scrape_series_added
+2025-07-09T20:47:07.138Z        debug   prometheusexporter@v0.123.0/accumulator.go:79   accumulating metric: otelcol_exporter_queue_size
+2025-07-09T20:47:07.138Z        debug   prometheusexporter@v0.123.0/accumulator.go:79   accumulating metric: otelcol_exporter_send_failed_metric_points_total
+2025-07-09T20:47:07.139Z        debug   prometheusexporter@v0.123.0/accumulator.go:79   accumulating metric: otelcol_exporter_sent_metric_points_total
+2025-07-09T20:47:07.139Z        debug   prometheusexporter@v0.123.0/accumulator.go:79   accumulating metric: otelcol_exporter_queue_capacity
+2025-07-09T20:47:07.139Z        debug   prometheusexporter@v0.123.0/accumulator.go:79   accumulating metric: otelcol_process_memory_rss_bytes
+2025-07-09T20:47:07.139Z        debug   prometheusexporter@v0.123.0/accumulator.go:79   accumulating metric: otelcol_process_runtime_heap_alloc_bytes
+2025-07-09T20:47:07.139Z        debug   prometheusexporter@v0.123.0/accumulator.go:79   accumulating metric: otelcol_process_runtime_total_alloc_bytes_total
+2025-07-09T20:47:07.139Z        debug   prometheusexporter@v0.123.0/accumulator.go:79   accumulating metric: otelcol_process_runtime_total_sys_memory_bytes
+2025-07-09T20:47:07.139Z        debug   prometheusexporter@v0.123.0/accumulator.go:79   accumulating metric: otelcol_process_uptime_seconds_total
+2025-07-09T20:47:07.139Z        debug   prometheusexporter@v0.123.0/accumulator.go:79   accumulating metric: otelcol_process_cpu_seconds_total
+2025-07-09T20:47:07.139Z        info    Metrics {"resource metrics": 1, "metrics": 24, "data points": 29}
+2025-07-09T20:47:08.237Z        debug   memorylimiter@v0.123.0/memorylimiter.go:178     Currently used memory.  {"cur_mem_mib": 11}
+2025-07-09T20:47:13.236Z        debug   memorylimiter@v0.123.0/memorylimiter.go:178     Currently used memory.  {"cur_mem_mib": 11}
+
+
+
 Error: cannot start pipelines: failed to start "prometheus" exporter: listen tcp 10.0.0.26:9090: bind: cannot assign requested address; failed to shutdown pipelines: no existing monitoring routine is running; no existing monitoring routine is running; no existing monitoring routine is running
 
 
