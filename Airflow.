@@ -1,4 +1,6 @@
 
+Error: cannot start pipelines: failed to start "prometheus" exporter: listen tcp 10.0.0.26:9090: bind: cannot assign requested address; failed to shutdown pipelines: no existing monitoring routine is running; no existing monitoring routine is running; no existing monitoring routine is running
+
 
  kubectl get svc -n monitoring | findstr opentelemetry-collector
 opentelemetry-collector                          ClusterIP   10.0.0.29    <none>        6831/UDP,14250/TCP,14268/TCP,8888/TCP,4317/TCP,4318/TCP,8889/TCP,9411/TCP   25h
