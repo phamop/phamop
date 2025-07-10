@@ -1,4 +1,25 @@
 prometheus:
+  prometheusSpec:
+    additionalScrapeConfigs:
+      - job_name: 'otel-collector'
+        scrape_interval: 10s
+        static_configs:
+          - targets: ['opentelemetry-collector.monitoring.svc.cluster.local:8889']
+        # Add these relabel configs to ensure proper discovery
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_service_name]
+            action: keep
+            regex: opentelemetry-collector
+          - source_labels: [__meta_kubernetes_namespace]
+            action: keep
+            regex: monitoring
+
+
+
+
+
+
+prometheus:
   additionalServiceMonitors:
     - name: otel-collector-monitor
       selector:
