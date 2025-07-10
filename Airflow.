@@ -1,17 +1,22 @@
-apiVersion: v1
-kind: Service
+apiVersion: networking.k8s.io/v1
+kind: Ingress
 metadata:
-  name: grafana-nodeport
-  namespace: monitoring  # Change to your Grafana's namespace
+  name: my-ingress
+  namespace: current-namespace
+  annotations:
+    nginx.ingress.kubernetes.io/upstream-vhost: "target-service.target-namespace.svc.cluster.local"
 spec:
-  type: NodePort
-  ports:
-    - port: 80
-      targetPort: 3000  # Grafana's default port
-      nodePort: 30080   # Must be between 30000-32767
-  selector:
-    app: grafana       # Match your Grafana deployment's labels
-
+  rules:
+  - host: myapp.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: target-service
+            port:
+              number: 80
 
 The Alertmanager data source has been successfully integrated into the OSS (Open Source Software) stack, enhancing monitoring and alerting capabilities.
 
