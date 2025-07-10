@@ -1,3 +1,22 @@
+prometheus:
+  additionalServiceMonitors:
+    - name: otel-collector-monitor
+      selector:
+        matchLabels:
+          app.kubernetes.io/name: opentelemetry-collector
+      namespaceSelector:
+        matchNames:
+          - monitoring
+      endpoints:
+        - port: prometheus
+          interval: 10s
+          path: /metrics
+
+
+
+
+
+
 
 # OpenTelemetry Collector Helm Values Configuration
 # Deploy with: helm upgrade --install otel-collector open-telemetry/opentelemetry-collector -f values.yaml -n monitoring
