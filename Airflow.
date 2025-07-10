@@ -18,10 +18,7 @@ spec:
             port:
               number: 80
 
-The Alertmanager data source has been successfully integrated into the OSS (Open Source Software) stack, enhancing monitoring and alerting capabilities.
-
-Additionally, Prometheus is now configured to scrape metrics from the OpenTelemetry Collector (otel-collector). This was achieved by deploying a custom values file, ensuring seamless metric collection and interoperability between the components.
-
+The Ingress "grafana-ingress" is invalid: spec.rules[0].http.paths[0].backend.service.name: Invalid value: "grafana.monitoring": a DNS-1035 label must consist of lower case alphanumeric characters or '-', start with an alphabetic character, and end with an alphanumeric character (e.g. 'my-name',  or 'abc-123', regex used for validation is '[a-z]([-a-z0-9]*[a-z0-9])?')
 
 
 prometheus:
