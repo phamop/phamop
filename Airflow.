@@ -1,7 +1,13 @@
-during the meeting both proxy and ingress service was setup it was verified it was working form the cluster outside the namespace.
-busybox image was used to validate access to the Grafana service outside the namespace.
-the new issue: is to investigate how to get to the ingress from the external. that will provide detail on how to access the ingress controller 
+During the meeting, both the proxy and ingress service were successfully configured. The setup was verified to ensure functionality from outside the namespace within the cluster.
 
+Validation Steps:
+
+A busybox image was deployed to test and confirm external namespace access to the Grafana service.
+
+Connectivity was confirmed, ensuring the service was reachable as intended.
+
+New Issue Identified:
+The next task is to investigate external access to the ingress controller. This involves determining the correct method to expose the ingress to external traffic, which will provide clear steps on how users outside the cluster can reach the service.
 
 
 
