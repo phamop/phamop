@@ -1,23 +1,23 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: my-ingress
-  namespace: current-namespace
+  name: grafana-ingress
+  namespace: your-namespace
   annotations:
-    nginx.ingress.kubernetes.io/upstream-vhost: "target-service.target-namespace.svc.cluster.local"
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+    nginx.ingress.kubernetes.io/upstream-vhost: "grafana.monitoring.svc.cluster.local"
 spec:
   rules:
-  - host: myapp.example.com
+  - host: your-domain.com
     http:
       paths:
-      - path: /
+      - path: /grafana(/|$)(.*)
         pathType: Prefix
         backend:
           service:
-            name: target-service
+            name: any-dummy-service  # Can be any valid service name in your namespace
             port:
               number: 80
-
 The Ingress "grafana-ingress" is invalid: spec.rules[0].http.paths[0].backend.service.name: Invalid value: "grafana.monitoring": a DNS-1035 label must consist of lower case alphanumeric characters or '-', start with an alphabetic character, and end with an alphanumeric character (e.g. 'my-name',  or 'abc-123', regex used for validation is '[a-z]([-a-z0-9]*[a-z0-9])?')
 
 
