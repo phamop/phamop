@@ -1,5 +1,7 @@
+during the meeting both proxy and ingress service was setup it was verified it was working form the cluster outside the namespace.
+busybox image was used to validate access to the Grafana service outside the namespace.
+the new issue: is to investigate how to get to the ingress from the external. that will provide detail on how to access the ingress controller 
 
-Error obtaining Endpoints for Service "eddv3-hbt/grafana": no object matching key "eddv3-hbt/grafana" in local store
 
 
 
