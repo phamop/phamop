@@ -1,3 +1,123 @@
+
+# OpenTelemetry Collector Helm Values Configuration
+# Deploy with: helm upgrade --install otel-collector open-telemetry/opentelemetry-collector -f values.yaml -n monitoring
+
+mode: "deployment"
+nameOverride: "opentelemetry-collector"
+fullnameOverride: "opentelemetry-collector"
+replicaCount: 2
+
+configMap:
+  create: true
+
+image:
+  repository: "otel/opentelemetry-collector-contrib"  # Using contrib for more processors
+  pullPolicy: IfNotPresent
+  tag: "0.96.0"  # Using a stable version
+
+resources:
+  requests:
+    cpu: 500m
+    memory: 800Mi
+  limits:
+    cpu: 1000m
+    memory: 1600Mi
+
+serviceAccount:
+  create: true
+
+config:
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: 0.0.0.0:4317
+        http:
+          endpoint: 0.0.0.0:4318
+
+  processors:
+    batch:
+      timeout: 200ms
+      send_batch_size: 1024
+      send_batch_max_size: 4096
+    memory_limiter:
+      check_interval: 5s
+      limit_percentage: 80
+      spike_limit_mib: 64
+      limit_mib: 512
+
+  exporters:
+    debug:
+      verbosity: basic
+    prometheus:
+      endpoint: "0.0.0.0:8889"
+      namespace: "monitoring"
+      const_labels:
+        k8s_cluster: "EDDVAKSCLUS01"
+      send_timestamps: true
+      enable_open_metrics: true
+
+  extensions:
+    health_check:
+      endpoint: 0.0.0.0:13133
+
+  service:
+    telemetry:
+      logs:
+        level: debug
+    extensions: [health_check]
+    pipelines:
+      metrics:
+        receivers: [otlp]
+        processors: [memory_limiter, batch]
+        exporters: [debug, prometheus]
+
+service:
+  ports:
+    otlp-grpc:
+      enabled: true
+      port: 4317
+    otlp-http:
+      enabled: true
+      port: 4318
+    prometheus:
+      enabled: true
+      port: 8889
+
+livenessProbe:
+  httpGet:
+    path: /
+    port: 13133
+  initialDelaySeconds: 15
+  periodSeconds: 20
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /
+    port: 13133
+  initialDelaySeconds: 5
+  periodSeconds: 10
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 7
+  targetCPUUtilizationPercentage: 90
+  targetMemoryUtilizationPercentage: 90
+
+
+
+
+########
+update
+
+
+
+
 # OpenTelemetry Collector Helm Values Configuration
 # Deploy with: helm install otel-collector open-telemetry/opentelemetry-collector -f values.yaml
 
