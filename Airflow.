@@ -1,6 +1,27 @@
-Error from server (BadRequest): error when creating "grafana-test.yaml": admission webhook "validate.nginx.ingress.kubernetes.io" denied the request: annotation group ConfigurationSnippet contains risky annotation based on ingress configuration
 
 
+
+
+# grafana-ingress.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: grafana-ingress
+  namespace: your-namespace
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /$1  # Simple rewrite
+    nginx.ingress.kubernetes.io/app-root: /grafana/  # Redirects /grafana to /grafana/
+spec:
+  rules:
+  - http:
+      paths:
+      - path: /grafana(/|$)(.*)
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: grafana-proxy  # Points to ExternalName service
+            port:
+              number: 3000
 
 
 
