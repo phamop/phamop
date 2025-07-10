@@ -1,20 +1,24 @@
-The Ingress "grafana-ingress" is invalid: spec.rules[0].http.paths[0].backend.service.name: Invalid value: "grafana.monitoring": a DNS-1035 label must consist of lower case alphanumeric characters or '-', start with an alphabetic character, and end with an alphanumeric character (e.g. 'my-name',  or 'abc-123', regex used for validation is '[a-z]([-a-z0-9]*[a-z0-9])?')
-prometheus:
-  prometheusSpec:
-    additionalScrapeConfigs:
-      - job_name: 'otel-collector'
-        scrape_interval: 10s
-        static_configs:
-          - targets: ['opentelemetry-collector.monitoring.svc.cluster.local:8889']
-        # Add these relabel configs to ensure proper discovery
-        relabel_configs:
-          - source_labels: [__meta_kubernetes_service_name]
-            action: keep
-            regex: opentelemetry-collector
-          - source_labels: [__meta_kubernetes_namespace]
-            action: keep
-            regex: monitoring
-
+# grafana-ingress.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: grafana-ingress
+  namespace: your-namespace
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /$2  # Strips '/grafana' prefix
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      rewrite ^/grafana$ /grafana/ permanent;  # Ensures trailing slash
+spec:
+  rules:
+  - http:
+      paths:
+      - path: /grafana(/|$)(.*)  # Captures all paths under /grafana
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: grafana-proxy  # References the local proxy service
+            port:
+              number: 3000  # Grafana's default port
 
 
 
