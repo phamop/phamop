@@ -1,57 +1,15 @@
-# otel-collector-values.yaml
-mode: deployment
-config:
-  receivers:
-    otlp:
-      protocols:
-        http:
-        grpc:
-    filelog:
-      include: [ /var/log/containers/*.log ]
-      start_at: beginning
-      operators:
-        - type: json_parser
-          timestamp:
-            parse_from: attributes.time
-            layout: '%Y-%m-%dT%H:%M:%S.%LZ'
-        - type: move
-          from: attributes.log
-          to: body
-        - type: remove
-          field: attributes.time
+Error: failed to get config: cannot unmarshal the configuration: decoding failed due to the following error(s):
 
-  processors:
-    batch:
-      send_batch_size: 1000
-      timeout: 10s
-    memory_limiter:
-      check_interval: 1s
-      limit_mib: 400
-      spike_limit_mib: 100
-    resourcedetection:
-      detectors: [kubernetes]
-      timeout: 5s
+error decoding 'receivers': unknown type: "filelog" for id: "filelog" (valid values: [jaeger kafka opencensus prometheus zipkin nop otlp hostmetrics])
+error decoding 'exporters': error reading configuration for "otlphttp": decoding failed due to the following error(s):
 
-  exporters:
-    logging:
-      loglevel: debug
-    loki:
-      endpoint: http://loki-write-headless:3100/loki/api/v1/push
-      labels:
-        attributes:
-          kubernetes.pod.name: "pod"
-          kubernetes.namespace.name: "namespace"
-          kubernetes.container.name: "container"
-      default_labels_enabled:
-        exporter: true
-        job: true
+'' has invalid keys: default_labels_enabled
+2025/07/10 03:17:44 collector server run finished with error: failed to get config: cannot unmarshal the configuration: decoding failed due to the following error(s):
 
-  service:
-    pipelines:
-      logs:
-        receivers: [otlp, filelog]
-        processors: [memory_limiter, batch, resourcedetection]
-        exporters: [loki]
+error decoding 'receivers': unknown type: "filelog" for id: "filelog" (valid values: [jaeger kafka opencensus prometheus zipkin nop otlp hostmetrics])
+error decoding 'exporters': error reading configuration for "otlphttp": decoding failed due to the following error(s):
+
+'' has invalid keys: default_labels_enabled
 
 
 
