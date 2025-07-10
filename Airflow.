@@ -1,15 +1,6 @@
-Error: failed to get config: cannot unmarshal the configuration: decoding failed due to the following error(s):
+The Alertmanager data source has been successfully integrated into the OSS (Open Source Software) stack, enhancing monitoring and alerting capabilities.
 
-error decoding 'receivers': unknown type: "filelog" for id: "filelog" (valid values: [jaeger kafka opencensus prometheus zipkin nop otlp hostmetrics])
-error decoding 'exporters': error reading configuration for "otlphttp": decoding failed due to the following error(s):
-
-'' has invalid keys: default_labels_enabled
-2025/07/10 03:17:44 collector server run finished with error: failed to get config: cannot unmarshal the configuration: decoding failed due to the following error(s):
-
-error decoding 'receivers': unknown type: "filelog" for id: "filelog" (valid values: [jaeger kafka opencensus prometheus zipkin nop otlp hostmetrics])
-error decoding 'exporters': error reading configuration for "otlphttp": decoding failed due to the following error(s):
-
-'' has invalid keys: default_labels_enabled
+Additionally, Prometheus is now configured to scrape metrics from the OpenTelemetry Collector (otel-collector). This was achieved by deploying a custom values file, ensuring seamless metric collection and interoperability between the components.
 
 
 
