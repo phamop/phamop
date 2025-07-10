@@ -1,3 +1,8 @@
+Error scraping target: Get "http://otel-collector:8889/metrics": dial tcp: lookup otel-collector on 10.0.0.10:53: no such host
+http://otel-collector:8889/metrics
+instance="otel-collector:8889"
+job="otel-collector"
+
 prometheus:
   prometheusSpec:
     additionalScrapeConfigs:
