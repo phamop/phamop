@@ -18,8 +18,10 @@ spec:
             name: any-dummy-service  # Can be any valid service name in your namespace
             port:
               number: 80
-The Ingress "grafana-ingress" is invalid: spec.rules[0].http.paths[0].backend.service.name: Invalid value: "grafana.monitoring": a DNS-1035 label must consist of lower case alphanumeric characters or '-', start with an alphabetic character, and end with an alphanumeric character (e.g. 'my-name',  or 'abc-123', regex used for validation is '[a-z]([-a-z0-9]*[a-z0-9])?')
 
+
+Warning: path /grafana(/|$)(.*) cannot be used with pathType Prefix
+Error from server (BadRequest): error when creating "grafana-test.yaml": admission webhook "validate.nginx.ingress.kubernetes.io" denied the request: ingress contains invalid paths: path /grafana(/|$)(.*) cannot be used with pathType Prefix
 
 prometheus:
   prometheusSpec:
