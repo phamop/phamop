@@ -2,22 +2,23 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: grafana-ingress
-  namespace: your-namespace
+  namespace: your-namespace  # Where you want the ingress to live
   annotations:
     nginx.ingress.kubernetes.io/rewrite-target: /$2
-    nginx.ingress.kubernetes.io/upstream-vhost: "grafana.monitoring.svc.cluster.local"
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      rewrite ^/grafana$ /grafana/ permanent;
 spec:
   rules:
-  - host: your-domain.com
+  - host: your-domain.com  # Or omit for default host
     http:
       paths:
       - path: /grafana(/|$)(.*)
-        pathType: Prefix
+        pathType: ImplementationSpecific
         backend:
           service:
-            name: any-dummy-service  # Can be any valid service name in your namespace
+            name: grafana.monitoring  # Format: <service-name>.<namespace>
             port:
-              number: 80
+              number: 3000
 
 
 Warning: path /grafana(/|$)(.*) cannot be used with pathType Prefix
