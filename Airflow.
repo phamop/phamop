@@ -1,24 +1,4 @@
-# grafana-ingress.yaml
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: grafana-ingress
-  namespace: your-namespace
-  annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /$2  # Strips '/grafana' prefix
-    nginx.ingress.kubernetes.io/configuration-snippet: |
-      rewrite ^/grafana$ /grafana/ permanent;  # Ensures trailing slash
-spec:
-  rules:
-  - http:
-      paths:
-      - path: /grafana(/|$)(.*)  # Captures all paths under /grafana
-        pathType: ImplementationSpecific
-        backend:
-          service:
-            name: grafana-proxy  # References the local proxy service
-            port:
-              number: 3000  # Grafana's default port
+Error from server (BadRequest): error when creating "grafana-test.yaml": admission webhook "validate.nginx.ingress.kubernetes.io" denied the request: annotation group ConfigurationSnippet contains risky annotation based on ingress configuration
 
 
 
