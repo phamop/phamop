@@ -1,14 +1,18 @@
-During the meeting, both the proxy and ingress service were successfully configured. The setup was verified to ensure functionality from outside the namespace within the cluster.
+External Traffic Flow (Internet → AKS Pod)
 
-Validation Steps:
+Internet User → Azure Load Balancer (Public) → Ingress Controller (e.g., NGINX, Azure Application Gateway) → Kubernetes Ingress Resource → Service (ClusterIP/NodePort) → Pod (Application)
 
-A busybox image was deployed to test and confirm external namespace access to the Grafana service.
+Internal Traffic Flow (Organization → AKS Pod)
 
-Connectivity was confirmed, ensuring the service was reachable as intended.
+Internal User/Service (Corporate Network) → Internal Load Balancer / Private Ingress → Ingress Controller → Kubernetes Ingress Resource → Service (ClusterIP/NodePort) → Pod (Application)
 
-New Issue Identified:
-The next task is to investigate external access to the ingress controller. This involves determining the correct method to expose the ingress to external traffic, which will provide clear steps on how users outside the cluster can reach the service.
+APIM Integration (Optional for APIs)
 
+External/Internal User → Azure API Management (APIM) → Ingress Controller (Internal/External) → Service → Pod (API Backend)
+
+Proxy for Cross-Namespace Access
+
+Service in Namespace A → Internal Ingress/Proxy (e.g., Istio, NGINX) → Service in Namespace B → Pod
 
 
 
