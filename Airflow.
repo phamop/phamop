@@ -1,44 +1,53 @@
-  
-  processors:
-    batch: 
-      timeout: 200ms
-      send_batch_size: 1024 
-      send_batch_max_size: 4096
-  
-    memory_limiter:
-      check_interval: 5s
-      limit_percentage: 80
-      spike_limit_mib: 64
-      limit_mib: 512
-    resource:
-      attributes:
-        - key: service.name, k8s.container.name, k8s.namespace.name, k8s.pod
-          from_attribute: service.name, k8s.container.name, k8s.namespace.name, k8s.pod
-          action: insert
-        - key: service.name
-          from_attribute: service.name
-          action: upsert 
-        - key: service.namespace
-          from_attribute: service.namespace
-          action: upsert
-    groupbytrace:
-    
-    transform:
-      log_statements:
-        - context: log
-          statements:
-            - set(attributes["cpu.usage"], metrics["system.cpu.usage"].value) where attributes["host.name"] == metrics["system.cpu.usage"].attributes["host.name"]
-            - set(attributes["memory.usage"], metrics["system.memory.usage"].value) where attributes["host.name"] == metrics["system.memory.usage"].attributes["host.name"]
+processors:
+  batch: 
+    timeout: 200ms
+    send_batch_size: 1024 
+    send_batch_max_size: 4096
 
-    span:
-    # Optional: include specific span attributes
-      include:
-        match_type: strict
-        attributes:
-          - key: http.method 
-          - key: http.status_code
-          - key: trace_id
-          - key: span_id 
+  memory_limiter:
+    check_interval: 5s
+    limit_percentage: 80
+    spike_limit_mib: 64
+    limit_mib: 512
+
+  resource:
+    attributes:
+      - key: service.name
+        from_attribute: service.name
+        action: insert
+      - key: k8s.container.name
+        from_attribute: k8s.container.name
+        action: insert
+      - key: k8s.namespace.name
+        from_attribute: k8s.namespace.name
+        action: insert
+      - key: k8s.pod
+        from_attribute: k8s.pod
+        action: insert
+      - key: service.name
+        from_attribute: service.name
+        action: upsert 
+      - key: service.namespace
+        from_attribute: service.namespace
+        action: upsert
+
+  groupbytrace: {}
+
+  transform:
+    log_statements:
+      - context: log
+        statements:
+          - set(attributes["note"], "host.name correlation requires observability backend")  # Placeholder
+
+  span:
+    include:
+      match_type: strict
+      attributes:
+        - key: http.method 
+        - key: http.status_code
+        - key: trace_id
+        - key: span_id
+
            
 
  
