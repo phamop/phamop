@@ -1,56 +1,9 @@
-receivers:
-  otlp:
-    protocols:
-      grpc:
-      http:
+collector server run finished with error: failed to get config: cannot unmarshal the configuration: decoding failed due to the following error(s):
 
-processors:
-  # Attach resource attributes (including service name)
-  resource:
-    attributes:
-      - key: service.name
-        action: upsert
-      - key: service.namespace
-        action: upsert
+error decoding 'processors': error reading configuration for "span": decoding failed due to the following error(s):
 
-  # Attach span context to logs
-  span:
-    # Optional: include specific span attributes
-    include:
-      attributes:
-        - http.method
-        - http.status_code
-
-  # Group logs by trace ID for correlation
-  groupbytrace:
-
-  # Transform metrics to include in logs (alternative approach)
-  transform:
-    log_statements:
-      - context: log
-        statements:
-          - set(attributes["cpu.usage"], metrics["system.cpu.usage"].value) where attributes["host.name"] == metrics["system.cpu.usage"].attributes["host.name"]
-          - set(attributes["memory.usage"], metrics["system.memory.usage"].value) where attributes["host.name"] == metrics["system.memory.usage"].attributes["host.name"]
-
-  # Batch processor for better performance
-  batch:
-
-exporters:
-  logging:
-    logLevel: debug
-  prometheus:
-    endpoint: "0.0.0.0:8889"
-
-service:
-  pipelines:
-    metrics:
-      receivers: [otlp]
-      processors: [batch]
-      exporters: [prometheus]
-    logs:
-      receivers: [otlp]
-      processors: [resource, span, groupbytrace, transform, batch]
-      exporters: [logging]
+'include.attributes[0]' expected a map, got 'string'
+'include.attributes[1]' expected a map, got 'string'
 
 
 
