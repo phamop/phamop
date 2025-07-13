@@ -1,61 +1,7 @@
-receivers:
-  otlp:
-    protocols:
-      grpc:
-      http:
+Error: failed to get config: cannot unmarshal the configuration: decoding failed due to the following error(s):
 
-processors:
-  # Attach metrics to logs
-  metrics:
-    metrics:
-      # Example: Attach system.cpu.time to logs with matching attributes
-      system.cpu.time:
-        description: "Attaches CPU usage metrics to logs"
-        unit: "s"
-        gauge:
-          # Use the most recent value when attaching to logs
-          value_type: double
-    # Optional: Only include certain attributes for matching
-    include:
-      match_type: strict
-      attributes:
-        - host.name
-        - process.pid
-
-  # Attach span context to logs
-  resource:
-    attributes:
-      - key: service.name
-        action: upsert
-      - key: service.namespace
-        action: upsert
-
-  # Group logs by trace ID
-  groupbytrace:
-
-  # Batch processors help with performance
-  batch:
-
-exporters:
-  logging:
-    logLevel: debug
-  prometheus:
-    endpoint: "0.0.0.0:8889"
-
-service:
-  pipelines:
-    metrics:
-      receivers: [otlp]
-      processors: [batch]
-      exporters: [prometheus]
-    logs:
-      receivers: [otlp]
-      processors: [metrics, resource, groupbytrace, batch]
-      exporters: [logging]
-
-
-
-grafana                                          ClusterIP   10.0.0.9   <none>        80/TCP 
+error decoding 'processors': unknown type: "metrics" for id: "metrics" (valid values: [cumulativetodelta deltatorate groupbytrace logdedup metricstarttime remotetap schema tail_sampling batch memory_limiter deltatocumulative geoip groupbyattrs probabilistic_sampler attributes filter interval metricsgeneration metricstransform resourcedetection k8sattributes redaction resource span sumologic transform])
+2025/07/13 02:36:29 collector server run finished with error: failed to get config: cannot unmarshal the configuration: decoding failed due to the following error(s):
 
 
 
