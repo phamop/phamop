@@ -1,7 +1,68 @@
-Error: failed to get config: cannot unmarshal the configuration: decoding failed due to the following error(s):
+receivers:
+  otlp:
+    protocols:
+      grpc:
+      http:
 
-error decoding 'processors': unknown type: "metrics" for id: "metrics" (valid values: [cumulativetodelta deltatorate groupbytrace logdedup metricstarttime remotetap schema tail_sampling batch memory_limiter deltatocumulative geoip groupbyattrs probabilistic_sampler attributes filter interval metricsgeneration metricstransform resourcedetection k8sattributes redaction resource span sumologic transform])
-2025/07/13 02:36:29 collector server run finished with error: failed to get config: cannot unmarshal the configuration: decoding failed due to the following error(s):
+processors:
+  # Attach resource attributes (including service name)
+  resource:
+    attributes:
+      - key: service.name
+        action: upsert
+      - key: service.namespace
+        action: upsert
+
+  # Attach span context to logs
+  span:
+    # Optional: include specific span attributes
+    include:
+      attributes:
+        - http.method
+        - http.status_code
+
+  # Group logs by trace ID for correlation
+  groupbytrace:
+
+  # Transform metrics to include in logs (alternative approach)
+  transform:
+    log_statements:
+      - context: log
+        statements:
+          - set(attributes["cpu.usage"], metrics["system.cpu.usage"].value) where attributes["host.name"] == metrics["system.cpu.usage"].attributes["host.name"]
+          - set(attributes["memory.usage"], metrics["system.memory.usage"].value) where attributes["host.name"] == metrics["system.memory.usage"].attributes["host.name"]
+
+  # Batch processor for better performance
+  batch:
+
+exporters:
+  logging:
+    logLevel: debug
+  prometheus:
+    endpoint: "0.0.0.0:8889"
+
+service:
+  pipelines:
+    metrics:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [prometheus]
+    logs:
+      receivers: [otlp]
+      processors: [resource, span, groupbytrace, transform, batch]
+      exporters: [logging]
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
