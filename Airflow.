@@ -1,3 +1,260 @@
+
+mode: "deployment"
+nameOverride: "opentelemetry-collector"
+fullnameOverride: "opentelemetry-collector"
+replicaCount: 2
+
+image:
+  repository: "otel/opentelemetry-collector-contrib"
+  pullPolicy: IfNotPresent
+  tag: "0.128.0"
+
+resources:
+  requests:
+    cpu: 500m
+    memory: 800Mi
+  limits:
+    cpu: 1000m
+    memory: 1600Mi
+
+serviceAccount:
+  create: true
+
+configMap:
+  create: true
+  existingName: ""
+
+
+
+config:
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: 0.0.0.0:4317
+        http:
+          endpoint: 0.0.0.0:4318
+    jaeger:
+      protocols:
+        grpc:
+          endpoint: 0.0.0.0:14250
+        thrift_http:
+          endpoint: 0.0.0.0:14268
+        thrift_compact:
+          endpoint: 0.0.0.0:6831
+    loki:
+      protocols:
+        http:
+          endpoint: 0.0.0.0:3500
+          include_metadata: true 
+        grpc:
+          endpoint: 0.0.0.0:3600
+      use_incoming_timestamp: true
+  
+  processors:
+    batch: 
+      timeout: 200ms
+      send_batch_size: 1024 
+      send_batch_max_size: 4096
+
+    memory_limiter:
+      check_interval: 5s
+      limit_percentage: 80
+      spike_limit_mib: 64
+      limit_mib: 512
+
+    resource:
+      attributes:
+        - key: service.name
+          from_attribute: service.name
+          action: insert
+        - key: k8s.container.name
+          from_attribute: k8s.container.name
+          action: insert
+        - key: k8s.namespace.name
+          from_attribute: k8s.namespace.name
+          action: insert
+        - key: k8s.pod
+          from_attribute: k8s.pod
+          action: insert
+        - key: service.name
+          from_attribute: service.name
+          action: upsert 
+        - key: service.namespace
+          from_attribute: service.namespace
+          action: upsert
+
+    groupbytrace: {}
+
+    transform:
+      log_statements:
+        - context: log
+          statements:
+            - set(attributes["processing.note"], "Log enriched with resource and trace context")
+            - set(attributes["service.name"], resource.attributes["service.name"])
+            - set(attributes["k8s.pod.name"], resource.attributes["k8s.pod.name"])
+            - set(attributes["host.name"], resource.attributes["host.name"])
+            - set(attributes["trace_id"], trace_id)
+            - set(attributes["span_id"], span_id)
+
+
+  # Metric transformations (optional)
+    metricstransform:
+      transforms:
+        - include: system.cpu.usage
+          action: update
+          operations:
+            - action: add_label
+              new_label: host.name
+              new_value: host.name
+        - include: system.memory.usage
+          action: update
+          operations:
+            - action: add_label
+              new_label: host.name
+              new_value: host.name
+
+    span:
+      include:
+ #       match_type: strict
+        attributes:
+          - key: http.method 
+          - key: http.status_code
+          - key: trace_id
+          - key: span_id
+           
+
+  exporters:
+    debug: 
+      verbosity: basic
+    otlphttp:
+      endpoint: "http://loki.monitoring.svc.cluster.local:3100/otlp"
+          
+      tls:
+        insecure: true
+    prometheus:
+      endpoint: "0.0.0.0:8889"
+      namespace: "monitoring"
+      const_labels:
+        k8s_cluster: "EDDVAKSCLUS01"
+      send_timestamps: true 
+      enable_open_metrics: true 
+    otlp:
+      endpoint: "http://jaeger-collector.monitoring.svc.cluster.local:4317"
+      tls:
+        insecure: true
+    # Named OTLP exporter for Jaeger
+    otlp/jaeger:
+      endpoint: "http://jaeger-collector.monitoring.svc.cluster.local:4317"
+      tls:
+        insecure: true
+  
+  extensions:
+    health_check:
+      endpoint: 0.0.0.0:13133
+
+  service:
+    telemetry:
+      logs: 
+        level: debug
+    extensions:
+      - health_check
+    pipelines: 
+      metrics:
+        receivers: [otlp]
+        processors: [memory_limiter, resource, metricstransform, batch]
+        exporters: [debug, prometheus]
+      traces:
+        receivers: [otlp, jaeger]
+        processors: [memory_limiter, resource, span, groupbytrace, batch]
+        exporters: [debug, otlp/jaeger]
+      logs:
+        receivers: [otlp, loki]
+        processors: [resource,  transform, memory_limiter, batch]
+        exporters: [debug, otlphttp]
+
+
+ports:
+  otlp:
+    enabled: true
+    containerPort: 4317
+    servicePort: 4317
+    hostPort: 4317
+  otlp-http:
+    enabled: true
+    containerPort: 4318
+    servicePort: 4318
+  jaeger-compact:
+    enabled: true
+    containerPort: 6831
+    protocol: UDP
+  jaeger-thrift:
+    enabled: true
+    containerPort: 14268
+  jaeger-grpc:
+    enabled: true
+    containerPort: 14250
+  metrics:
+    enabled: true
+    containerPort: 8888
+    servicePort: 8888
+    hostPort: 8888
+    protocol: TCP 
+  prometheus:
+    enabled: true
+    containerPort: 8889
+    servicePort: 8889
+    hostPort: 8889
+    protocol: TCP 
+
+
+livenessProbe:
+  httpGet:
+    path: /
+    port: 13133
+  initialDelaySeconds: 15
+  periodSeconds: 20
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /
+    port: 13133
+  initialDelaySeconds: 5
+  periodSeconds: 10
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 7
+  targetCPUUtilizationPercentage: 90
+  targetMemoryUtilizationPercentage: 90
+
+useGOMEMLIMIT: true
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+######################################################################################################################################################
+#######################################################################################################################################################
+
+
 processors:
   transform:
     log_statements:
