@@ -1,9 +1,47 @@
-Error: invalid configuration: processors::transform: unable to parse OTTL statement "set(log.attributes[\"cpu.usage\"], log.metrics[\"system.cpu.usage\"].value) where log.attributes[\"host.name\"] == log.metrics[\"system.cpu.usage\"].attributes[\"host.name\"]": error while parsing arguments for call to "set": invalid argument at position 1: segment "metrics" from path "log.metrics[system.cpu.usage].value" is not a valid path nor a valid OTTL keyword for the log context - review https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/pkg/ottl/contexts/ottllog to see all valid paths
-unable to parse OTTL statement "set(log.attributes[\"memory.usage\"], log.metrics[\"system.memory.usage\"].value) where log.attributes[\"host.name\"] == log.metrics[\"system.memory.usage\"].attributes[\"host.name\"]": error while parsing arguments for call to "set": invalid argument at position 1: segment "metrics" from path "log.metrics[system.memory.usage].value" is not a valid path nor a valid OTTL keyword for the log context - review https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/pkg/ottl/contexts/ottllog to see all valid paths
-2025/07/13 03:27:11 collector server run finished with error: invalid configuration: processors::transform: unable to parse OTTL statement "set(log.attributes[\"cpu.usage\"], log.metrics[\"system.cpu.usage\"].value) where log.attributes[\"host.name\"] == log.metrics[\"system.cpu.usage\"].attributes[\"host.name\"]": error while parsing arguments for call to "set": invalid argument at position 1: segment "metrics" from path "log.metrics[system.cpu.usage].value" is not a valid path nor a valid OTTL keyword for the log context - review https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/pkg/ottl/contexts/ottllog to see all valid paths
-unable to parse OTTL statement "set(log.attributes[\"memory.usage\"], log.metrics[\"system.memory.usage\"].value) where log.attributes[\"host.name\"] == log.metrics[\"system.memory.usage\"].attributes[\"host.name\"]": error while parsing arguments for call to "set": invalid argument at position 1: segment "metrics" from path "log.metrics[system.memory.usage].value" is not a valid path nor a valid OTTL keyword for the log context - review https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/pkg/ottl/contexts/ottllog to see all valid paths
+  
+  processors:
+    batch: 
+      timeout: 200ms
+      send_batch_size: 1024 
+      send_batch_max_size: 4096
+  
+    memory_limiter:
+      check_interval: 5s
+      limit_percentage: 80
+      spike_limit_mib: 64
+      limit_mib: 512
+    resource:
+      attributes:
+        - key: service.name, k8s.container.name, k8s.namespace.name, k8s.pod
+          from_attribute: service.name, k8s.container.name, k8s.namespace.name, k8s.pod
+          action: insert
+        - key: service.name
+          from_attribute: service.name
+          action: upsert 
+        - key: service.namespace
+          from_attribute: service.namespace
+          action: upsert
+    groupbytrace:
+    
+    transform:
+      log_statements:
+        - context: log
+          statements:
+            - set(attributes["cpu.usage"], metrics["system.cpu.usage"].value) where attributes["host.name"] == metrics["system.cpu.usage"].attributes["host.name"]
+            - set(attributes["memory.usage"], metrics["system.memory.usage"].value) where attributes["host.name"] == metrics["system.memory.usage"].attributes["host.name"]
 
+    span:
+    # Optional: include specific span attributes
+      include:
+        match_type: strict
+        attributes:
+          - key: http.method 
+          - key: http.status_code
+          - key: trace_id
+          - key: span_id 
+           
 
+ 
 
 
 
