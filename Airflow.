@@ -1,18 +1,57 @@
-External Traffic Flow (Internet → AKS Pod)
+receivers:
+  otlp:
+    protocols:
+      grpc:
+      http:
 
-Internet User → Azure Load Balancer (Public) → Ingress Controller (e.g., NGINX, Azure Application Gateway) → Kubernetes Ingress Resource → Service (ClusterIP/NodePort) → Pod (Application)
+processors:
+  # Attach metrics to logs
+  metrics:
+    metrics:
+      # Example: Attach system.cpu.time to logs with matching attributes
+      system.cpu.time:
+        description: "Attaches CPU usage metrics to logs"
+        unit: "s"
+        gauge:
+          # Use the most recent value when attaching to logs
+          value_type: double
+    # Optional: Only include certain attributes for matching
+    include:
+      match_type: strict
+      attributes:
+        - host.name
+        - process.pid
 
-Internal Traffic Flow (Organization → AKS Pod)
+  # Attach span context to logs
+  resource:
+    attributes:
+      - key: service.name
+        action: upsert
+      - key: service.namespace
+        action: upsert
 
-Internal User/Service (Corporate Network) → Internal Load Balancer / Private Ingress → Ingress Controller → Kubernetes Ingress Resource → Service (ClusterIP/NodePort) → Pod (Application)
+  # Group logs by trace ID
+  groupbytrace:
 
-APIM Integration (Optional for APIs)
+  # Batch processors help with performance
+  batch:
 
-External/Internal User → Azure API Management (APIM) → Ingress Controller (Internal/External) → Service → Pod (API Backend)
+exporters:
+  logging:
+    logLevel: debug
+  prometheus:
+    endpoint: "0.0.0.0:8889"
 
-Proxy for Cross-Namespace Access
-
-Service in Namespace A → Internal Ingress/Proxy (e.g., Istio, NGINX) → Service in Namespace B → Pod
+service:
+  pipelines:
+    metrics:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [prometheus]
+    logs:
+      receivers: [otlp]
+      processors: [metrics, resource, groupbytrace, batch]
+      exporters: [logging]
 
 
 
