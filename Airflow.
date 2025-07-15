@@ -1,9 +1,27 @@
-kube-prometheus-stack-alertmanager               ClusterIP   10.0.0.78    <none>        9093/TCP,8080/TCP                                                           7d13h
-kube-prometheus-stack-kube-state-metrics         ClusterIP   10.0.0.120   <none>        8080/TCP                                                                    7d13h
-kube-prometheus-stack-operator                   ClusterIP   10.0.0.112   <none>        443/TCP                                                                     7d13h
-kube-prometheus-stack-prometheus                 ClusterIP   10.0.0.26    <none>        9090/TCP,8080/TCP                                                           7d13h
-kube-prometheus-stack-prometheus-node-exporter   ClusterIP   10.0.0.36    <none>        9100/TCP                                                                    7d13h
-prometheus-operated                              ClusterIP   None         <none>        9090/TCP                                                                    7d13h
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: otel-collector
+  namespace: monitoring
+  labels:
+    release: kube-prometheus-stack  # ⚠️ Must match Prometheus release label
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: otel-collector
+  namespaceSelector:
+    matchNames:
+      - monitoring
+  endpoints:
+    - port: prometheus
+      path: /metrics
+      interval: 30s
+
+
+
+
+
+7d13h
 
 
 
