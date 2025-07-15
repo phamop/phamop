@@ -1,7 +1,9 @@
-- script: |
-    echo "Waiting for OpenTelemetry Operator webhook to become ready..."
-    kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=opentelemetry-operator -n $(k8sNamespace) --timeout=120s
-  displayName: Wait for OpenTelemetry Operator Pod
+Waiting for OpenTelemetry Operator webhook to become ready...
+error: no matching resources found
+
+##[error]Bash exited with code '1'.
+Finishing: Wait for OpenTelemetry Operator Pod
+
 
 
 
