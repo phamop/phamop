@@ -1,8 +1,10 @@
+Integrating Loki with the OTEL Collector and Grafana presents challenges due to sparse documentation and complex configuration requirements. Based on firsthand experience with active deployments and tested implementations, the most common integration issues include:
 
-Integrating Loki with OTEL Collector and Grafana, encounters obstacles due to sparse documentation and complex configuration requirements. Based on my experience with active deployments and tested implementation approaches, the most prevalent integration challenges observed include:
+Misconfigured Loki data source settings in Grafana – Incorrect authentication, URL, or query parameters can prevent proper log visualization.
 
-Incorrectly configured Loki data source settings in Grafana
-Defective OTEL Collector pipeline configurations
+Faulty OTEL Collector pipeline configurations – For example, using loki-gateway as the Grafana endpoint when the correct setup requires loki-read for queries and loki-write for log exports.
+
+These hurdles often stem from unclear documentation and trial-and-error adjustments.
 
 
 
