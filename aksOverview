@@ -1,3 +1,44 @@
+---
+# ServiceAccount for OpenTelemetry Collector
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: opentelemetry-collector
+  namespace: monitoring
+  labels:
+    app: opentelemetry-collector
+---
+# ClusterRole for OpenTelemetry Collector ServiceAccount
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: opentelemetry-collector
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "namespaces", "nodes"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["apps"]
+    resources: ["replicasets"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["extensions"]
+    resources: ["replicasets"]
+    verbs: ["get", "list", "watch"]
+---
+# ClusterRoleBinding for OpenTelemetry Collector ServiceAccount
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: opentelemetry-collector
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: opentelemetry-collector
+subjects:
+  - kind: ServiceAccount
+    name: opentelemetry-collector
+    namespace: monitoring
+---
+# OpenTelemetry Operator configuration
 manager:
   image:
     repository: otel/opentelemetry-operator
@@ -6,6 +47,7 @@ manager:
 rbac:
   create: true
 ---
+# Additional ClusterRole for OpenTelemetry Operator
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
@@ -21,6 +63,7 @@ rules:
     resources: ["poddisruptionbudgets"]
     verbs: ["get", "list", "watch"]
 ---
+# ClusterRoleBinding for OpenTelemetry Operator extra permissions
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
@@ -34,11 +77,14 @@ subjects:
     name: opentelemetry-operator
     namespace: monitoring
 ---
+# OpenTelemetry Collector Custom Resource
 apiVersion: opentelemetry.io/v1beta1
 kind: OpenTelemetryCollector
 metadata:
   name: otelcollector
   namespace: monitoring
+  labels:
+    app: opentelemetry-collector
 spec:
   mode: deployment
   replicas: 2
@@ -53,7 +99,25 @@ spec:
       cpu: 1000m
       memory: 1600Mi
 
-  config:
+  env:
+    - name: K8S_NODE_NAME
+      valueFrom:
+        fieldRef:
+          fieldPath: spec.nodeName
+    - name: K8S_POD_NAME
+      valueFrom:
+        fieldRef:
+          fieldPath: metadata.name
+    - name: K8S_POD_NAMESPACE
+      valueFrom:
+        fieldRef:
+          fieldPath: metadata.namespace
+    - name: K8S_POD_IP
+      valueFrom:
+        fieldRef:
+          fieldPath: status.podIP
+
+  config: |
     receivers:
       otlp:
         protocols:
@@ -106,6 +170,9 @@ spec:
           - key: k8s.pod.name
             from_attribute: k8s.pod.name
             action: insert
+          - key: k8s.node.name
+            from_attribute: k8s.node.name
+            action: insert
           - key: host.name
             from_attribute: host.name
             action: insert
@@ -115,6 +182,9 @@ spec:
           - key: service.namespace
             from_attribute: service.namespace
             action: upsert
+          - key: cluster.name
+            value: "clustername"
+            action: insert
       groupbytrace: {}
       transform:
         log_statements:
@@ -123,7 +193,9 @@ spec:
               - set(attributes["processing.note"], "Log enriched with resource and trace context")
               - set(attributes["service.name"], resource.attributes["service.name"])
               - set(attributes["k8s.pod.name"], resource.attributes["k8s.pod.name"])
+              - set(attributes["k8s.node.name"], resource.attributes["k8s.node.name"])
               - set(attributes["host.name"], resource.attributes["host.name"])
+              - set(attributes["cluster.name"], resource.attributes["cluster.name"])
               - set(attributes["trace_id"], trace_id)
               - set(attributes["span_id"], span_id)
       metricstransform:
@@ -134,12 +206,18 @@ spec:
               - action: add_label
                 new_label: host.name
                 new_value: host.name
+              - action: add_label
+                new_label: cluster.name
+                new_value: clustername
           - include: system.memory.usage
             action: update
             operations:
               - action: add_label
                 new_label: host.name
                 new_value: host.name
+              - action: add_label
+                new_label: cluster.name
+                new_value: clustername
 
     exporters:
       debug:
@@ -148,6 +226,8 @@ spec:
         endpoint: "http://loki-write.monitoring.svc.cluster.local:3100/otlp"
         tls:
           insecure: true
+        headers:
+          "X-Scope-OrgID": "tenant-1"
       prometheus:
         endpoint: "0.0.0.0:8889"
         namespace: "monitoring"
@@ -155,36 +235,43 @@ spec:
           k8s_cluster: "clustername"
         send_timestamps: true
         enable_open_metrics: true
-      otlp:
-        endpoint: "http://jaeger-collector.monitoring.svc.cluster.local:4317"
-        tls:
-          insecure: true
       otlp/jaeger:
         endpoint: "http://jaeger-collector.monitoring.svc.cluster.local:4317"
         tls:
           insecure: true
+        headers:
+          "X-Tenant-ID": "default"
 
     extensions:
       health_check:
         endpoint: "0.0.0.0:13133"
+        path: "/health"
+      pprof:
+        endpoint: "0.0.0.0:1777"
+      zpages:
+        endpoint: "0.0.0.0:55679"
 
     service:
       telemetry:
         logs:
           level: debug
-      extensions: [health_check]
+          encoding: json
+        metrics:
+          level: detailed
+          address: "0.0.0.0:8888"
+      extensions: [health_check, pprof, zpages]
       pipelines:
         metrics:
           receivers: [otlp]
-          processors: [memory_limiter, resource, metricstransform, batch]
+          processors: [memory_limiter, resourcedetection, resource, metricstransform, batch]
           exporters: [debug, prometheus]
         traces:
           receivers: [otlp, jaeger]
-          processors: [memory_limiter, resource, groupbytrace, batch]
+          processors: [memory_limiter, resourcedetection, resource, groupbytrace, batch]
           exporters: [debug, otlp/jaeger]
         logs:
           receivers: [otlp, loki]
-          processors: [resource, transform, memory_limiter, batch]
+          processors: [memory_limiter, resourcedetection, resource, transform, batch]
           exporters: [debug, otlphttp]
 
   ports:
@@ -216,6 +303,26 @@ spec:
       port: 8889
       targetPort: 8889
       protocol: TCP
+    - name: loki-http
+      port: 3500
+      targetPort: 3500
+      protocol: TCP
+    - name: loki-grpc
+      port: 3600
+      targetPort: 3600
+      protocol: TCP
+    - name: health-check
+      port: 13133
+      targetPort: 13133
+      protocol: TCP
+    - name: pprof
+      port: 1777
+      targetPort: 1777
+      protocol: TCP
+    - name: zpages
+      port: 55679
+      targetPort: 55679
+      protocol: TCP
 
   podDisruptionBudget:
     maxUnavailable: 1
@@ -226,4 +333,32 @@ spec:
     targetCPUUtilization: 80
     targetMemoryUtilization: 80
 
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 65534
+    fsGroup: 65534
 
+  podSecurityContext:
+    seccompProfile:
+      type: RuntimeDefault
+
+  volumeMounts:
+    - name: tmp
+      mountPath: /tmp
+
+  volumes:
+    - name: tmp
+      emptyDir: {}
+
+  tolerations:
+    - key: "node.kubernetes.io/not-ready"
+      operator: "Exists"
+      effect: "NoExecute"
+      tolerationSeconds: 300
+    - key: "node.kubernetes.io/unreachable"
+      operator: "Exists"
+      effect: "NoExecute"
+      tolerationSeconds: 300
+
+  nodeSelector:
+    kubernetes.io/os: linux
