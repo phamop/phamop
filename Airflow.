@@ -20,6 +20,14 @@
 
 
 
+We are currently blocked on the ingress controller issue. In the meantime, there’s a pending ticket requesting the AKS inventory for the DEV environment. I’d like to address that while we work on connecting all the pieces for the main issue. We’ve agreed to resume troubleshooting tomorrow."
+
+
+
+
+
+
+
 
 
 
