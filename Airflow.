@@ -1,4 +1,13 @@
-"level":"info","ts":"2025-07-15T13:18:51Z","logger":"controllers.OpenTelemetryCollector","msg":"couldn't determine metrics port from configuration, using 8888 default value","opentelemetrycollector":"telemetry-sandbox/collector-sandbox","error":"missing port in address"}
+apiVersion: opentelemetry.io/v1alpha1
+kind: OpenTelemetryCollector
+metadata:
+  name: collector-sandbox
+spec:
+  config: |
+    service:
+      telemetry:
+        metrics:
+          address: 0.0.0.0:8888  # Explicitly set metrics address
 
 
 
