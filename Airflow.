@@ -1,4 +1,13 @@
 
+Error: UPGRADE FAILED: post-upgrade hooks failed: warning: Hook post-upgrade kube-prometheus-stack/templates/prometheus-operator/admission-webhooks/job-patch/clusterrolebinding.yaml failed: 1 error occurred:
+	* the server is currently unable to handle the request (post clusterrolebindings.rbac.authorization.k8s.io)
+
+
+##[error]Error: UPGRADE FAILED: post-upgrade hooks failed: warning: Hook post-upgrade kube-prometheus-stack/templates/prometheus-operator/admission-webhooks/job-patch/clusterrolebinding.yaml failed: 1 error occurred:
+
+
+
+
 apiVersion: opentelemetry.io/v1alpha1
 kind: OpenTelemetryCollector
 metadata:
