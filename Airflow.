@@ -1,3 +1,19 @@
+          - task: HelmDeploy@0
+            displayName: "Deploy Opentelemetry operator Helm Chart"
+            inputs:
+              azureSubscription: $(azureSubscription)
+              command: "upgrade"
+              chartType: "Name"
+              chartName: "open-telemetry/opentelemetry-operator"
+              chartVersion: 0.28.0
+              kubernetesCluster: $(clusterName)
+              azureResourceGroup: $(resourceGroup)
+              namespace: $(k8sNamespace)
+              releaseName: "my-opentelemetry-operator"
+              valueFile: "$(Pipeline.Workspace)/s/devops/helm-charts/observability/otelcollector/otel-collector-crd.yaml "
+              install: true
+              waitForExecution: true
+              arguments: "--timeout 5m0s --create-namespace"
 
 
 
