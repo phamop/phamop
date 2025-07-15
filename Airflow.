@@ -1,7 +1,8 @@
 
-  Error from server (BadRequest): container "manager" in pod "my-opentelemetry-operator-6f5cfc9959-9ff6k" is waiting to start: trying and failing to pull image
-
-
+manager:
+  image:
+    repository: ghcr.io/open-telemetry/opentelemetry-operator
+    tag: v0.127.0
 
 
 
