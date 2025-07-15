@@ -1,21 +1,8 @@
-- script: |
-    echo "Waiting for OpenTelemetry Operator pod to appear and become ready..."
+Error from server (InternalError): error when creating "/azp/agent/_work/2/s/devops/helm-charts/observability/otelcollector/otel-collector-crd.yaml": Internal error occurred: failed calling webhook "mopentelemetrycollector.kb.io": failed to call webhook: the server could not find the requested resource
 
-    for i in {1..24}; do
-      POD=$(kubectl get pod -n $(k8sNamespace) -l app.kubernetes.io/name=opentelemetry-operator -o jsonpath="{.items[0].metadata.name}" 2>/dev/null)
-      if [ -n "$POD" ]; then
-        echo "Found pod: $POD"
-        kubectl wait --for=condition=Ready pod/$POD -n $(k8sNamespace) --timeout=60s && break
-      fi
-      echo "Waiting for pod... attempt $i"
-      sleep 5
-    done
+##[error]Error from server (InternalError): error when creating "/azp/agent/_work/2/s/devops/helm-charts/observability/otelcollector/otel-collector-crd.yaml": Internal error occurred: failed calling webhook "mopentelemetrycollector.kb.io": failed to call webhook: the server could not find the requested resource
+##[error]The process '/usr/local/bin/kubectl' failed with exit code 1
 
-    if [ -z "$POD" ]; then
-      echo "❌ OpenTelemetry Operator pod not found after waiting."
-      exit 1
-    fi
-  displayName: Wait for OpenTelemetry Operator webhook to be ready
 
 
 
