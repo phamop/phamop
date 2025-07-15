@@ -1,7 +1,234 @@
-manager:
-  image:
-    repository: otel/opentelemetry-operator
-    tag: v0.127.0
+Error from server (InternalError): error when creating "/azp/agent/_work/2/s/devops/helm-charts/observability/otelcollector/otel-collector-crd.yaml": Internal error occurred: Internal error occurred: conversion webhook for opentelemetry.io/v1beta1, Kind=OpenTelemetryCollector failed: json: cannot unmarshal string into Go struct field OpenTelemetryCollectorSpec.spec.config of type v1beta1.Config
+Error from server (InternalError): error when creating "/azp/agent/_work/2/s/devops/helm-charts/observability/otelcollector/otel-collector-crd.yaml": Internal error occurred: Internal error occurred: conversion webhook for opentelemetry.io/v1beta1, Kind=OpenTelemetryCollector failed: json: cannot unmarshal string into Go struct field OpenTelemetryCollectorSpec.spec.config of type v1beta1.Config
+
+
+
+apiVersion: opentelemetry.io/v1beta1
+kind: OpenTelemetryCollector
+metadata:
+  name: otelcollector
+  namespace: monitoring
+spec:
+  mode: deployment
+  replicas: 2
+  image: otel/opentelemetry-collector-contrib:0.128.0
+  resources:
+    requests:
+      cpu: 500m
+      memory: 800Mi
+    limits:
+      cpu: 1000m
+      memory: 1600Mi
+  serviceAccount: opentelemetry-collector
+  config: |
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317
+          http:
+            endpoint: 0.0.0.0:4318
+      jaeger:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:14250
+          thrift_http:
+            endpoint: 0.0.0.0:14268
+          thrift_compact:
+            endpoint: 0.0.0.0:6831
+      loki:
+        protocols:
+          http:
+            endpoint: 0.0.0.0:3500
+            include_metadata: true 
+          grpc:
+            endpoint: 0.0.0.0:3600
+        use_incoming_timestamp: true
+
+    processors:
+      batch: 
+        timeout: 200ms
+        send_batch_size: 1024 
+        send_batch_max_size: 4096
+
+      memory_limiter:
+        check_interval: 5s
+        limit_percentage: 80
+        spike_limit_mib: 64
+        limit_mib: 512
+
+      resourcedetection:
+        detectors: [env, system, kubernetes]
+        timeout: 2s
+        override: false
+
+      resource:
+        attributes:
+          - key: service.name
+            from_attribute: service.name
+            action: insert
+          - key: k8s.container.name
+            from_attribute: k8s.container.name
+            action: insert
+          - key: k8s.namespace.name
+            from_attribute: k8s.namespace.name
+            action: insert
+          - key: k8s.pod.name
+            from_attribute: k8s.pod.name
+            action: insert
+          - key: host.name
+            from_attribute: host.name
+            action: insert
+          - key: service.name
+            from_attribute: service.name
+            action: upsert 
+          - key: service.namespace
+            from_attribute: service.namespace
+            action: upsert
+
+      groupbytrace: {}
+
+      transform:
+        log_statements:
+          - context: log
+            statements:
+              - set(attributes["processing.note"], "Log enriched with resource and trace context")
+              - set(attributes["service.name"], resource.attributes["service.name"])
+              - set(attributes["k8s.pod.name"], resource.attributes["k8s.pod.name"])
+              - set(attributes["host.name"], resource.attributes["host.name"])
+              - set(attributes["trace_id"], trace_id)
+              - set(attributes["span_id"], span_id)
+
+      metricstransform:
+        transforms:
+          - include: system.cpu.usage
+            action: update
+            operations:
+              - action: add_label
+                new_label: host.name
+                new_value: host.name
+          - include: system.memory.usage
+            action: update
+            operations:
+              - action: add_label
+                new_label: host.name
+                new_value: host.name
+
+    exporters:
+      debug: 
+        verbosity: basic
+      otlphttp:
+        endpoint: "http://loki-write.monitoring.svc.cluster.local:3100/otlp"
+        tls:
+          insecure: true
+      prometheus:
+        endpoint "my-opentelemetry-operator:8889"
+        namespace: "monitoring"
+        const_labels:
+          k8s_cluster: "clustername"
+        send_timestamps: true 
+        enable_open_metrics: true 
+      otlp:
+        endpoint: "http://jaeger-collector.monitoring.svc.cluster.local:4317"
+        tls:
+          insecure: true
+      otlp/jaeger:
+        endpoint: "http://jaeger-collector.monitoring.svc.cluster.local:4317"
+        tls:
+          insecure: true
+
+    extensions:
+      health_check:
+        endpoint: 0.0.0.0:13133
+
+    service:
+      telemetry:
+        logs: 
+          level: debug
+      extensions:
+        - health_check
+      pipelines: 
+        metrics:
+          receivers: [otlp]
+          processors: [memory_limiter, resource, metricstransform, batch]
+          exporters: [debug, prometheus]
+
+        traces:
+          receivers: [otlp, jaeger]
+          processors: [memory_limiter, resource, groupbytrace, batch]
+          exporters: [debug, otlp/jaeger]
+
+        logs:
+          receivers: [otlp, loki]
+          processors: [resource, transform, memory_limiter, batch]
+          exporters: [debug, otlphttp]
+  ports:
+    - name: otlp-grpc
+      port: 4317
+      targetPort: 4317
+      protocol: TCP
+    - name: otlp-http
+      port: 4318
+      targetPort: 4318
+      protocol: TCP
+    - name: jaeger-compact
+      port: 6831
+      targetPort: 6831
+      protocol: UDP
+    - name: jaeger-thrift
+      port: 14268
+      targetPort: 14268
+      protocol: TCP
+    - name: jaeger-grpc
+      port: 14250
+      targetPort: 14250
+      protocol: TCP
+    - name: metrics
+      port: 8888
+      targetPort: 8888
+      protocol: TCP
+    - name: prometheus
+      port: 8889
+      targetPort: 8889
+      protocol: TCP
+  podDisruptionBudget:
+    maxUnavailable: 1
+  autoscaler:
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilization: 80
+    targetMemoryUtilization: 80
+
+# ---
+# apiVersion: opentelemetry.io/v1alpha1
+# kind: OpenTelemetryCollector
+# metadata:
+#   name: collector-sandbox
+# spec:
+#   config: |
+#     service:
+#       telemetry:
+#         metrics:
+#           address: 0.0.0.0:8888  # Explicitly set metrics address
+---
+apiVersion: opentelemetry.io/v1beta1
+kind: OpenTelemetryCollector
+metadata:
+  name: collector-monitor
+  namespace: monitoring
+spec:
+  config: |
+     service:
+       telemetry:
+         metrics:
+           level: detailed
+          address: 0.0.0.0:8888  
+  ports:
+    - name: metrics
+      port: 8888
+      protocol: TCP
+      targetPort: 8888
+
 
 
 
