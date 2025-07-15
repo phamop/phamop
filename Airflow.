@@ -1,6 +1,7 @@
-Error from server (InternalError): error when creating "/azp/agent/_work/2/s/devops/helm-charts/observability/otelcollector/otel-collector-crd.yaml": Internal error occurred: failed calling webhook "mopentelemetrycollector.kb.io": failed to call webhook: the server could not find the requested resource
+/usr/local/bin/kubectl apply -n monitoring -f /azp/agent/_work/1/s/devops/helm-charts/observability/otelcollector/otel-collector-crd.yaml -o json
+Error from server (InternalError): error when creating "/azp/agent/_work/1/s/devops/helm-charts/observability/otelcollector/otel-collector-crd.yaml": Internal error occurred: Internal error occurred: conversion webhook for opentelemetry.io/v1beta1, Kind=OpenTelemetryCollector failed: json: cannot unmarshal string into Go struct field OpenTelemetryCollectorSpec.spec.config of type v1beta1.Config
 
-##[error]Error from server (InternalError): error when creating "/azp/agent/_work/2/s/devops/helm-charts/observability/otelcollector/otel-collector-crd.yaml": Internal error occurred: failed calling webhook "mopentelemetrycollector.kb.io": failed to call webhook: the server could not find the requested resource
+##[error]Error from server (InternalError): error when creating "/azp/agent/_work/1/s/devops/helm-charts/observability/otelcollector/otel-collector-crd.yaml": Internal error occurred: Internal error occurred: conversion webhook for opentelemetry.io/v1beta1, Kind=OpenTelemetryCollector failed: json: cannot unmarshal string into Go struct field OpenTelemetryCollectorSpec.spec.config of type v1beta1.Config
 ##[error]The process '/usr/local/bin/kubectl' failed with exit code 1
 
 
