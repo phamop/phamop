@@ -1,201 +1,229 @@
-#!/bin/bash
+manager:
+  image:
+    repository: otel/opentelemetry-operator
+    tag: v0.127.0
 
-# Variables
-RESOURCE_GROUP="your-resource-group"
-CLUSTER_NAME="your-aks-cluster"
-OUTPUT_FILE="aks_inventory_$(date +%Y%m%d_%H%M%S).txt"
+rbac:
+  create: true
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: otel-operator-extra
+rules:
+  - apiGroups: ["opentelemetry.io"]
+    resources: ["targetallocators"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["monitoring.coreos.com"]
+    resources: ["servicemonitors", "podmonitors"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["policy"]
+    resources: ["poddisruptionbudgets"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: otel-operator-extra-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: otel-operator-extra
+subjects:
+  - kind: ServiceAccount
+    name: opentelemetry-operator
+    namespace: monitoring
+---
+apiVersion: opentelemetry.io/v1beta1
+kind: OpenTelemetryCollector
+metadata:
+  name: otelcollector
+  namespace: monitoring
+spec:
+  mode: deployment
+  replicas: 2
+  image: otel/opentelemetry-collector-contrib:0.128.0
+  serviceAccount: opentelemetry-collector
 
-# Get AKS credentials
-echo "Getting AKS credentials for cluster $CLUSTER_NAME in resource group $RESOURCE_GROUP..."
-az aks get-credentials --resource-group $RESOURCE_GROUP --name $CLUSTER_NAME --admin
+  resources:
+    requests:
+      cpu: 500m
+      memory: 800Mi
+    limits:
+      cpu: 1000m
+      memory: 1600Mi
 
-# Verify connection to cluster
-kubectl cluster-info
-if [ $? -ne 0 ]; then
-    echo "Failed to connect to AKS cluster. Please check your credentials and try again."
-    exit 1
-fi
+  config:
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: "0.0.0.0:4317"
+          http:
+            endpoint: "0.0.0.0:4318"
+      jaeger:
+        protocols:
+          grpc:
+            endpoint: "0.0.0.0:14250"
+          thrift_http:
+            endpoint: "0.0.0.0:14268"
+          thrift_compact:
+            endpoint: "0.0.0.0:6831"
+      loki:
+        protocols:
+          http:
+            endpoint: "0.0.0.0:3500"
+            include_metadata: true
+          grpc:
+            endpoint: "0.0.0.0:3600"
+        use_incoming_timestamp: true
 
-# Create output file
-echo "AKS Inventory Report" > $OUTPUT_FILE
-echo "Generated: $(date)" >> $OUTPUT_FILE
-echo "Resource Group: $RESOURCE_GROUP" >> $OUTPUT_FILE
-echo "Cluster Name: $CLUSTER_NAME" >> $OUTPUT_FILE
-echo "=============================================" >> $OUTPUT_FILE
+    processors:
+      batch:
+        timeout: 200ms
+        send_batch_size: 1024
+        send_batch_max_size: 4096
+      memory_limiter:
+        check_interval: 5s
+        limit_percentage: 80
+        spike_limit_mib: 64
+        limit_mib: 512
+      resourcedetection:
+        detectors: ["env", "system", "kubernetes"]
+        timeout: 2s
+        override: false
+      resource:
+        attributes:
+          - key: service.name
+            from_attribute: service.name
+            action: insert
+          - key: k8s.container.name
+            from_attribute: k8s.container.name
+            action: insert
+          - key: k8s.namespace.name
+            from_attribute: k8s.namespace.name
+            action: insert
+          - key: k8s.pod.name
+            from_attribute: k8s.pod.name
+            action: insert
+          - key: host.name
+            from_attribute: host.name
+            action: insert
+          - key: service.name
+            from_attribute: service.name
+            action: upsert
+          - key: service.namespace
+            from_attribute: service.namespace
+            action: upsert
+      groupbytrace: {}
+      transform:
+        log_statements:
+          - context: log
+            statements:
+              - set(attributes["processing.note"], "Log enriched with resource and trace context")
+              - set(attributes["service.name"], resource.attributes["service.name"])
+              - set(attributes["k8s.pod.name"], resource.attributes["k8s.pod.name"])
+              - set(attributes["host.name"], resource.attributes["host.name"])
+              - set(attributes["trace_id"], trace_id)
+              - set(attributes["span_id"], span_id)
+      metricstransform:
+        transforms:
+          - include: system.cpu.usage
+            action: update
+            operations:
+              - action: add_label
+                new_label: host.name
+                new_value: host.name
+          - include: system.memory.usage
+            action: update
+            operations:
+              - action: add_label
+                new_label: host.name
+                new_value: host.name
 
-# Get nodes information
-echo "Collecting node information..."
-echo -e "\nNODES INFORMATION:" >> $OUTPUT_FILE
-kubectl get nodes -o wide >> $OUTPUT_FILE
+    exporters:
+      debug:
+        verbosity: basic
+      otlphttp:
+        endpoint: "http://loki-write.monitoring.svc.cluster.local:3100/otlp"
+        tls:
+          insecure: true
+      prometheus:
+        endpoint: "0.0.0.0:8889"
+        namespace: "monitoring"
+        const_labels:
+          k8s_cluster: "clustername"
+        send_timestamps: true
+        enable_open_metrics: true
+      otlp:
+        endpoint: "http://jaeger-collector.monitoring.svc.cluster.local:4317"
+        tls:
+          insecure: true
+      otlp/jaeger:
+        endpoint: "http://jaeger-collector.monitoring.svc.cluster.local:4317"
+        tls:
+          insecure: true
 
-# Get namespaces
-NAMESPACES=$(kubectl get namespaces -o jsonpath='{.items[*].metadata.name}')
+    extensions:
+      health_check:
+        endpoint: "0.0.0.0:13133"
 
-# Get pods in each namespace
-echo -e "\nPODS IN EACH NAMESPACE:" >> $OUTPUT_FILE
-for ns in $NAMESPACES; do
-    echo -e "\nNamespace: $ns" >> $OUTPUT_FILE
-    kubectl get pods -n $ns -o wide >> $OUTPUT_FILE
-    
-    # Get detailed pod information
-    echo -e "\nDetailed Pod Information:" >> $OUTPUT_FILE
-    kubectl describe pods -n $ns >> $OUTPUT_FILE
-done
+    service:
+      telemetry:
+        logs:
+          level: debug
+      extensions: [health_check]
+      pipelines:
+        metrics:
+          receivers: [otlp]
+          processors: [memory_limiter, resource, metricstransform, batch]
+          exporters: [debug, prometheus]
+        traces:
+          receivers: [otlp, jaeger]
+          processors: [memory_limiter, resource, groupbytrace, batch]
+          exporters: [debug, otlp/jaeger]
+        logs:
+          receivers: [otlp, loki]
+          processors: [resource, transform, memory_limiter, batch]
+          exporters: [debug, otlphttp]
 
-# Get all ingresses with network details
-echo -e "\nINGRESSES IN ALL NAMESPACES:" >> $OUTPUT_FILE
-kubectl get ingress --all-namespaces -o wide >> $OUTPUT_FILE
+  ports:
+    - name: otlp-grpc
+      port: 4317
+      targetPort: 4317
+      protocol: TCP
+    - name: otlp-http
+      port: 4318
+      targetPort: 4318
+      protocol: TCP
+    - name: jaeger-compact
+      port: 6831
+      targetPort: 6831
+      protocol: UDP
+    - name: jaeger-thrift
+      port: 14268
+      targetPort: 14268
+      protocol: TCP
+    - name: jaeger-grpc
+      port: 14250
+      targetPort: 14250
+      protocol: TCP
+    - name: metrics
+      port: 8888
+      targetPort: 8888
+      protocol: TCP
+    - name: prometheus
+      port: 8889
+      targetPort: 8889
+      protocol: TCP
 
-# Get detailed ingress information
-echo -e "\nDETAILED INGRESS INFORMATION:" >> $OUTPUT_FILE
-for ns in $NAMESPACES; do
-    INGRESSES=$(kubectl get ingress -n $ns -o jsonpath='{.items[*].metadata.name}')
-    if [ -n "$INGRESSES" ]; then
-        echo -e "\nNamespace: $ns" >> $OUTPUT_FILE
-        for ingress in $INGRESSES; do
-            kubectl describe ingress $ingress -n $ns >> $OUTPUT_FILE
-            echo -e "\n" >> $OUTPUT_FILE
-        done
-    fi
-done
+  podDisruptionBudget:
+    maxUnavailable: 1
 
-# Get services information
-echo -e "\nSERVICES INFORMATION:" >> $OUTPUT_FILE
-kubectl get services --all-namespaces -o wide >> $OUTPUT_FILE
-
-# Get network policies
-echo -e "\nNETWORK POLICIES:" >> $OUTPUT_FILE
-kubectl get networkpolicies --all-namespaces -o wide >> $OUTPUT_FILE
-
-echo "Inventory collection complete. Report saved to $OUTPUT_FILE"
+  autoscaler:
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilization: 80
+    targetMemoryUtilization: 80
 
 
-
-
-
-
-
-##############################
-
-
-
-
-
-#!/bin/bash
-
-# AKS Inventory Script
-# This script lists all AKS clusters in a specified resource group or across the subscription
-# Allows filtering by resource group and cluster name
-
-# Variables (can be passed as parameters or modified here)
-RESOURCE_GROUP=""  # Leave empty to search all resource groups
-CLUSTER_NAME=""    # Leave empty to list all clusters
-
-# Uncomment to use command line arguments
-# while getopts "g:n:" opt; do
-#   case $opt in
-#     g) RESOURCE_GROUP="$OPTARG"
-#     ;;
-#     n) CLUSTER_NAME="$OPTARG"
-#     ;;
-#     \?) echo "Invalid option -$OPTARG" >&2
-#     ;;
-#   esac
-# done
-
-# Check if Azure CLI is installed
-if ! command -v az &> /dev/null; then
-    echo "Azure CLI could not be found. Please install it first."
-    echo "Installation guide: https://docs.microsoft.com/en-us/cli/azure/install-azure-cli"
-    exit 1
-fi
-
-# Check if user is logged in to Azure
-if ! az account show &> /dev/null; then
-    echo "Please log in to Azure first:"
-    echo "Run 'az login' and follow the instructions."
-    exit 1
-fi
-
-# Get current subscription
-SUBSCRIPTION=$(az account show --query "name" -o tsv)
-echo "Checking AKS clusters in subscription: $SUBSCRIPTION"
-echo "Resource group filter: ${RESOURCE_GROUP:-all}"
-echo "Cluster name filter: ${CLUSTER_NAME:-all}"
-echo ""
-
-# Function to get AKS cluster details
-get_aks_details() {
-    local rg=$1
-    local name=$2
-    
-    echo "Resource Group: $rg"
-    echo "Cluster Name: $name"
-    
-    # Get basic cluster info
-    cluster_info=$(az aks show --resource-group $rg --name $name --query "{ \
-        location:location, \
-        kubernetesVersion:kubernetesVersion, \
-        provisioningState:provisioningState, \
-        fqdn:fqdn, \
-        nodeCount:agentPoolProfiles[0].count, \
-        vmSize:agentPoolProfiles[0].vmSize, \
-        osType:agentPoolProfiles[0].osType, \
-        maxPods:agentPoolProfiles[0].maxPods \
-    }" -o json)
-    
-    echo "$cluster_info" | jq .
-    echo ""
-    
-    # Get node pool info
-    echo "Node Pools:"
-    az aks nodepool list --resource-group $rg --cluster-name $name --query "[].{ \
-        name:name, \
-        count:count, \
-        vmSize:vmSize, \
-        osType:osType, \
-        maxPods:maxPods, \
-        provisioningState:provisioningState \
-    }" -o table
-    
-    echo ""
-    echo "--------------------------------------------------"
-    echo ""
-}
-
-# Main logic to find and display clusters
-if [[ -n "$RESOURCE_GROUP" ]]; then
-    # Search in specific resource group
-    if [[ -n "$CLUSTER_NAME" ]]; then
-        # Specific cluster in specific resource group
-        clusters=$(az aks list --resource-group $RESOURCE_GROUP --query "[?name=='$CLUSTER_NAME'].{name:name, resourceGroup:resourceGroup}" -o tsv)
-    else
-        # All clusters in specific resource group
-        clusters=$(az aks list --resource-group $RESOURCE_GROUP --query "[].{name:name, resourceGroup:resourceGroup}" -o tsv)
-    fi
-else
-    # Search across all resource groups
-    if [[ -n "$CLUSTER_NAME" ]]; then
-        # Specific cluster name across all resource groups
-        clusters=$(az aks list --query "[?name=='$CLUSTER_NAME'].{name:name, resourceGroup:resourceGroup}" -o tsv)
-    else
-        # All clusters in subscription
-        clusters=$(az aks list --query "[].{name:name, resourceGroup:resourceGroup}" -o tsv)
-    fi
-fi
-
-# Check if any clusters were found
-if [[ -z "$clusters" ]]; then
-    echo "No AKS clusters found matching your criteria."
-    exit 0
-fi
-
-# Process each cluster found
-echo "Found $(echo "$clusters" | wc -l) AKS cluster(s):"
-echo ""
-
-while read -r line; do
-    rg=$(echo "$line" | awk '{print $2}')
-    name=$(echo "$line" | awk '{print $1}')
-    get_aks_details "$rg" "$name"
-done <<< "$clusters"
