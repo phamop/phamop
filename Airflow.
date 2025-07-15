@@ -1,32 +1,5 @@
 
-  - task: HelmDeploy@0
-    displayName: Deploy OpenTelemetry Operator Helm Chart
-    inputs:
-      azureSubscription: $(azureSubscription)
-      command: upgrade
-      chartType: Name
-      chartName: open-telemetry/opentelemetry-operator
-      chartVersion: 0.28.0
-      kubernetesCluster: $(clusterName)
-      azureResourceGroup: $(resourceGroup)
-      namespace: $(k8sNamespace)
-      releaseName: my-opentelemetry-operator
-      valueFile: $(Pipeline.Workspace)/s/devops/helm-charts/observability/otelcollector/otel-operator-values.yaml
-      install: true
-      waitForExecution: true
-      arguments: --timeout 5m0s --create-namespace
-
-  - task: Kubernetes@1
-    displayName: Apply OpenTelemetryCollector Custom Resource
-    inputs:
-      connectionType: 'Azure Resource Manager'
-      azureSubscriptionEndpoint: $(azureSubscription)
-      azureResourceGroup: $(resourceGroup)
-      kubernetesCluster: $(clusterName)
-      namespace: $(k8sNamespace)
-      command: apply
-      useConfigurationFile: true
-      configuration: '$(Pipeline.Workspace)/s/devops/helm-charts/observability/otelcollector/otel-collector-crd.yaml'
+  Error from server (BadRequest): container "manager" in pod "my-opentelemetry-operator-6f5cfc9959-9ff6k" is waiting to start: trying and failing to pull image
 
 
 
