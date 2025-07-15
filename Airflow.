@@ -1,10 +1,9 @@
-Integrating Loki with the OTEL Collector and Grafana presents challenges due to sparse documentation and complex configuration requirements. Based on firsthand experience with active deployments and tested implementations, the most common integration issues include:
-
-Misconfigured Loki data source settings in Grafana – Incorrect authentication, URL, or query parameters can prevent proper log visualization.
-
-Faulty OTEL Collector pipeline configurations – For example, using loki-gateway as the Grafana endpoint when the correct setup requires loki-read for queries and loki-write for log exports.
-
-These hurdles often stem from unclear documentation and trial-and-error adjustments.
+kube-prometheus-stack-alertmanager               ClusterIP   10.0.0.78    <none>        9093/TCP,8080/TCP                                                           7d13h
+kube-prometheus-stack-kube-state-metrics         ClusterIP   10.0.0.120   <none>        8080/TCP                                                                    7d13h
+kube-prometheus-stack-operator                   ClusterIP   10.0.0.112   <none>        443/TCP                                                                     7d13h
+kube-prometheus-stack-prometheus                 ClusterIP   10.0.0.26    <none>        9090/TCP,8080/TCP                                                           7d13h
+kube-prometheus-stack-prometheus-node-exporter   ClusterIP   10.0.0.36    <none>        9100/TCP                                                                    7d13h
+prometheus-operated                              ClusterIP   None         <none>        9090/TCP                                                                    7d13h
 
 
 
