@@ -1,8 +1,5 @@
-
-manager:
-  image:
-    repository: ghcr.io/open-telemetry/opentelemetry-operator
-    tag: v0.127.0
+ Warning  Failed     2m47s (x3 over 3m33s)  kubelet            Failed to pull image "ghcr.io/open-telemetry/opentelemetry-operator:v0.127.0": failed to pull and unpack image "ghcr.io/open-telemetry/opentelemetry-operator:v0.127.0": failed to resolve reference "ghcr.io/open-telemetry/opentelemetry-operator:v0.127.0": failed to authorize: failed to fetch anonymous token: unexpected status from GET request to https://ghcr.io/token?scope=repository%3Aopen-telemetry%2Fopentelemetry-operator%3Apull&service=ghcr.io: 403 Forbidden
+  Warning  Failed     2m47s (x3 over 3m33s)  kubelet            Error: ErrImagePull
 
 
 
