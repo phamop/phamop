@@ -1,21 +1,4 @@
-apiVersion: monitoring.coreos.com/v1
-kind: ServiceMonitor
-metadata:
-  name: otel-collector
-  namespace: monitoring
-  labels:
-    release: kube-prometheus-stack  # ⚠️ Must match Prometheus release label
-spec:
-  selector:
-    matchLabels:
-      app.kubernetes.io/name: otel-collector
-  namespaceSelector:
-    matchNames:
-      - monitoring
-  endpoints:
-    - port: prometheus
-      path: /metrics
-      interval: 30s
+"level":"info","ts":"2025-07-15T13:18:51Z","logger":"controllers.OpenTelemetryCollector","msg":"couldn't determine metrics port from configuration, using 8888 default value","opentelemetrycollector":"telemetry-sandbox/collector-sandbox","error":"missing port in address"}
 
 
 
