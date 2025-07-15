@@ -1,11 +1,30 @@
-logger":"controller-runtime.certwatcher","message":"Starting certificate poll+watcher","interval":10}
-W0715 17:51:41.797151       1 reflector.go:569] pkg/mod/k8s.io/client-go@v0.32.3/tools/cache/reflector.go:251: failed to list *v1alpha1.TargetAllocator: targetallocators.opentelemetry.io is forbidden: User "system:serviceaccount:monitoring:opentelemetry-operator" cannot list resource "targetallocators" in API group "opentelemetry.io" at the cluster scope
-E0715 17:51:41.882980       1 reflector.go:166] "Unhandled Error" err="pkg/mod/k8s.io/client-go@v0.32.3/tools/cache/reflector.go:251: Failed to watch *v1alpha1.TargetAllocator: failed to list *v1alpha1.TargetAllocator: targetallocators.opentelemetry.io is forbidden: User \"system:serviceaccount:monitoring:opentelemetry-operator\" cannot list resource \"targetallocators\" in API group \"opentelemetry.io\" at the cluster scope" logger="UnhandledError"
-W0715 17:51:41.798582       1 reflector.go:569] pkg/mod/k8s.io/client-go@v0.32.3/tools/cache/reflector.go:251: failed to list *v1.PodMonitor: podmonitors.monitoring.coreos.com is forbidden: User "system:serviceaccount:monitoring:opentelemetry-operator" cannot list resource "podmonitors" in API group "monitoring.coreos.com" at the cluster scope
-W0715 17:51:41.798654       1 reflector.go:569] pkg/mod/k8s.io/client-go@v0.32.3/tools/cache/reflector.go:251: failed to list *v1.ServiceMonitor: servicemonitors.monitoring.coreos.com is forbidden: User "system:serviceaccount:monitoring:opentelemetry-operator" cannot list resource "servicemonitors" in API group "monitoring.coreos.com" at the cluster scope
-W0715 17:51:41.798693       1 reflector.go:569] pkg/mod/k8s.io/client-go@v0.32.3/tools/cache/reflector.go:251: failed to list *v1.PodDisruptionBudget: poddisruptionbudgets.policy is forbidden: User "system:serviceaccount:monitoring:opentelemetry-operator" cannot list resource "poddisruptionbudgets" in API group "policy" at the cluster scope
-E0715 17:51:41.883833       1 reflector.go:166] "Unhandled Error" err="pkg/mod/k8s.io/client-go@v0.32.3/tools/cache/reflector.go:251: Failed to watch *v1.PodDisruptionBudget: failed to list *v1.PodDisruptionBudget: poddisruptionbudgets.policy is forbidden: User \"system:serviceaccount:monitoring:opentelemetry-operator\" cannot list resource \"poddisruptionbudgets\" in API group \"policy\" at the cluster scope" logger="UnhandledError"
-E0715 17:51:41.884096       1 reflector.go:166] "Unhandled Error" err="pkg/mod/k8s.io/client-go@v0.32.3/tools/cache/reflector.go:251: Failed to watch *v1.PodMonitor: failed to list *v1.Pod
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: otel-operator-extra
+rules:
+  - apiGroups: ["opentelemetry.io"]
+    resources: ["targetallocators"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["monitoring.coreos.com"]
+    resources: ["servicemonitors", "podmonitors"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["policy"]
+    resources: ["poddisruptionbudgets"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: otel-operator-extra-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: otel-operator-extra
+subjects:
+  - kind: ServiceAccount
+    name: opentelemetry-operator
+    namespace: monitoring
 
 
 
