@@ -1,10 +1,10 @@
 
-Error: UPGRADE FAILED: post-upgrade hooks failed: warning: Hook post-upgrade kube-prometheus-stack/templates/prometheus-operator/admission-webhooks/job-patch/clusterrolebinding.yaml failed: 1 error occurred:
-	* the server is currently unable to handle the request (post clusterrolebindings.rbac.authorization.k8s.io)
-
-
-##[error]Error: UPGRADE FAILED: post-upgrade hooks failed: warning: Hook post-upgrade kube-prometheus-stack/templates/prometheus-operator/admission-webhooks/job-patch/clusterrolebinding.yaml failed: 1 error occurred:
-
+OpenTelemetryCollector v1alpha1 is deprecated. Migrate to v1beta1.
+{"level":"info","ts":"2025-07-15T15:45:19Z","logger":"instrumentation-upgrade","msg":"no instances to upgrade"}
+W0715 15:45:19.483516       1 warnings.go:70] OpenTelemetryCollector v1alpha1 is deprecated. Migrate to v1beta1.
+{"level":"info","ts":"2025-07-15T15:45:19Z","logger":"collector-upgrade","msg":"no instances to upgrade"}
+{"level":"info","ts":"2025-07-15T15:45:20Z","msg":"Starting workers","controller":"opentelemetrycollector","controllerGroup":"opentelemetry.io","controllerKind":"OpenTelemetryCollector","worker count":1}
+{"level":"info","ts":"2025-07-15T15:45:20Z","logger":"controllers.OpenTelemetryCollector","msg":"couldn't determine metrics port from configuration, using 8888 default value","opentelemetrycollector":"telemetry-sandbox/collector-sandbox","error":"missing port in address"}
 
 
 
