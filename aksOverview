@@ -1,0 +1,118 @@
+#!/bin/bash
+
+# AKS Inventory Script
+# This script lists all AKS clusters in a specified resource group or across the subscription
+# Allows filtering by resource group and cluster name
+
+# Variables (can be passed as parameters or modified here)
+RESOURCE_GROUP=""  # Leave empty to search all resource groups
+CLUSTER_NAME=""    # Leave empty to list all clusters
+
+# Uncomment to use command line arguments
+# while getopts "g:n:" opt; do
+#   case $opt in
+#     g) RESOURCE_GROUP="$OPTARG"
+#     ;;
+#     n) CLUSTER_NAME="$OPTARG"
+#     ;;
+#     \?) echo "Invalid option -$OPTARG" >&2
+#     ;;
+#   esac
+# done
+
+# Check if Azure CLI is installed
+if ! command -v az &> /dev/null; then
+    echo "Azure CLI could not be found. Please install it first."
+    echo "Installation guide: https://docs.microsoft.com/en-us/cli/azure/install-azure-cli"
+    exit 1
+fi
+
+# Check if user is logged in to Azure
+if ! az account show &> /dev/null; then
+    echo "Please log in to Azure first:"
+    echo "Run 'az login' and follow the instructions."
+    exit 1
+fi
+
+# Get current subscription
+SUBSCRIPTION=$(az account show --query "name" -o tsv)
+echo "Checking AKS clusters in subscription: $SUBSCRIPTION"
+echo "Resource group filter: ${RESOURCE_GROUP:-all}"
+echo "Cluster name filter: ${CLUSTER_NAME:-all}"
+echo ""
+
+# Function to get AKS cluster details
+get_aks_details() {
+    local rg=$1
+    local name=$2
+    
+    echo "Resource Group: $rg"
+    echo "Cluster Name: $name"
+    
+    # Get basic cluster info
+    cluster_info=$(az aks show --resource-group $rg --name $name --query "{ \
+        location:location, \
+        kubernetesVersion:kubernetesVersion, \
+        provisioningState:provisioningState, \
+        fqdn:fqdn, \
+        nodeCount:agentPoolProfiles[0].count, \
+        vmSize:agentPoolProfiles[0].vmSize, \
+        osType:agentPoolProfiles[0].osType, \
+        maxPods:agentPoolProfiles[0].maxPods \
+    }" -o json)
+    
+    echo "$cluster_info" | jq .
+    echo ""
+    
+    # Get node pool info
+    echo "Node Pools:"
+    az aks nodepool list --resource-group $rg --cluster-name $name --query "[].{ \
+        name:name, \
+        count:count, \
+        vmSize:vmSize, \
+        osType:osType, \
+        maxPods:maxPods, \
+        provisioningState:provisioningState \
+    }" -o table
+    
+    echo ""
+    echo "--------------------------------------------------"
+    echo ""
+}
+
+# Main logic to find and display clusters
+if [[ -n "$RESOURCE_GROUP" ]]; then
+    # Search in specific resource group
+    if [[ -n "$CLUSTER_NAME" ]]; then
+        # Specific cluster in specific resource group
+        clusters=$(az aks list --resource-group $RESOURCE_GROUP --query "[?name=='$CLUSTER_NAME'].{name:name, resourceGroup:resourceGroup}" -o tsv)
+    else
+        # All clusters in specific resource group
+        clusters=$(az aks list --resource-group $RESOURCE_GROUP --query "[].{name:name, resourceGroup:resourceGroup}" -o tsv)
+    fi
+else
+    # Search across all resource groups
+    if [[ -n "$CLUSTER_NAME" ]]; then
+        # Specific cluster name across all resource groups
+        clusters=$(az aks list --query "[?name=='$CLUSTER_NAME'].{name:name, resourceGroup:resourceGroup}" -o tsv)
+    else
+        # All clusters in subscription
+        clusters=$(az aks list --query "[].{name:name, resourceGroup:resourceGroup}" -o tsv)
+    fi
+fi
+
+# Check if any clusters were found
+if [[ -z "$clusters" ]]; then
+    echo "No AKS clusters found matching your criteria."
+    exit 0
+fi
+
+# Process each cluster found
+echo "Found $(echo "$clusters" | wc -l) AKS cluster(s):"
+echo ""
+
+while read -r line; do
+    rg=$(echo "$line" | awk '{print $2}')
+    name=$(echo "$line" | awk '{print $1}')
+    get_aks_details "$rg" "$name"
+done <<< "$clusters"
