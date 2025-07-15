@@ -3,11 +3,11 @@ kind: OpenTelemetryCollector
 metadata:
   name: collector-sandbox
 spec:
-  config: |
-    service:
-      telemetry:
-        metrics:
-          address: 0.0.0.0:8888  # Explicitly set metrics address
+  ports:
+    - name: metrics
+      port: 8888
+      protocol: TCP
+      targetPort: 8888
 
 
 
