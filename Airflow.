@@ -5,5 +5,3 @@
 {"level":"info","ts":"2025-07-16T20:09:27Z","logger":"controllers.OpenTelemetryCollector","msg":"receiver's endpoint isn't a string","opentelemetrycollector":"monitoring/opentelemetry-collector"}
 {"level":"info","ts":"2025-07-16T20:09:27Z","logger":"controllers.OpenTelemetryCollector","msg":"truncating container port name","opentelemetrycollector":"monitoring/opentelemetry-collector","port.name.prev":"jaeger-thrift-compact","port.name.new":"jaeger-thrift-c"}
 {"level":"info","ts":"2025-07-16T20:09:27Z","logger":"controllers.OpenTelemetryCollector","msg":"truncating container port name","opentelemetrycollector":"monitoring/opentelemetry-collector","port.name.prev":"jaeger-thrift-http","port.name.new":"jaeger-thrift-h"}
-{"level":"info","ts":"2025-07-16T20:09:27Z","logger":"controllers.OpenTelemetryCollector","msg":"couldn't determine metrics port from configuration, using 8888 default value","opentelemetrycollector":"monitoring/opentelemetry-collector","error":"missing port in address"}
-PS C:\Users\ooridota>
