@@ -1,3 +1,5 @@
+Warning  BackOff    51s (x195 over 41m)  kubelet            Back-off restarting failed container otc-container in pod otelcollector-collector
+
 apiVersion: opentelemetry.io/v1beta1
 kind: OpenTelemetryCollector
 metadata:
