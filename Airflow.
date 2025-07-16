@@ -1,19 +1,194 @@
-receiver's endpoint isn't a string","opentelemetrycollector":"monitoring/otelcollector"}
-{"level":"info","ts":"2025-07-16T17:22:57Z","logger":"controllers.OpenTelemetryCollector","msg":"truncating container port name","opentelemetrycollector":"monitoring/otelcollector","port.name.prev":"jaeger-thrift-compact","port.name.new":"jaeger-thrift-c"}
-{"level":"info","ts":"2025-07-16T17:22:57Z","logger":"controllers.OpenTelemetryCollector","msg":"truncating container port name","opentelemetrycollector":"monitoring/otelcollector","port.name.prev":"jaeger-thrift-http","port.name.new":"jaeger-thrift-h"}
-{"level":"info","ts":"2025-07-16T17:22:57Z","logger":"controllers.OpenTelemetryCollector","msg":"couldn't determine metrics port from configuration, using 8888 default value","opentelemetrycollector":"monitoring/otelcollector","error":"missing port in address"}
 
+apiVersion: opentelemetry.io/v1beta1
+kind: OpenTelemetryCollector
+metadata:
+  name: opentelemetry-collector
+  namespace: monitoring
+  labels:
+    app: opentelemetry-collector
+spec:
+  mode: deployment
+  replicas: 2
+  image: otel/opentelemetry-collector-contrib:0.128.0
+  serviceAccount: opentelemetry-collector
 
-Error: failed to get config: cannot unmarshal the configuration: decoding failed due to the following error(s):
+  resources:
+    requests:
+      cpu: 500m
+      memory: 800Mi
+    limits:
+      cpu: 1000m
+      memory: 1600Mi
 
-error decoding 'service.telemetry.metrics': decoding failed due to the following error(s):
+  env:
+    - name: K8S_NODE_NAME
+      valueFrom:
+        fieldRef:
+          fieldPath: spec.nodeName
+    - name: K8S_POD_NAME
+      valueFrom:
+        fieldRef:
+          fieldPath: metadata.name
+    - name: K8S_POD_NAMESPACE
+      valueFrom:
+        fieldRef:
+          fieldPath: metadata.namespace
+    - name: K8S_POD_IP
+      valueFrom:
+        fieldRef:
+          fieldPath: status.podIP
 
-'' has invalid keys: address
-2025/07/16 18:02:03 collector server run finished with error: failed to get config: cannot unmarshal the configuration: decoding failed due to the following error(s):
+  config:
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: "0.0.0.0:4317"
+          http:
+            endpoint: "0.0.0.0:4318"
+      jaeger:
+        protocols:
+          grpc:
+            endpoint: "0.0.0.0:14250"
+          thrift_http:
+            endpoint: "0.0.0.0:14268"
+          thrift_compact:
+            endpoint: "0.0.0.0:6831"
+      loki:
+        protocols:
+          http:
+            endpoint: "0.0.0.0:3500"
+            include_metadata: true
+          grpc:
+            endpoint: "0.0.0.0:3600"
+        use_incoming_timestamp: true
+  
 
-error decoding 'service.telemetry.metrics': decoding failed due to the following error(s):
+    processors:
+      batch:
+        timeout: 200ms
+        send_batch_size: 1024
+        send_batch_max_size: 4096
+      memory_limiter:
+        check_interval: 5s
+        limit_percentage: 80
+        spike_limit_mib: 64
+        limit_mib: 512
+      resource:
+        attributes:
+          - key: service.name
+            from_attribute: service.name
+            action: insert
+          - key: k8s.container.name
+            from_attribute: k8s.container.name
+            action: insert
+          - key: k8s.namespace.name
+            from_attribute: k8s.namespace.name
+            action: insert
+          - key: k8s.pod.name
+            from_attribute: k8s.pod.name
+            action: insert
+          - key: k8s.node.name
+            from_attribute: k8s.node.name
+            action: insert
+          - key: host.name
+            from_attribute: host.name
+            action: insert
+          - key: service.name
+            from_attribute: service.name
+            action: upsert
+          - key: service.namespace
+            from_attribute: service.namespace
+            action: upsert
+          - key: cluster.name
+            value: "clustername"
+            action: insert
+      groupbytrace: {}
+      transform:
+        log_statements:
+          - context: log
+            statements:
+              - set(attributes["processing.note"], "Log enriched with resource and trace context")
+              - set(attributes["service.name"], resource.attributes["service.name"])
+              - set(attributes["k8s.pod.name"], resource.attributes["k8s.pod.name"])
+              - set(attributes["k8s.node.name"], resource.attributes["k8s.node.name"])
+              - set(attributes["host.name"], resource.attributes["host.name"])
+              - set(attributes["cluster.name"], resource.attributes["cluster.name"])
+              - set(attributes["trace_id"], trace_id)
+              - set(attributes["span_id"], span_id)
+      metricstransform:
+        transforms:
+          - include: system.cpu.usage
+            action: update
+            operations:
+              - action: add_label
+                new_label: host.name
+                new_value: host.name
+              - action: add_label
+                new_label: cluster.name
+                new_value: clustername
+          - include: system.memory.usage
+            action: update
+            operations:
+              - action: add_label
+                new_label: host.name
+                new_value: host.name
+              - action: add_label
+                new_label: cluster.name
+                new_value: clustername
 
-'' has invalid keys: address
+    exporters:
+      debug:
+        verbosity: basic
+      otlphttp:
+        endpoint: "http://loki-write.monitoring.svc.cluster.local:3100/otlp"
+        tls:
+          insecure: true
+        # headers:
+        #   "X-Scope-OrgID": "tenant-1"
+      prometheus:
+        endpoint: "0.0.0.0:9464"
+        namespace: "monitoring"
+        const_labels:
+          k8s_cluster: "EDDVAKSCLUS01"
+        send_timestamps: true
+        enable_open_metrics: true
+      otlp/jaeger:
+        endpoint: "http://jaeger-collector.monitoring.svc.cluster.local:4317"
+        tls:
+          insecure: true
+        headers:
+          "X-Tenant-ID": "default"
+
+    extensions:
+      health_check:
+        endpoint: "0.0.0.0:13133"
+        path: "/health"
+      pprof:
+        endpoint: "0.0.0.0:1777"
+      zpages:
+        endpoint: "0.0.0.0:55679"
+
+    service:
+      telemetry:
+        metrics:
+          level: basic
+        logs:
+          level: debug
+      extensions: [health_check]
+      pipelines:
+        metrics:
+          receivers: [otlp]
+          processors: [memory_limiter, resource, metricstransform, batch]
+          exporters: [debug, prometheus]
+        traces:
+          receivers: [otlp, jaeger]
+          processors: [memory_limiter, resource, groupbytrace, batch]
+          exporters: [debug, otlp/jaeger]
+        logs:
+          receivers: [otlp, loki]
+          processors: [memory_limiter, resource, transform, batch]
+          exporters: [debug, otlphttp]
 
 
 We are currently blocked on the ingress controller issue. In the meantime, there’s a pending ticket requesting the AKS inventory for the DEV environment. I’d like to address that while we work on connecting all the pieces for the main issue. We’ve agreed to resume troubleshooting tomorrow."
