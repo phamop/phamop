@@ -1,14 +1,2 @@
-Found 3 pods, using pod/otelcollector-collector-768878986f-wwvd4
-Error: failed to get config: cannot unmarshal the configuration: decoding failed due to the following error(s):
-
-error decoding 'service.telemetry.metrics': decoding failed due to the following error(s):
-
-'' has invalid keys: reader
-2025/07/16 20:37:19 collector server run finished with error: failed to get config: cannot unmarshal the configuration: decoding failed due to the following error(s):
-
-error decoding 'service.telemetry.metrics': decoding failed due to the following error(s):
-
-'' has invalid keys: reader
-
-
-on image v.127.0
+Error: cannot start pipelines: failed to start "prometheus" exporter: listen tcp 0.0.0.0:8889: bind: address already in use; failed to shutdown pipelines: no existing monitoring routine is running; no existing monitoring routine is running
+2025/07/16 20:45:20 collector server run finished with error: cannot start pipelines: failed to start "prometheus" exporter: listen tcp 0.0.0.0:8889: bind: address already in use; failed to shutdown pipelines: no existing monitoring routine is running; no existing monitoring routine is running
