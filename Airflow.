@@ -1,18 +1,3 @@
-Events:
-  Type     Reason       Age                 From               Message
-  ----     ------       ----                ----               -------
-  Normal   Scheduled    16m                 default-scheduler  Successfully assigned monitoring/opentelemetry-collector-collector-6f4b5ff9b6-kz7wb to aks-eddv-38261504-vmss000001
-  Normal   Pulled       16m                 kubelet            Container image "otel/opentelemetry-collector-contrib:0.128.0" already present on machine
-  Normal   Created      16m                 kubelet            Created container: otc-container
-  Normal   Started      16m                 kubelet            Started container otc-container
-  Warning  Unhealthy    16m                 kubelet            Readiness probe failed: Get "http://10.244.2.183:13133/": dial tcp 10.244.2.183:13133: connect: connection refused
-  Warning  FailedMount  59s (x13 over 16m)  kubelet            MountVolume.SetUp failed for volume "otc-internal" : configmap "opentelemetry-collector-collector-c13f57f7" not found
-
-
-
-
-
-
 apiVersion: opentelemetry.io/v1beta1
 kind: OpenTelemetryCollector
 metadata:
@@ -118,7 +103,7 @@ spec:
             value: "clustername"
             action: insert
       resourcedetection:
-        detectors: [env, system]  # ✅ FIXED — removed invalid `kubernetes`
+        detectors: [env, system]
         override: false
         timeout: 2s
       transform:
@@ -206,6 +191,7 @@ spec:
           receivers: [otlp, loki]
           processors: [memory_limiter, resourcedetection, resource, transform, batch]
           exporters: [debug, otlphttp]
+
 
 
 
