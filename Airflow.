@@ -1,3 +1,11 @@
+kubectl get crds | findstr opentelemetry
+instrumentations.opentelemetry.io                            2025-07-09T17:21:21Z
+opampbridges.opentelemetry.io                                2025-07-09T17:21:21Z
+opentelemetrycollectors.opentelemetry.io                     2025-07-09T17:21:21Z
+targetallocators.opentelemetry.io                            2025-07-09T17:21:21Z
+
+
+
 Warning  BackOff    51s (x195 over 41m)  kubelet            Back-off restarting failed container otc-container in pod otelcollector-collector
 
 
