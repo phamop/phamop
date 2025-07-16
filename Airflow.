@@ -1,7 +1,23 @@
-{"level":"info","ts":"2025-07-16T20:09:26Z","logger":"controllers.OpenTelemetryCollector","msg":"couldn't determine metrics port from configuration, using 8888 default value","opentelemetrycollector":"monitoring/opentelemetry-collector","error":"missing port in address"}
-{"level":"info","ts":"2025-07-16T20:09:26Z","logger":"controllers.OpenTelemetryCollector","msg":"couldn't determine metrics port from configuration, using 8888 default value","opentelemetrycollector":"telemetry-sandbox/collector-sandbox","error":"missing port in address"}
-{"level":"info","ts":"2025-07-16T20:09:27Z","logger":"controllers.OpenTelemetryCollector","msg":"receiver's endpoint isn't a string","opentelemetrycollector":"monitoring/opentelemetry-collector"}
-{"level":"info","ts":"2025-07-16T20:09:27Z","logger":"controllers.OpenTelemetryCollector","msg":"receiver's endpoint isn't a string","opentelemetrycollector":"monitoring/opentelemetry-collector"}
-{"level":"info","ts":"2025-07-16T20:09:27Z","logger":"controllers.OpenTelemetryCollector","msg":"receiver's endpoint isn't a string","opentelemetrycollector":"monitoring/opentelemetry-collector"}
-{"level":"info","ts":"2025-07-16T20:09:27Z","logger":"controllers.OpenTelemetryCollector","msg":"truncating container port name","opentelemetrycollector":"monitoring/opentelemetry-collector","port.name.prev":"jaeger-thrift-compact","port.name.new":"jaeger-thrift-c"}
-{"level":"info","ts":"2025-07-16T20:09:27Z","logger":"controllers.OpenTelemetryCollector","msg":"truncating container port name","opentelemetrycollector":"monitoring/opentelemetry-collector","port.name.prev":"jaeger-thrift-http","port.name.new":"jaeger-thrift-h"}
+{"level":"info","ts":"2025-07-16T20:21:27Z","logger":"controllers.OpenTelemetryCollector","msg":"truncating container port name","opentelemetrycollector":"monitoring/opentelemetry-collector","port.name.prev":"jaeger-thrift-http","port.name.new":"jaeger-thrift-h"}
+{"level":"info","ts":"2025-07-16T20:21:27Z","logger":"controllers.OpenTelemetryCollector","msg":"couldn't determine metrics port from configuration, using 8888 default value","opentelemetrycollector":"monitoring/opentelemetry-collector","error":"missing port in address"}
+{"level":"info","ts":"2025-07-16T20:21:27Z","logger":"controllers.OpenTelemetryCollector","msg":"couldn't determine metrics port from configuration, using 8888 default value","opentelemetrycollector":"telemetry-sandbox/collector-sandbox","error":"missing port in address"}
+{"level":"info","ts":"2025-07-16T20:21:28Z","logger":"controllers.OpenTelemetryCollector","msg":"receiver's endpoint isn't a string","opentelemetrycollector":"monitoring/otelcollector"}
+{"level":"info","ts":"2025-07-16T20:21:28Z","logger":"controllers.OpenTelemetryCollector","msg":"receiver's endpoint isn't a string","opentelemetrycollector":"monitoring/otelcollector"}
+{"level":"info","ts":"2025-07-16T20:21:28Z","logger":"controllers.OpenTelemetryCollector","msg":"receiver's endpoint isn't a string","opentelemetrycollector":"monitoring/otelcollector"}
+{"level":"info","ts":"2025-07-16T20:21:28Z","logger":"controllers.OpenTelemetryCollector","msg":"truncating container port name","opentelemetrycollector":"monitoring/otelcollector","port.name.prev":"jaeger-thrift-compact","port.name.new":"jaeger-thrift-c"}
+{"level":"info","ts":"2025-07-16T20:21:28Z","logger":"controllers.OpenTelemetryCollector","msg":"truncating container port name","opentelemetrycollector":"monitoring/otelcollector","port.name.prev":"jaeger-thrift-http","port.name.new":"jaeger-thrift-h"}
+kubectl logs -n monitoring deployment/my-opentelemetry-operator
+
+
+kubectl logs -n monitoring deployment/otelcollector-collector -f
+Found 3 pods, using pod/otelcollector-collector-7974b5594b-7f72l
+Error: failed to get config: cannot unmarshal the configuration: decoding failed due to the following error(s):
+
+error decoding 'service.telemetry.metrics': decoding failed due to the following error(s):
+
+'' has invalid keys: address
+2025/07/16 20:20:25 collector server run finished with error: failed to get config: cannot unmarshal the configuration: decoding failed due to the following error(s):
+
+error decoding 'service.telemetry.metrics': decoding failed due to the following error(s):
+
+'' has invalid keys: address
