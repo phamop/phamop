@@ -1,6 +1,87 @@
+Description:
 
-Error: UPGRADE FAILED: cannot patch "loki" with kind StatefulSet: StatefulSet.apps "loki" is invalid: spec: Forbidden: updates to statefulset spec for fields other than 'replicas', 'ordinals', 'template', 'updateStrategy', 'persistentVolumeClaimRetentionPolicy' and 'minReadySeconds' are forbidden
-##[error]Error: UPGRADE FAILED: cannot patch "loki" with kind StatefulSet: StatefulSet.apps "loki" is invalid: spec: Forbidden: updates to statefulset spec for fields other than 'replicas', 'ordinals', 'template', 'updateStrategy', 'persistentVolumeClaimRetentionPolicy' and 'minReadySeconds' are forbidden
+Lack of centralized visibility into the Azure Kubernetes Service (AKS) environment in DEV, leading to challenges in dependency mapping, network security validation, and service inventory management.
+
+
+Expected Outcome:
+
+A detailed and comprehensive inventory report containing:
+
+All AKS-related resources within the DEV environment.
+
+Descriptions of resource utilization and purpose.
+
+List of existing microservices deployed on AKS.
+
+Identification and detailed mapping of network resources, including:
+
+Ingress Controllers
+
+Network Security Groups (NSGs)
+
+Clear visualization or documentation of how each component connects and interacts with others.
+
+Implementation Approach:
+
+Use Azure CLI (az resource list) to export AKS resources and related components.
+
+Filter and list inventory to include:
+
+AKS Clusters
+
+VNETs
+
+Network Security Groups (NSGs)
+
+Azure Ingress Controllers
+
+Application Gateway Ingress Controllers (AGIC)
+
+Load Balancers
+
+Document each microservice within AKS:
+
+Service name and namespace
+
+Description of the service and functionality
+
+Team or stakeholders utilizing each microservice
+
+Map and document dependencies between AKS clusters and network components clearly.
+
+Value & Priority:
+
+Impact:
+
+N/A
+
+Priority:
+
+Standard
+
+Done Criteria:
+
+Validation:
+
+Inventory report accurately reflects resources and configurations visible in the Azure Portal.
+
+Microservices documentation matches active deployments within AKS.
+
+Network security groups (NSGs) and ingress controllers correctly documented and verified.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
