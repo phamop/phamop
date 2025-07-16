@@ -1,3 +1,5 @@
 kubectl annotate opentelemetrycollector <name> -n <namespace> \
   "opentelemetry.io/force-reconcile=$(date +%s)"
 
+logger":"controllers.OpenTelemetryCollector","msg":"couldn't determine metrics port from configuration, using 8888 default value","opentelemetrycollector":"monitoring/otelcollector","error":"missing port in address"}
+
