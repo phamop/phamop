@@ -1,3 +1,13 @@
+Error: failed to get config: cannot unmarshal the configuration: decoding failed due to the following error(s):
+
+'service.telemetry' has invalid keys: metrics_address
+2025/07/16 22:41:57 collector server run finished with error: failed to get config: cannot unmarshal the configuration: decoding failed due to the following error(s):
+
+'service.telemetry' has invalid keys: metrics_address
+
+
+
+
 apiVersion: opentelemetry.io/v1beta1
 kind: OpenTelemetryCollector
 metadata:
