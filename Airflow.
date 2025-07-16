@@ -4,7 +4,16 @@ receiver's endpoint isn't a string","opentelemetrycollector":"monitoring/otelcol
 {"level":"info","ts":"2025-07-16T17:22:57Z","logger":"controllers.OpenTelemetryCollector","msg":"couldn't determine metrics port from configuration, using 8888 default value","opentelemetrycollector":"monitoring/otelcollector","error":"missing port in address"}
 
 
+Error: failed to get config: cannot unmarshal the configuration: decoding failed due to the following error(s):
 
+error decoding 'service.telemetry.metrics': decoding failed due to the following error(s):
+
+'' has invalid keys: address
+2025/07/16 18:02:03 collector server run finished with error: failed to get config: cannot unmarshal the configuration: decoding failed due to the following error(s):
+
+error decoding 'service.telemetry.metrics': decoding failed due to the following error(s):
+
+'' has invalid keys: address
 
 
 We are currently blocked on the ingress controller issue. In the meantime, there’s a pending ticket requesting the AKS inventory for the DEV environment. I’d like to address that while we work on connecting all the pieces for the main issue. We’ve agreed to resume troubleshooting tomorrow."
