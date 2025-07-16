@@ -1,5 +1,46 @@
 Warning  BackOff    51s (x195 over 41m)  kubelet            Back-off restarting failed container otc-container in pod otelcollector-collector
 
+
+
+
+
+
+
+
+
+info    service@v0.128.0/service.go:199 Setting up own telemetry...     {"resource": {"service.instance.id": "f372a555-77ee-4647-8083-6bd5c90272b1", "service.name": "otelcol-contrib", "service.version": "0.128.0"}}
+2025-07-16T19:17:45.037Z        info    builders/builders.go:26 Development component. May change in the future.        {"resource": {"service.instance.id": "f372a555-77ee-4647-8083-6bd5c90272b1", "service.name": "otelcol-contrib", "service.version": "0.128.0"}, "otelcol.component.id": "debug", "otelcol.component.kind": "exporter", "otelcol.signal": "logs"}
+2025-07-16T19:17:45.038Z        info    builders/builders.go:26 Development component. May change in the future.        {"resource": {"service.instance.id": "f372a555-77ee-4647-8083-6bd5c90272b1", "service.name": "otelcol-contrib", "service.version": "0.128.0"}, "otelcol.component.id": "debug", "otelcol.component.kind": "exporter", "otelcol.signal": "traces"}
+2025-07-16T19:17:45.038Z        info    builders/builders.go:26 Development component. May change in the future.        {"resource": {"service.instance.id": "f372a555-77ee-4647-8083-6bd5c90272b1", "service.name": "otelcol-contrib", "service.version": "0.128.0"}, "otelcol.component.id": "debug", "otelcol.component.kind": "exporter", "otelcol.signal": "metrics"}
+2025-07-16T19:17:45.038Z        error   service@v0.128.0/service.go:189 error found during service initialization       {"resource": {"service.instance.id": "f372a555-77ee-4647-8083-6bd5c90272b1", "service.name": "otelcol-contrib", "service.version": "0.128.0"}, "error": "failed to build pipelines: failed to create \"resourcedetection\" processor, in pipeline \"metrics\": invalid detector key: kubernetes"}
+go.opentelemetry.io/collector/service.New.func1
+        go.opentelemetry.io/collector/service@v0.128.0/service.go:189
+go.opentelemetry.io/collector/service.New
+        go.opentelemetry.io/collector/service@v0.128.0/service.go:220
+go.opentelemetry.io/collector/otelcol.(*Collector).setupConfigurationComponents
+        go.opentelemetry.io/collector/otelcol@v0.128.0/collector.go:197
+go.opentelemetry.io/collector/otelcol.(*Collector).Run
+        go.opentelemetry.io/collector/otelcol@v0.128.0/collector.go:312
+go.opentelemetry.io/collector/otelcol.NewCommand.func1
+        go.opentelemetry.io/collector/otelcol@v0.128.0/command.go:39
+github.com/spf13/cobra.(*Command).execute
+        github.com/spf13/cobra@v1.9.1/command.go:1015
+github.com/spf13/cobra.(*Command).ExecuteC
+        github.com/spf13/cobra@v1.9.1/command.go:1148
+github.com/spf13/cobra.(*Command).Execute
+        github.com/spf13/cobra@v1.9.1/command.go:1071
+main.runInteractive
+        github.com/open-telemetry/opentelemetry-collector-releases/contrib/main.go:70
+main.run
+        github.com/open-telemetry/opentelemetry-collector-releases/contrib/main_others.go:10
+main.main
+        github.com/open-telemetry/opentelemetry-collector-releases/contrib/main.go:63
+runtime.main
+        runtime/proc.go:283
+Error: failed to build pipelines: failed to create "resourcedetection" processor, in pipeline "metrics": invalid detector key: kubernetes
+2025/07/16 19:17:45 collector server run finished with error: failed to build pipelines: failed to create "resourcedetection" processor, in pipeline "metrics": invalid detector key: kubernetes
+
+
 apiVersion: opentelemetry.io/v1beta1
 kind: OpenTelemetryCollector
 metadata:
