@@ -1,1 +1,11 @@
-Capturing deployment metadata failed with error: YAMLException: duplicated mapping key at line 318, column 9: app.kubernetes.io/instance: grafana 
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana-proxy
+  namespace: eddv3-hbt
+spec:
+  type: ExternalName
+  externalName: grafana.monitoring.svc.cluster.local
+  ports:
+    - port: 80
+      targetPort: 80
