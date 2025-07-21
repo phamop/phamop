@@ -14,14 +14,14 @@ spec:
   rules:
     - host: eddv3-hbt
       http:
-      	paths:
-      	- path: /grafana(/|$)(.*)
-          pathType: Prefix
-          backend:
-          service:
-            name: grafana
-            port:
-              number: 80
+        paths:
+          - path: /grafana(/|$)(.*)
+            pathType: Prefix
+            backend:
+              service:
+                name: grafana
+                port:
+                  number: 80
 
 
 
