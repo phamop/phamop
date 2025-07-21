@@ -3,9 +3,45 @@ kind: Service
 metadata:
   name: grafana-proxy
   namespace: eddv3-hbt
+  labels:
+    app.kubernetes.io/name: grafana-proxy
+    app.kubernetes.io/component: proxy
 spec:
   type: ExternalName
-  externalName: grafana.monitoring.svc.cluster.local
+  externalName: grafana.monitoring.svc.cluster.local  # Points to internal Grafana
   ports:
-    - port: 80
-      targetPort: 80
+    - name: http
+      protocol: TCP
+      port: 80
+      targetPort: 3000  # Changed to Grafana's default port
+
+
+
+
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: grafana-proxy-ingress
+  namespace: eddv3-hbt
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/upstream-vhost: grafana.monitoring.svc.cluster.local
+    nginx.ingress.kubernetes.io/proxy-buffering: "on"
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      proxy_set_header Host $host;
+      proxy_set_header X-Real-IP $remote_addr;
+      proxy_set_header X-Forwarded-Proto $scheme;
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: grafana.yourdomain.com  # Your public URL
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: grafana-proxy  # References the ExternalName service
+            port:
+              number: 80
