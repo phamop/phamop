@@ -16,6 +16,8 @@ service:
   selector:
     app: grafana  # This is the critical addition
 
+Error: UPGRADE FAILED: cannot patch "grafana" with kind Service: Service "grafana" is invalid: spec.ports[1].name: Duplicate value: "service"
+
 
 
 
