@@ -22,26 +22,27 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: grafana-proxy-ingress
+  name: grafana-ingress
   namespace: eddv3-hbt
   annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /
-    nginx.ingress.kubernetes.io/upstream-vhost: grafana.monitoring.svc.cluster.local
-    nginx.ingress.kubernetes.io/proxy-buffering: "on"
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/proxy-http-version: "1.1"
     nginx.ingress.kubernetes.io/configuration-snippet: |
       proxy_set_header Host $host;
       proxy_set_header X-Real-IP $remote_addr;
       proxy_set_header X-Forwarded-Proto $scheme;
+      proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
 spec:
   ingressClassName: nginx
   rules:
-  - host: grafana.yourdomain.com  # Your public URL
+  - host: your.domain.com  # Replace with your domain
     http:
       paths:
-      - path: /
+      - path: /grafana(/|$)(.*)
         pathType: Prefix
         backend:
           service:
-            name: grafana-proxy  # References the ExternalName service
+            name: grafana-proxy
             port:
               number: 80
