@@ -1,5 +1,5 @@
 The completion of the DEV AKS inventory depends on resolving Grafana OAuth. Once closed, necessary information from Grafana OAuth will be used to finalize the inventory updates
-
+The document is structured in three phases, with two already complete. The third phase is pending Grafana OAuth resolution.
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
