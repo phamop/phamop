@@ -1,7 +1,7 @@
-My assumption:  
-One service (ClusterIP) is internal for security and internal traffic management.
 
-The other (LoadBalancer) lets Azure services like APIM communicate directly with our ingress controller through our internal Azure network. But the current setup is mapped to the clusterIP and with an assumption that it routed to the APIM that seems to be the only logically reason why the HBT-portal-service was able to access the APIM. The Gap is where the setup is from the Ingresscontroller to the APIM because on the current setup
+
+The application has two Kubernetes services: a ClusterIP for internal traffic and a LoadBalancer to allow Azure services like APIM to access the ingress controller. However, the microservice is currently mapped only to the ClusterIP, which suggests that its external exposure via APIM is happening indirectly. The identified gap is a missing or unclear routing configuration between the Ingress controller and APIM, as the service itself is not directly exposed externally
+
 There is an ongoing session regarding this issue, but it remains unresolved. We are still awaiting an update since configuring the AKS ingress, as we are currently unable to access the Grafana URL as expected
 apiVersion: networking.k8s.io/v1
 kind: Ingress
