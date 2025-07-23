@@ -1,3 +1,7 @@
+Concurrency control ensures that when multiple users try to modify the same data simultaneously, the system maintains data integrity and prevents conflicts. Without proper concurrency control, we get the "last update wins" problem where one user's changes can overwrite another's without warning
+
+
+
 There is an ongoing session regarding this issue, but it remains unresolved. We are still awaiting an update since configuring the AKS ingress, as we are currently unable to access the Grafana URL as expected
 apiVersion: networking.k8s.io/v1
 kind: Ingress
