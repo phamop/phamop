@@ -9,6 +9,8 @@ The application has two Kubernetes services: a ClusterIP for internal traffic an
 There is an ongoing session regarding this issue, but it remains unresolved. We are still awaiting an update since configuring the AKS ingress, as we are currently unable to access the Grafana URL as expected
 
 
+If APIM calls the LoadBalancer IP on port 443, the traffic is forwarded by the ingress-nginx-controller-internal service to the NGINX ingress controller pod's https port.
+
 
 
 
