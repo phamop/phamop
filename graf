@@ -1,4 +1,30 @@
- "GET /grafana/ HTTP/1.1" 400 230 "-" "curl/8.14.1" 81 0.000 [] []
+curl -k https://lb/grafana/
+<html>
+<head><title>404 Not Found</title></head>
+<body>
+<center><h1>404 Not Found</h1></center>
+<hr><center>nginx</center>
+</body>
+</html>
+
+
+$ curl -k  -H "Host: eddv3-hbt" https://lb/grafana/
+<html>
+<head><title>400 No required SSL certificate was sent</title></head>
+<body>
+<center><h1>400 Bad Request</h1></center>
+<center>No required SSL certificate was sent</center>
+<hr><center>nginx</center>
+</body>
+</html>
+
+
+
+
+
+
+
+"GET /grafana/ HTTP/1.1" 400 230 "-" "curl/8.14.1" 81 0.000 [] []
 
 invalid ingress configuration" err="ingress contains invalid paths: path /grafana(/|$)(.*) cannot be used with pathType Prefix" ingress=
 
