@@ -1,5 +1,9 @@
 invalid ingress configuration" err="ingress contains invalid paths: path /grafana(/|$)(.*) cannot be used with pathType Prefix" ingress=
 
+##[error]Error: failed to parse /azp/agent/_work/40/s/devops/helm-charts/observability/grafana/grafana-values-dev.yaml: error converting YAML to JSON: yaml: line 874: did not find expected key
+
+
+
 grafana.ini:
   server:
     root_url: "%(protocol)s://%(domain)s/grafana"
