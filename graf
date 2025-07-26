@@ -1,3 +1,9 @@
+
+kubectl get secret tls-secret -n eddv3-hbt -o jsonpath="{.data['tls\.crt']}" | base64 -d | openssl x509 -text -noout
+
+
+
+
 schannel: disabled automatic use of client certificate
 * ALPN: curl offers http/1.1
 * schannel: SEC_E_UNTRUSTED_ROOT (0x80090325) - The certificate chain was issued by an authority that is not trusted.
