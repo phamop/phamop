@@ -1,3 +1,7 @@
+APIM → NGINX Ingress IP (ILB) → Ingress Rule → ClusterIP service → Pod
+User → APIM (external) → Internal Load Balancer (ILB) Ingress Controller → NGINX Ingress Controller → Kubernetes Service (ClusterIP) → Pod
+
+
 https://us04web.zoom.us/j/78985446518?pwd=65M1mLDyJcwejNbULMWUJ3aZJtioiD.1
 
 The application has two Kubernetes services: a ClusterIP for internal traffic and a LoadBalancer to allow Azure services like APIM to access the ingress controller. However, the microservice is currently mapped only to the ClusterIP, which suggests that its external exposure via APIM is happening indirectly. The identified gap is a missing or unclear routing configuration between the Ingress controller and APIM, as the service itself is not directly exposed externally
