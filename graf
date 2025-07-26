@@ -1,3 +1,6 @@
+https://us02web.zoom.us/j/87116799499?pwd=xXbbTJfGzigJtJkxfJG1DgLWe7V5qq.1
+
+
 ##[error]Capturing deployment metadata failed with error: YAMLException: duplicated mapping key at line 320, column 9:
 
 kubectl get secret tls-secret -n eddv3-hbt -o jsonpath="{.data['tls\.crt']}" | base64 -d | openssl x509 -text -noout
