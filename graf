@@ -1,4 +1,4 @@
-
+invalid ingress configuration" err="ingress contains invalid paths: path /grafana(/|$)(.*) cannot be used with pathType Prefix" ingress=
 
 grafana.ini:
   server:
