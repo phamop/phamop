@@ -1,3 +1,49 @@
+Since the Grafana instance in AKS relies on the UI rather than the API and is exposed via the NGINX Ingress Controller, Azure API Management (APIM) is not the optimal solution. Below are my recommended alternatives:
+
+Private Internal Load Balancer + Azure Private Endpoint – Provides a highly secure, internal-only access model.
+
+Azure Application Gateway with WAF in Internal Mode – Offers layer-7 routing, security (WAF), and private exposure.
+
+Kubernetes-Native API Gateways – Lightweight, scalable, and better aligned with AKS-native traffic management.
+
+
+
+
+
+
+Since the Grafana instance deployed in AKS is primarily accessed via its user interface (UI) rather than a RESTful API, exposing it through Azure API Management (APIM) is not an ideal fit. Instead, the following alternatives are better aligned with secure, scalable, and internal-only access requirements:
+
+Private Internal Load Balancer with Azure Private Endpoint
+Leverages Azure networking to provide secure access exclusively from within trusted virtual networks, ensuring the Grafana UI remains completely inaccessible from the public internet.
+
+Azure Application Gateway with Web Application Firewall (WAF) in Internal Mode
+Enables advanced Layer 7 routing, TLS termination, and security controls through WAF, while restricting access to internal network traffic only. This is well-suited for enterprise-grade security postures.
+
+Kubernetes-Native API Gateways (e.g., NGINX, Kong, Istio)
+Offers a lightweight and cloud-native approach for managing internal traffic routing within AKS. These solutions are highly customizable and integrate seamlessly with Kubernetes networking, making them a practical option for securely exposing Grafana and other services.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 APIM → NGINX Ingress IP (ILB) → Ingress Rule → ClusterIP service → Pod
 User → APIM (external) → Internal Load Balancer (ILB) Ingress Controller → NGINX Ingress Controller → Kubernetes Service (ClusterIP) → Pod
 
