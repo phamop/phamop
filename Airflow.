@@ -9,6 +9,11 @@ Kubernetes-Native API Gateways – Lightweight, scalable, and better aligned wit
 
 
 
+nginx.ingress.kubernetes.io/proxy-pass-headers: "Authorization"
+nginx.ingress.kubernetes.io/auth-url: "https://your-apim-instance.azure-api.net/auth"
+nginx.ingress.kubernetes.io/auth-signin: "https://your-apim-instance.azure-api.net/login"
+
+
  Grafana UI (web app) securely to users via APIM, enforce SSO via Azure AD, and route traffic to the internal NGINX Ingress Controller in AKS.
 
 
