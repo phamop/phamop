@@ -9,6 +9,11 @@ Kubernetes-Native API Gateways – Lightweight, scalable, and better aligned wit
 
 
 
+ Grafana UI (web app) securely to users via APIM, enforce SSO via Azure AD, and route traffic to the internal NGINX Ingress Controller in AKS.
+
+
+
+
 
 
 Since the Grafana instance deployed in AKS is primarily accessed via its user interface (UI) rather than a RESTful API, exposing it through Azure API Management (APIM) is not an ideal fit. Instead, the following alternatives are better aligned with secure, scalable, and internal-only access requirements:
