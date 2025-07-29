@@ -17,8 +17,7 @@ nginx.ingress.kubernetes.io/auth-url: "https://your-apim-instance.azure-api.net/
 nginx.ingress.kubernetes.io/auth-signin: "https://your-apim-instance.azure-api.net/login"
 
 
-kubectl get secret --no-headers | grep tls-good | awk '{print $1}' | xargs -I {} kubectl get secret {} -o jsonpath='{.data.tls\.crt}' | base64 --decode > secret.crt
-
+kubectl get secret tls-good-abc123 -o jsonpath='{.data.tls\.crt}' | base64 --decode > secret.crt
 
  Grafana UI (web app) securely to users via APIM, enforce SSO via Azure AD, and route traffic to the internal NGINX Ingress Controller in AKS.
 
