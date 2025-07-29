@@ -1,39 +1,18 @@
-trigger:
-  branches:
-    include:
-      - main
-
-variables:
-  helmChartPath: charts/grafana-proxy-helm
-  releaseName: grafana-proxy
-  namespace: eddv3-hbt
-  kubeContext: your-aks-context-name
-  azureSubscription: your-azure-subscription-name
-  aksResourceGroup: your-aks-resource-group
-  aksClusterName: your-aks-cluster-name
-
-stages:
-  - stage: Deploy
-    displayName: Deploy Grafana Proxy via Helm
-    jobs:
-      - job: HelmDeploy
-        displayName: Helm Install/Upgrade
-        pool:
-          vmImage: ubuntu-latest
-        steps:
-          - task: AzureCLI@2
-            inputs:
-              azureSubscription: $(azureSubscription)
-              scriptType: bash
-              scriptLocation: inlineScript
-              inlineScript: |
-                echo "Fetching AKS credentials"
-                az aks get-credentials --resource-group $(aksResourceGroup) --name $(aksClusterName) --overwrite-existing
-
-                echo "Installing/Upgrading Helm chart"
-                helm upgrade --install $(releaseName) $(helmChartPath) \
-                  --namespace $(namespace) --create-namespace \
-                  --values $(helmChartPath)/values.yaml
+- task: HelmDeploy@0
+  displayName: 'Deploy Grafana Proxy Helm Chart'
+  inputs:
+    azureSubscription: $(azureSubscription)
+    command: 'upgrade'
+    chartType: 'FilePath'
+    chartPath: '$(Pipeline.Workspace)/s/helm-charts/grafana-proxy-helm'
+    kubernetesCluster: $(clusterName)
+    azureResourceGroup: $(resourceGroup)
+    namespace: $(k8sNamespace)
+    releaseName: 'grafana-proxy'
+    valueFile: '$(Pipeline.Workspace)/s/helm-charts/grafana-proxy-helm/values.yaml'
+    install: true
+    waitForExecution: true
+    arguments: '--timeout 10m0s --create-namespace'
 
       
 
