@@ -1,10 +1,21 @@
-This is issue will now be considered resolved pending  some  validation  tomorrow, 
-the test that was implemented today via the troubleshooting session has been  help to share more light to the resolution.
-host tls certificate is based on APIM URL
+This issue will now be considered resolved, pending final validation tomorrow. The test implemented today during the troubleshooting session has helped clarify the solution.
 
-when reach the with different URL, it does not have the SSL will result in an error. 
-The host tls  SSL is mapped to APIM  URL
+Root Cause:
+The host TLS certificate is tied to the APIM URL. When accessed via a different URL, the absence of a valid SSL certificate results in an error.
 
+Steps Taken:
+
+Created a frontend on the APIM.
+
+Modified the policy to allow access to /grafana.
+
+Next Steps:
+
+Implement SSO for authentication.
+
+Remove dependency on the APIM token.
+
+Restrict access to the corporate network only.
 
 
 
