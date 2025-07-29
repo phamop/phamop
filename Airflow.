@@ -1,81 +1,40 @@
-# apiVersion: v1
-# kind: Service
-# metadata:
-#   name: grafana-proxy
-#   namespace: eddv3-hbt
-# spec:
-#   type: ExternalName
-#   externalName: grafana.monitoring.svc.cluster.local
-#   ports:
-#     - port: 80
-#       targetPort: 80
+trigger:
+  branches:
+    include:
+      - main
 
-apiVersion: v1
-kind: Service
-metadata:
-  name: grafana-proxy
+variables:
+  helmChartPath: charts/grafana-proxy-helm
+  releaseName: grafana-proxy
   namespace: eddv3-hbt
-  labels:
-    app.kubernetes.io/name: grafana-proxy
-    app.kubernetes.io/component: proxy
-spec:
-  type: ExternalName
-  externalName: grafana.monitoring.svc.cluster.local  
-  ports:
-    - name: http
-      protocol: TCP
-      port: 80
-      targetPort: 3000  # Changed to Grafana's default port
+  kubeContext: your-aks-context-name
+  azureSubscription: your-azure-subscription-name
+  aksResourceGroup: your-aks-resource-group
+  aksClusterName: your-aks-cluster-name
 
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: grafana-proxy-headers
-  namespace: eddv3-hbt
-data:
-  Host: "$host"
-  X-Real-IP: "$remote_addr"
-  X-Forwarded-Proto: "$scheme"
-  X-Forwarded-For: "$proxy_add_x_forwarded_for"
+stages:
+  - stage: Deploy
+    displayName: Deploy Grafana Proxy via Helm
+    jobs:
+      - job: HelmDeploy
+        displayName: Helm Install/Upgrade
+        pool:
+          vmImage: ubuntu-latest
+        steps:
+          - task: AzureCLI@2
+            inputs:
+              azureSubscription: $(azureSubscription)
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                echo "Fetching AKS credentials"
+                az aks get-credentials --resource-group $(aksResourceGroup) --name $(aksClusterName) --overwrite-existing
 
+                echo "Installing/Upgrading Helm chart"
+                helm upgrade --install $(releaseName) $(helmChartPath) \
+                  --namespace $(namespace) --create-namespace \
+                  --values $(helmChartPath)/values.yaml
 
----
-
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: hbt-grafana-ingress
-  namespace: eddv3-hbt
-  annotations:
-   # nginx.ingress.kubernetes.io/rewrite-target: /
-    nginx.ingress.kubernetes.io/rewrite-target: /$2
-    nginx.ingress.kubernetes.io/use-regex: 'true'
-    nginx.ingress.kubernetes.io/proxy-http-version: "1.1"
-    nginx.ingress.kubernetes.io/auth-tls-secret: eddv3-hbt/hbt-ca-secret
-    nginx.ingress.kubernetes.io/auth-tls-verify-client: 'on'
-    nginx.ingress.kubernetes.io/auth-tls-verify-depth: '2'
-    #nginx.ingress.kubernetes.io/auth-tls-verify-client: "off"
-    # Replaced configuration-snippet with standard annotations
-    nginx.ingress.kubernetes.io/proxy-set-headers: "eddv3-hbt/grafana-proxy-headers"
-    nginx.ingress.kubernetes.io/ssl-redirect: "true"
-spec:
-  ingressClassName: nginx
-  tls:
-    - hosts:
-        - eddv3-hbt
-      secretName: tls-secret
-  rules:
-  - host: eddv3-hbt
-    http:
-      paths:
-      - backend:
-          service:
-            name: grafana-proxy
-            port:
-              number: 80
-        path: /grafana
-        pathType: Prefix
       
 
 
