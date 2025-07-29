@@ -4,6 +4,17 @@ Release "grafana-proxy" does not exist. Installing it now.
 
 
  
+{{/*
+Return the full name of the release
+*/}}
+{{- define "grafana-proxy.fullname" -}}
+{{- if .Values.nameOverride }}
+{{- .Values.nameOverride | trunc 63 | trimSuffix "-" }}
+{{- else }}
+{{- printf "%s-%s" .Release.Name "proxy" | trunc 63 | trimSuffix "-" }}
+{{- end }}
+{{- end }}
+
  
  
  
