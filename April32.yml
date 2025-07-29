@@ -1,3 +1,14 @@
+Error: template: grafana-proxy/templates/service.yaml:4:11: executing "grafana-proxy/templates/service.yaml" at <include "grafana-proxy.fullname" .>: error calling include: template: no template "grafana-proxy.fullname" associated with template "gotpl"
+Release "grafana-proxy" does not exist. Installing it now.
+##[error]Error: template: grafana-proxy/templates/service.yaml:4:11: executing "grafana-proxy/templates/service.yaml" at <include "grafana-proxy.fullname" .>: error calling include: template: no template "grafana-proxy.fullname" associated with template "gotpl"
+
+
+ 
+ 
+ 
+ 
+ 
+ 
  "WARNING", "msg": "Retrying (Retry(total=4, connect=9, read=5, redirect=None, status=None)) after connection broken by 'NewConnectionError('<urllib3.connection.HTTPSConnection object at 0x7f5620202e90>: Failed to establish a new connection: [Errno 111] Connection refused')': /api/v1/namespaces/good9009/configmaps?labelSelector=loki_rule&timeoutSeconds=60&watch=True"}
 
 
