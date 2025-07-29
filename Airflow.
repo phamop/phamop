@@ -6,7 +6,10 @@ Azure Application Gateway with WAF in Internal Mode – Offers layer-7 routing, 
 
 Kubernetes-Native API Gateways – Lightweight, scalable, and better aligned with AKS-native traffic management.
 
-
+controller:
+  extraEnvs:
+    - name: NGINX_DEBUG
+      value: "1"
 
 
 nginx.ingress.kubernetes.io/proxy-pass-headers: "Authorization"
