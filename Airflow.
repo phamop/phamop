@@ -1,3 +1,18 @@
+This is issue will now be considered resolved pending  some  validation  tomorrow, 
+the test that was implemented today via the troubleshooting session has been  help to share more light to the resolution.
+host tls certificate is based on APIM URL
+
+when reach the with different URL, it does not have the SSL will result in an error. 
+The host tls  SSL is mapped to APIM  URL
+
+
+
+
+
+
+
+
+
 Since the Grafana instance in AKS relies on the UI rather than the API and is exposed via the NGINX Ingress Controller, Azure API Management (APIM) is not the optimal solution. Below are my recommended alternatives:
 
 Private Internal Load Balancer + Azure Private Endpoint – Provides a highly secure, internal-only access model.
