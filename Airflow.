@@ -1,3 +1,16 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: azure-monitors
+  namespace: monitoring
+type: Opaque
+stringData:
+  CLIENTSECRET: "<CLIENTSECRET>"
+  CLIENTID: "<CLIENTID>"
+  TENANTID: "<TENANTID>"
+
+
+
 grafana:
   env:
     GF_AUTH_AZUREAD_ENABLED: "true"
