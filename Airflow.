@@ -4,6 +4,9 @@ sed -i 's/<GRAFANA_SECRET>/$(grafana-client-secret)/g' $(Pipeline.Workspace)/s/h
 
 SecretsFilter: $(secret1Name),$(secret2Name),$(secret3Name),$(secret4Name),$(secret5Name),grafana-client-id,grafana-client-secret
 
+SecretsFilter: $(secret1Name),$(secret2Name),$(secret3Name),$(secret4Name),$(secret5Name),$(secret6Name),$(secret7Name)
+
+
 
 env:
   GF_AUTH_AZUREAD_ENABLED: "true"
