@@ -1,10 +1,12 @@
-sed -i 's/<GRAFANA_CLIENT_ID>/$(grafana-client-id)/g' $(Pipeline.Workspace)/s/helm-charts/secretstore.yaml
-sed -i 's/<GRAFANA_SECRET>/$(grafana-client-secret)/g' $(Pipeline.Workspace)/s/helm-charts/secretstore.yaml
+[auth.azuread]
+enabled = true
+allow_sign_up = true
+client_id = <GRAFANA_CLIENT_ID from secret>
+client_secret = <GRAFANA_SECRET from secret>
+scopes = openid email profile
+auth_url = https://login.microsoftonline.com/<TENANTID>/oauth2/v2.0/authorize
+token_url = https://login.microsoftonline.com/<TENANTID>/oauth2/v2.0/token
 
-
-SecretsFilter: $(secret1Name),$(secret2Name),$(secret3Name),$(secret4Name),$(secret5Name),grafana-client-id,grafana-client-secret
-
-SecretsFilter: $(secret1Name),$(secret2Name),$(secret3Name),$(secret4Name),$(secret5Name),$(secret6Name),$(secret7Name)
 
 
 
