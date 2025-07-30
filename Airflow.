@@ -1,18 +1,58 @@
-- task: HelmDeploy@0
-  displayName: 'Deploy Grafana Proxy Helm Chart'
-  inputs:
-    azureSubscription: $(azureSubscription)
-    command: 'upgrade'
-    chartType: 'FilePath'
-    chartPath: '$(Pipeline.Workspace)/s/helm-charts/grafana-proxy-helm'
-    kubernetesCluster: $(clusterName)
-    azureResourceGroup: $(resourceGroup)
-    namespace: $(k8sNamespace)
-    releaseName: 'grafana-proxy'
-    valueFile: '$(Pipeline.Workspace)/s/helm-charts/grafana-proxy-helm/values.yaml'
-    install: true
-    waitForExecution: true
-    arguments: '--timeout 10m0s --create-namespace'
+Restrict Public Access
+🔒 Option A: Use APIM with Internal VNet Integration (Premium Tier)
+Enable VNet Integration (internal mode).
+
+Grafana is only accessible via APIM internally.
+
+🔒 Option B: IP Restriction on APIM (if using public tier)
+Allow access only from corporate IPs:
+
+
+<ip-filter>
+  <address-range allow="true" from="203.0.113.0" to="203.0.113.255" />
+  <address allow="false" />
+</ip-filter>
+
+. Azure AD App Registration for Grafana
+Register an application in Azure AD:
+
+Name: GrafanaSSOApp
+
+Redirect URI: https://<APIM-domain>/grafana/oauth2/callback
+
+Note the following:
+
+Client ID
+
+Client Secret
+
+Tenant ID
+
+Set API permissions to include openid, profile, and email.
+
+
+
+
+
+
+inbound APIM Policy
+xml
+
+Edit
+<inbound>
+    <base />
+    <validate-jwt header-name="Authorization" failed-validation-httpcode="401" require-scheme="Bearer">
+        <openid-config url="https://login.microsoftonline.com/{tenant-id}/v2.0/.well-known/openid-configuration" />
+        <required-audiences>
+            <audience>{client-id}</audience>
+        </required-audiences>
+    </validate-jwt>
+</inbound>
+🔁 Replace:
+
+{tenant-id} with your Azure AD tenant ID
+
+{client-id} with the Azure AD App’s Client ID
 
       
 
