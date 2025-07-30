@@ -1,1 +1,4 @@
-##[error]Capturing deployment metadata failed with error: YAMLException: duplicated mapping key at line 328, column 9
+##[error]Capturing deployment metadata failed with error: YAMLException: duplicated mapping key at line 328, column 9:
+            app.kubernetes.io/name: grafana
+            ^
+
