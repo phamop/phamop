@@ -1,3 +1,21 @@
+
+We need to determine the network space (IP ranges, domains, or firewall rules) required to allow corporate network traffic to reach the following URL:
+URL: [Insert URL here]
+
+Purpose/Business Justification:
+[Briefly explain why access to this URL is needed, e.g., "Required for accessing a critical SaaS application used by the Finance team."]
+
+Requested Action:
+
+Identify the IP ranges or domains associated with the URL.
+
+Confirm if any firewall/Proxy/ACL changes are needed to permit traffic.
+
+Provide recommendations for the least permissive access (e.g., specific IPs/ports)
+
+
+
+
 Restrict Public Access
 🔒 Option A: Use APIM with Internal VNet Integration (Premium Tier)
 Enable VNet Integration (internal mode).
