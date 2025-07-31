@@ -1,4 +1,7 @@
-Error from server (BadRequest): error when creating "grafana-eddv3ingress.yaml": admission webhook "validate.nginx.ingress.kubernetes.io" denied the request: host "eddv3-hbt" and path "/grafana" is already defined in ingress eddv3-hbt/hbt-portal-service
+logger=http.server t=2025-07-31T18:34:16.498683399Z level=info msg="HTTP Server Listen" address=[::]:3000 protocol=http subUrl=/homeowner-gateway-dv3/grafana socket=    
+logger=ngalert.state.manager t=2025-07-31T18:34:16.961815723Z level=info msg="State cache has been initialized" states=0 duration=476.840543ms
+logger=ngalert.scheduler t=2025-07-31T18:34:16.96376884Z level=info msg="Starting scheduler" tickInterval=10s maxAttempts=3
+logger=ticker t=2025-07-31T18:34:16.963891941Z level=info msg=starting first_tick=2025-07-31T18:34:20Z
 
 
 
