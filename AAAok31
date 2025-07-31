@@ -1,0 +1,642 @@
+global:
+  # -- Overrides the Docker registry globally for all images
+  imageRegistry: null
+  imagePullSecrets: []
+
+rbac:
+  create: true
+
+serviceAccount:
+  create: false
+  name: grafana-sa   # reference to managed identity between Azure vault to secretstore.
+  labels: {}
+  automountServiceAccountToken: true
+
+replicas: 1
+
+## Create a headless service for the deployment
+headlessService: false
+
+## Should the service account be auto mounted on the pod
+automountServiceAccountToken: true
+
+## Create HorizontalPodAutoscaler object for deployment type
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 5
+  targetCPU: "60"
+  targetMemory: ""
+  behavior: {}
+
+## See `kubectl explain poddisruptionbudget.spec` for more
+## ref: https://kubernetes.io/docs/tasks/run-application/configure-pdb/
+podDisruptionBudget: {}
+
+deploymentStrategy:
+  type: RollingUpdate
+
+readinessProbe:
+  httpGet:
+    path: /api/health
+    port: 3000
+
+livenessProbe:
+  httpGet:
+    path: /api/health
+    port: 3000
+  initialDelaySeconds: 60
+  timeoutSeconds: 30
+  failureThreshold: 10
+
+image:
+  # -- The Docker registry
+  registry: docker.io
+  # -- Docker image repository
+  repository: grafana/grafana
+  # Overrides the Grafana image tag whose default is the chart appVersion
+  tag: ""
+  sha: ""
+  pullPolicy: IfNotPresent
+  pullSecrets: []
+
+testFramework:
+  enabled: true
+  image:
+    registry: docker.io
+    repository: bats/bats
+    tag: "v1.4.1"
+  imagePullPolicy: IfNotPresent
+  securityContext: {}
+  containerSecurityContext: {}
+  resources: {}
+
+# dns configuration for pod
+dnsPolicy: ~
+dnsConfig: {}
+
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 472
+  runAsGroup: 472
+  fsGroup: 472
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+    - ALL
+  seccompProfile:
+    type: RuntimeDefault
+
+# Enable creating the grafana configmap
+createConfigmap: true
+
+extraConfigmapMounts: []
+extraEmptyDirMounts: []
+extraLabels: {}
+
+downloadDashboardsImage:
+  registry: docker.io
+  repository: curlimages/curl
+  tag: 8.9.1
+  sha: ""
+  pullPolicy: IfNotPresent
+
+downloadDashboards:
+  env: {}
+  envFromSecret: ""
+  resources: {}
+  securityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+      - ALL
+    seccompProfile:
+      type: RuntimeDefault
+  envValueFrom: {}
+
+podPortName: grafana
+gossipPortName: gossip
+
+# Service Configuration
+service:
+  enabled: true
+  type: ClusterIP
+  port: 80
+  targetPort: 3000
+  portName: grafana-http
+  selector:
+    app.kubernetes.io/name: grafana  # Standard k8s label
+
+# Pod Labels
+podLabels:
+  app.kubernetes.io/name: grafana
+  app.kubernetes.io/instance: grafana
+  app.kubernetes.io/version: "12.0.1" 
+  app.kubernetes.io/managed-by: Helm 
+  helm.sh/chart: grafana-9.2.3
+
+serviceMonitor:
+  enabled: false
+  path: /metrics
+  labels: {}
+  interval: 30s
+  scheme: http
+  tlsConfig: {}
+  scrapeTimeout: 30s
+  relabelings: []
+  metricRelabelings: []
+  basicAuth: {}
+  targetLabels: []
+
+extraExposePorts: []
+
+# overrides pod.spec.hostAliases in the grafana deployment's pods
+hostAliases: []
+
+ingress:
+  enabled: true
+  extraPaths: []
+  tls: []
+
+# -- BETA: Configure the gateway routes for the chart here.
+route:
+  main:
+    enabled: false
+    apiVersion: gateway.networking.k8s.io/v1
+    kind: HTTPRoute
+    annotations: {}
+    labels: {}
+    hostnames: []
+    parentRefs: []
+    matches:
+      - path:
+          type: PathPrefix
+          value: /
+    filters: []
+    additionalRules: []
+
+resources: {}
+
+## Node labels for pod assignment
+nodeSelector: {}
+
+## Tolerations for pod assignment
+tolerations: []
+
+## Affinity for pod assignment (evaluated as template)
+affinity: {}
+
+## Topology Spread Constraints
+topologySpreadConstraints: []
+
+## Additional init containers (evaluated as template)
+extraInitContainers: []
+
+## Enable an Specify container in extraContainers.
+extraContainers: ""
+
+## Volumes that can be used in init containers that will not be mounted to deployment pods
+extraContainerVolumes: []
+
+## Enable persistence using Persistent Volume Claims
+persistence:
+  type: pvc
+  enabled: true
+  accessModes:
+    - ReadWriteOnce
+  size: 10Gi
+  finalizers:
+    - kubernetes.io/pvc-protection
+  extraPvcLabels: {}
+  disableWarning: false
+  inMemory:
+    enabled: false
+  lookupVolumeName: true
+
+initChownData:
+  enabled: true
+  image:
+    registry: docker.io
+    repository: library/busybox
+    tag: "1.31.1"
+    sha: ""
+    pullPolicy: IfNotPresent
+  resources: {}
+  securityContext:
+    runAsNonRoot: false
+    runAsUser: 0
+    seccompProfile:
+      type: RuntimeDefault
+    capabilities:
+      add:
+        - CHOWN
+
+# Administrator credentials when not using an existing secret
+adminUser: admin
+
+# Use an existing secret for the admin user.
+admin:
+  existingSecret: ""
+  userKey: admin-user
+  passwordKey: admin-password
+
+env: {}
+envValueFrom: {}
+envFromSecret: "azure-monitors"
+envRenderSecret: {}
+
+## The names of secrets in the same kubernetes namespace which contain values to be added to the environment
+envFromSecrets: []
+
+## ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#configmapenvsource-v1-core
+envFromConfigMaps: []
+
+# See https://kubernetes.io/docs/concepts/services-networking/connect-applications-service/#environment-variables
+enableServiceLinks: true
+
+## Additional grafana server secret mounts
+extraSecretMounts: []
+
+## Additional grafana server volume mounts
+extraVolumeMounts: []
+
+## Additional Grafana server volumes
+extraVolumes: []
+
+## Container Lifecycle Hooks
+lifecycleHooks: {}
+
+## Pass the plugins you want installed as a list.
+plugins:
+  - grafana-azure-monitor-datasource
+
+## ref: http://docs.grafana.org/administration/provisioning/#datasources
+datasources:
+  datasources.yaml:
+    apiVersion: 1
+    datasources:
+    - name: Azure Monitor
+      type: grafana-azure-monitor-datasource
+      access: proxy
+      jsonData:
+        azureAuthType: clientsecret
+        cloudName: azuremonitor
+        tenantId: $TENANTID
+        clientId: $CLIENTID
+        logAnalyticsDefaultWorkspace: "/subscriptions/5918db9c-25c1-4564-9079-665362a0b0c2/resourceGroups/loganalytics-general-cd/providers/Microsoft.OperationalInsights/workspaces/cd-general-01"
+      secureJsonData:
+        clientSecret: $CLIENTSECRET
+      version: 1
+    - name: loki 
+      type: loki
+      access: proxy
+      url: http://loki-read.eddv3-hbt.svc.cluster.local:3100
+      isDefault: false
+      jsonData:
+        maxLines: 1000
+    - name: Jaeger
+      type: jaeger
+      access: proxy
+      url: http://jaeger-query.eddv3-hbt.svc.cluster.local:16686
+      isDefault: false
+      jsonData:
+        traceDuration: 24h
+        traceURL: "/jaeger"
+      secureJsonData: {}
+    - name: Prometheus
+      type: prometheus
+      access: proxy
+      url: http://kube-prometheus-stack-prometheus.eddv3-hbt.svc.cluster.local:9090
+      isDefault: true
+      jsonData:
+        timeInterval: "15s"
+    - name: Alertmanager
+      type: Alertmanager
+      access: proxy
+      url: http://kube-prometheus-stack-alertmanager.eddv3-hbt.svc.cluster.local:9093
+      isDefault: false
+      jsonData:
+        timeInterval: "15s"
+
+## Configure grafana alerting (can be templated)
+alerting: {}
+
+## Configure notifiers
+notifiers: {}
+
+## Configure grafana dashboard providers
+dashboardProviders:
+  dashboardproviders.yaml:
+    apiVersion: 1
+    providers:
+    - name: 'default'
+      orgId: 1
+      folder: 'AKS eddv3-hbt'
+      type: file
+      disableDeletion: false
+      editable: true
+      options:
+        path: /var/lib/grafana/dashboards/default
+
+## Configure grafana dashboard to import
+dashboards:
+  default:
+    aks-node-pod-health-dashboard:
+      json: |
+        {
+          "id": null,
+          "uid": "akshealthdashboard",
+          "title": "AKS Node & Pod Health",
+          "tags": ["aks", "health"],
+          "timezone": "browser",
+          "schemaVersion": 36,
+          "version": 1,
+          "refresh": "30s",
+          "panels": [
+            {
+              "type": "stat",
+              "title": "Ready Nodes",
+              "datasource": "Azure Monitor",
+              "targets": [
+                {
+                  "query": "KubeNodeInventory | summarize count()",
+                  "format": "time_series"
+                }
+              ],
+              "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 }
+            },
+            {
+              "type": "stat",
+              "title": "Running Pods",
+              "datasource": "Azure Monitor",
+              "targets": [
+                {
+                  "query": "KubePodInventory | where Phase == 'Running' | summarize count()",
+                  "format": "time_series"
+                }
+              ],
+              "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 }
+            },
+            {
+              "type": "stat",
+              "title": "CrashLoopBackOff Pods",
+              "datasource": "Azure Monitor",
+              "targets": [
+                {
+                  "query": "KubePodInventory | where Reason == 'CrashLoopBackOff' | summarize count()",
+                  "format": "time_series"
+                }
+              ],
+              "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 }
+            }
+          ]
+        }
+
+## Reference to external ConfigMap per provider.
+dashboardsConfigMaps: {}
+
+## Grafana's primary configuration
+grafana.ini:
+  paths:
+    data: /var/lib/grafana/
+    logs: /var/log/grafana
+    plugins: /var/lib/grafana/plugins
+    provisioning: /etc/grafana/provisioning
+  analytics:
+    check_for_updates: true
+  log:
+    mode: console
+  grafana_net:
+    url: https://grafana.net
+  server:
+    domain: eddv-apim-cor-01.azure-api.net
+    root_url: "https://eddv-apim-cor-01.azure-api.net/homeowner-gateway-dv3/grafana"
+    serve_from_sub_path: true
+  auth.azuread:
+    enabled: true
+    allow_sign_up: true
+    client_id: "${AZUREAD_CLIENT_ID}"
+    client_secret: "${AZUREAD_CLIENT_SECRET}"
+    scopes: openid email profile
+    auth_url: https://login.microsoftonline.com/<TENANTID>/oauth2/v2.0/authorize
+    token_url: https://login.microsoftonline.com/<TENANTID>/oauth2/v2.0/token
+
+## Grafana's LDAP configuration
+ldap:
+  enabled: false
+  existingSecret: ""
+  config: ""
+
+# When process namespace sharing is enabled, processes in a container are visible to all other containers in the same pod
+shareProcessNamespace: false
+
+## Grafana's SMTP configuration
+smtp:
+  existingSecret: ""
+  userKey: "user"
+  passwordKey: "password"
+
+## Sidecars that collect the configmaps with specified label and stores the included files them into the respective folders
+sidecar:
+  image:
+    registry: quay.io
+    repository: kiwigrid/k8s-sidecar
+    tag: 1.30.0
+    sha: ""
+  imagePullPolicy: IfNotPresent
+  resources: {}
+  securityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+      - ALL
+    seccompProfile:
+      type: RuntimeDefault
+  enableUniqueFilenames: false
+  readinessProbe: {}
+  livenessProbe: {}
+  alerts:
+    enabled: false
+    env: {}
+    label: grafana_alert
+    labelValue: ""
+    searchNamespace: null
+    watchMethod: WATCH
+    resource: both
+    reloadURL: "http://localhost:3000/api/admin/provisioning/alerting/reload"
+    script: null
+    skipReload: false
+    initAlerts: false
+    extraMounts: []
+    sizeLimit: {}
+  dashboards:
+    enabled: false
+    env: {}
+    envValueFrom: {}
+    SCProvider: true
+    label: grafana_dashboard
+    labelValue: ""
+    folder: /tmp/dashboards
+    defaultFolderName: null
+    searchNamespace: null
+    watchMethod: WATCH
+    resource: both
+    folderAnnotation: null
+    reloadURL: "http://localhost:3000/api/admin/provisioning/dashboards/reload"
+    script: null
+    skipReload: false
+    provider:
+      name: sidecarProvider
+      orgid: 1
+      folder: ''
+      folderUid: ''
+      type: file
+      disableDelete: false
+      allowUiUpdates: false
+      foldersFromFilesStructure: false
+    extraMounts: []
+    sizeLimit: {}
+  datasources:
+    enabled: false
+    env: {}
+    envValueFrom: {}
+    label: grafana_datasource
+    labelValue: ""
+    searchNamespace: null
+    watchMethod: WATCH
+    resource: both
+    reloadURL: "http://localhost:3000/api/admin/provisioning/datasources/reload"
+    script: null
+    skipReload: false
+    initDatasources: false
+    extraMounts: []
+    sizeLimit: {}
+  plugins:
+    enabled: false
+    env: {}
+    label: grafana_plugin
+    labelValue: ""
+    searchNamespace: null
+    watchMethod: WATCH
+    resource: both
+    reloadURL: "http://localhost:3000/api/admin/provisioning/plugins/reload"
+    script: null
+    skipReload: false
+    initPlugins: true
+    extraMounts: []
+    sizeLimit: {}
+  notifiers:
+    enabled: false
+    env: {}
+    label: grafana_notifier
+    labelValue: ""
+    searchNamespace: null
+    watchMethod: WATCH
+    resource: both
+    reloadURL: "http://localhost:3000/api/admin/provisioning/notifications/reload"
+    script: null
+    skipReload: false
+    initNotifiers: false
+    extraMounts: []
+    sizeLimit: {}
+
+## Override the deployment namespace
+namespaceOverride: ""
+
+## Number of old ReplicaSets to retain
+revisionHistoryLimit: 10
+
+## Add a separate remote image renderer deployment/service
+imageRenderer:
+  deploymentStrategy: {}
+  enabled: false
+  replicas: 1
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 5
+    targetCPU: "60"
+    targetMemory: ""
+    behavior: {}
+  serverURL: ""
+  renderingCallbackURL: ""
+  image:
+    registry: docker.io
+    repository: grafana/grafana-image-renderer
+    tag: latest
+    sha: ""
+    pullPolicy: Always
+  env:
+    HTTP_HOST: "0.0.0.0"
+    XDG_CONFIG_HOME: /tmp/.chromium
+    XDG_CACHE_HOME: /tmp/.chromium
+  envValueFrom: {}
+  serviceAccountName: ""
+  automountServiceAccountToken: false
+  securityContext: {}
+  containerSecurityContext:
+    seccompProfile:
+      type: RuntimeDefault
+    capabilities:
+      drop: ['ALL']
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+  podAnnotations: {}
+  hostAliases: []
+  priorityClassName: ''
+  service:
+    enabled: true
+    portName: 'http'
+    port: 8081
+    targetPort: 8081
+    appProtocol: ""
+  serviceMonitor:
+    enabled: false
+    path: /metrics
+    labels: {}
+    interval: 1m
+    scheme: http
+    tlsConfig: {}
+    scrapeTimeout: 30s
+    relabelings: []
+    targetLabels: []
+  grafanaProtocol: http
+  grafanaSubPath: ""
+  podPortName: http
+  revisionHistoryLimit: 10
+  networkPolicy:
+    limitIngress: true
+    limitEgress: false
+    extraIngressSelectors: []
+  resources: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  extraConfigmapMounts: []
+  extraSecretMounts: []
+  extraVolumeMounts: []
+  extraVolumes: []
+
+networkPolicy:
+  enabled: false
+  ingress: true
+  allowExternal: true
+  explicitNamespacesSelector: {}
+  egress:
+    enabled: false
+    blockDNSResolution: false
+    ports: []
+    to: []
+
+# Enable backward compatibility of kubernetes where version below 1.13 doesn't have the enableServiceLinks option
+enableKubeBackwardCompatibility: false
+useStatefulSet: false
+
+# extraObjects could be utilized to add dynamic manifests via values
+extraObjects: []
+
+# assertNoLeakedSecrets is a helper function defined in _helpers.tpl that checks if secret
+# values are not exposed in the rendered grafana.ini configmap.
+assertNoLeakedSecrets: true
