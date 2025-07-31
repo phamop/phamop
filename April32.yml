@@ -1,3 +1,11 @@
+Error from server (BadRequest): error when creating "grafana-eddv3ingress.yaml": admission webhook "validate.nginx.ingress.kubernetes.io" denied the request: host "eddv3-hbt" and path "/grafana" is already defined in ingress eddv3-hbt/hbt-portal-service
+
+
+
+ - - [31/Jul/2025:16:23:35 +0000] "GET /grafana/ HTTP/1.1" 301 103 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36" 812 0.004 [eddv3-hbt-grafana-80] [] 10.244.4.48:3000 103 0.004 301 b490c882acc8342a3e2153c06282cf32
+ - - [31/Jul/2025:16:23:35 +0000] "GET /grafana/ HTTP/1.1" 301 103 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36" 812 0.002 [eddv3-hbt-grafana-80] [] 10.244.4.48:3000 103 0.002 301 0c8e8edfbd7726a89cd5524e2ff048da
+
+
 Error: template: grafana-proxy/templates/service.yaml:4:11: executing "grafana-proxy/templates/service.yaml" at <include "grafana-proxy.fullname" .>: error calling include: template: no template "grafana-proxy.fullname" associated with template "gotpl"
 Release "grafana-proxy" does not exist. Installing it now.
 ##[error]Error: template: grafana-proxy/templates/service.yaml:4:11: executing "grafana-proxy/templates/service.yaml" at <include "grafana-proxy.fullname" .>: error calling include: template: no template "grafana-proxy.fullname" associated with template "gotpl"
