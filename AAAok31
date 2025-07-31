@@ -1,3 +1,7 @@
+##[error]Capturing deployment metadata failed with error: YAMLException: duplicated mapping key at line 318, column 9:
+            app.kubernetes.io/instance: grafana
+
+
 global:
   # -- Overrides the Docker registry globally for all images
   imageRegistry: null
