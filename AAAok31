@@ -410,10 +410,11 @@ grafana.ini:
     mode: console
   grafana_net:
     url: https://grafana.net
+  env:
+    GF_SERVER_ROOT_URL: "https://eddv-apim-cor-01.azure-api.net/homeowner-gateway-dv3/grafana"
+    GF_SERVER_SERVE_FROM_SUB_PATH: "true"
   server:
     domain: eddv-apim-cor-01.azure-api.net
-    root_url: "https://eddv-apim-cor-01.azure-api.net/homeowner-gateway-dv3/grafana"
-    serve_from_sub_path: true
   auth.azuread:
     enabled: true
     allow_sign_up: true
