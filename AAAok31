@@ -1,10 +1,3 @@
-[31/Jul/2025:23:28:28 +0000] "GET /grafana HTTP/1.1" 302 29 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36 Edg/138.0.0.0" 812 0.008 [eddv3-hbt-grafana-80] [] 10.244.4.168:3000 29 0.008 302 f9a914c3c8b9e549aa297bde3a5fdea8
-
-##[error]Capturing deployment metadata failed with error: YAMLException: duplicated mapping key at line 318, column 9:
-            app.kubernetes.io/instance: grafana
-            ^
-
-
 global:
   # -- Overrides the Docker registry globally for all images
   imageRegistry: null
@@ -133,13 +126,10 @@ service:
   port: 80
   targetPort: 3000
   portName: grafana-http
-  selector:
-    app.kubernetes.io/name: grafana
 
 # Pod Labels
 podLabels:
   app.kubernetes.io/name: grafana
-  app.kubernetes.io/instance: grafana
   app.kubernetes.io/version: "12.0.1" 
   app.kubernetes.io/managed-by: Helm 
   helm.sh/chart: grafana-9.2.3
@@ -436,10 +426,12 @@ grafana.ini:
   grafana_net:
     url: https://grafana.net
   env:
-    GF_SERVER_ROOT_URL: "https://eddv-apim-cor-01.azure-api.net/homeowner-gateway-dv3/grafana"
+    GF_SERVER_ROOT_URL: "https://eddv3-hbt/grafana"
     GF_SERVER_SERVE_FROM_SUB_PATH: "true"
   server:
-    domain: eddv-apim-cor-01.azure-api.net
+    domain: eddv3-hbt
+    root_url: "https://eddv3-hbt/grafana"
+    serve_from_sub_path: true
   auth.azuread:
     enabled: true
     allow_sign_up: true
