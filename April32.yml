@@ -1,30 +1,9 @@
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: hbt-grafana-ingress
-  namespace: eddv3-hbt
-  annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /$2
-    nginx.ingress.kubernetes.io/use-regex: "true"
-    nginx.ingress.kubernetes.io/auth-tls-secret: eddv3-hbt/hbt-ca-secret
-    nginx.ingress.kubernetes.io/auth-tls-verify-client: "on"
-    nginx.ingress.kubernetes.io/auth-tls-verify-depth: "2"  # Must be a number, not "$2"
-spec:
-  tls:
-    - hosts:
-        - eddv3-hbt
-      secretName: tls-secret  
-  rules:
-  - host: eddv3-hbt
-    http:
-      paths:
-      - path: /grafana(/|$)(.*)   # ✅ Match /grafana and /grafana/* paths
-        pathType: ImplementationSpecific
-        backend:
-          service:
-            name: grafana
-            port:
-              number: 80
+10.244.4.1 - - [31/Jul/2025:20:21:39 +0000] "GET /grafana/ HTTP/1.1" 301 104 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36" 812 0.010 [eddv3-hbt-grafana-80] [] 10.244.4.230:3000 104 0.010 301 0b1394facf20c10bc46ad1e50d9dbb54
+10.255.192.133 - - [31/Jul/2025:20:21:39 +0000] "GET /grafana/ HTTP/1.1" 301 104 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36" 812 0.007 [eddv3-hbt-grafana-80] [] 10.244.4.230:3000 104 0.007 301 15f4780d7d87b3b1004b75bc5a6871b2
+10.255.192.132 - - [31/Jul/2025:20:21:39 +0000] "GET /grafana/ HTTP/1.1" 301 104 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36" 812 0.002 [eddv3-hbt-grafana-80] [] 10.244.4.230:3000 104 0.002 301 51de5e39e2fe6e05abd71a1ef6dfb32b
+10.255.192.135 - - [31/Jul/2025:20:21:39 +0000] "GET /grafana/ HTTP/1.1" 301 104 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36" 812 0.002 [eddv3-hbt-grafana-80] [] 10.244.4.230:3000 104 0.002 301 e1149cfea4f35e48fd1b62d74a618f40
+10.244.4.1 - - [31/Jul/2025:20:21:39 +0000] "GET /grafana/ HTTP/1.1" 301 104 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36" 812 0.024 [eddv3-hbt-grafana-80] [] 10.244.4.230:3000 104 0.024 301 d72726afe599cf15957689c1c33dff0f
+10.255.192.133 - - [31/Jul/2025:20:21:39 +0000] "GET /grafana/ HTTP/1.1" 301 104 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36" 812 0.021 [eddv3-hbt-grafana-80] [] 10.244.4.230:3000 104 0.021 301 922fd25594cafc1d784c5a8b6f20bf07
 
 
 
