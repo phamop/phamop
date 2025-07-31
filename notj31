@@ -1,3 +1,140 @@
+replicaCount: 1
+
+serviceAccount:
+  name: grafana-sa
+  create: false
+
+podAnnotations:
+  azure.workload.identity/injected: "true"
+
+env:
+  GF_SERVER_ROOT_URL: "https://eddv-apim-cor-01.azure-api.net/homeowner-gateway-dv3/grafana"
+  GF_SERVER_SERVE_FROM_SUB_PATH: "true"
+  GF_AUTH_AZUREAD_ENABLED: "true"
+  GF_AUTH_AZUREAD_ALLOW_SIGN_UP: "true"
+  GF_AUTH_AZUREAD_SCOPES: "openid email profile"
+  GF_AUTH_AZUREAD_CLIENT_ID: "${AZUREAD_CLIENT_ID}"
+  GF_AUTH_AZUREAD_CLIENT_SECRET: "${AZUREAD_CLIENT_SECRET}"
+  GF_AUTH_AZUREAD_AUTH_URL: "https://login.microsoftonline.com/${AZUREAD_TENANT_ID}/v2.0/authorize"
+  GF_AUTH_AZUREAD_TOKEN_URL: "https://login.microsoftonline.com/${AZUREAD_TENANT_ID}/v2.0/token"
+  GF_AUTH_AZUREAD_LOGIN_ATTRIBUTE_PATH: "email"
+
+grafana.ini:
+  analytics:
+    check_for_updates: false
+  log:
+    level: info
+    mode: console
+  paths:
+    data: /var/lib/grafana/data
+    logs: /var/log/grafana
+    plugins: /var/lib/grafana/plugins
+    provisioning: /etc/grafana/provisioning
+  auth.azuread:
+    enabled: true
+    allow_sign_up: true
+    scopes: openid email profile
+    client_id: "${AZUREAD_CLIENT_ID}"
+    client_secret: "${AZUREAD_CLIENT_SECRET}"
+    auth_url: "https://login.microsoftonline.com/${AZUREAD_TENANT_ID}/v2.0/authorize"
+    token_url: "https://login.microsoftonline.com/${AZUREAD_TENANT_ID}/v2.0/token"
+    login_attribute_path: "email"
+  server:
+    root_url: "%(protocol)s://%(domain)s/homeowner-gateway-dv3/grafana"
+    serve_from_sub_path: true
+
+persistence:
+  enabled: false
+
+admin:
+  existingSecret: grafana-secret
+  userKey: admin-user
+  passwordKey: admin-password
+
+service:
+  type: ClusterIP
+  port: 80
+
+ingress:
+  enabled: true
+  ingressClassName: nginx
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/proxy-http-version: "1.1"
+    nginx.ingress.kubernetes.io/proxy-set-headers: "eddv3-hbt/grafana-proxy-headers"
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+  hosts:
+    - host: eddv3-hbt
+      paths:
+        - path: /grafana
+          pathType: Prefix
+  tls:
+    - secretName: tls-secret
+      hosts:
+        - eddv3-hbt
+
+dashboardProviders:
+  dashboardproviders.yaml:
+    apiVersion: 1
+    providers:
+      - name: default
+        orgId: 1
+        folder: ""
+        type: file
+        disableDeletion: false
+        editable: true
+        options:
+          path: /var/lib/grafana/dashboards/default
+
+dashboards:
+  default:
+    eddv3-overview:
+      file: /var/lib/grafana/dashboards/default/overview.json
+
+datasources:
+  datasources.yaml:
+    apiVersion: 1
+    datasources:
+      - name: AzureMonitor
+        type: grafana-azure-monitor-datasource
+        access: proxy
+        isDefault: true
+        jsonData:
+          cloudName: azuremonitor
+          tenantId: "${AZUREAD_TENANT_ID}"
+          subscriptionId: "${AZURE_SUBSCRIPTION_ID}"
+          clientId: "${AZUREAD_CLIENT_ID}"
+          logAnalyticsDefaultWorkspace: "${AZURE_LOG_ANALYTICS_WORKSPACE_ID}"
+        secureJsonData:
+          clientSecret: "${AZUREAD_CLIENT_SECRET}"
+
+resources:
+  requests:
+    memory: "512Mi"
+    cpu: "250m"
+  limits:
+    memory: "1Gi"
+    cpu: "500m"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 global:
   # -- Overrides the Docker registry globally for all images
   imageRegistry: null
