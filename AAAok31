@@ -1,5 +1,3 @@
-[31/Jul/2025:23:48:07 +0000] "GET /grafana/ HTTP/1.1" 301 104 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36 Edg/138.0.0.0" 839 0.002 [eddv3-hbt-grafana-80] [] 10.244.4.240:3000 104 0.002 301 62c6f3015da54f6e80b98d26749b88e6
-
 global:
   # -- Overrides the Docker registry globally for all images
   imageRegistry: null
@@ -427,12 +425,9 @@ grafana.ini:
     mode: console
   grafana_net:
     url: https://grafana.net
-  env:
-    GF_SERVER_ROOT_URL: "https://eddv3-hbt/grafana"
-    GF_SERVER_SERVE_FROM_SUB_PATH: "true"
   server:
     domain: eddv3-hbt
-    root_url: "https://eddv3-hbt/grafana"
+    root_url: "https://eddv-apim-cor-01.azure-api.net/homeowner-gateway-dv3/grafana"
     serve_from_sub_path: true
   auth.azuread:
     enabled: true
