@@ -5,11 +5,10 @@ metadata:
   namespace: eddv3-hbt
   annotations:
     nginx.ingress.kubernetes.io/rewrite-target: /$2
+    nginx.ingress.kubernetes.io/use-regex: "true"
     nginx.ingress.kubernetes.io/auth-tls-secret: eddv3-hbt/hbt-ca-secret
     nginx.ingress.kubernetes.io/auth-tls-verify-client: "on"
-    nginx.ingress.kubernetes.io/auth-tls-verify-depth: "2"
-    nginx.ingress.kubernetes.io/use-regex: "true"
-
+    nginx.ingress.kubernetes.io/auth-tls-verify-depth: "2"  # Must be a number, not "$2"
 spec:
   tls:
     - hosts:
@@ -19,13 +18,14 @@ spec:
   - host: eddv3-hbt
     http:
       paths:
-      - path: /grafana
-        pathType: Prefix
+      - path: /grafana(/|$)(.*)   # ✅ Match /grafana and /grafana/* paths
+        pathType: ImplementationSpecific
         backend:
           service:
             name: grafana
             port:
               number: 80
+
 
 
 
