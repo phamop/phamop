@@ -1,3 +1,10 @@
+grafana:
+  env:
+    GF_SERVER_ROOT_URL: https://eddv3-hbt/grafana
+    GF_SERVER_SERVE_FROM_SUB_PATH: "true"
+
+
+
 logger=context userId=0 orgId=0 uname= t=2025-07-31T20:35:37.082770955Z level=info msg="Request Completed" method=GET path=/ status=302 remote_addr=10.255.192.133 time_ms=311 duration=311.422512ms size=29 referer= handler=/ status_source=server
 logger=context userId=0 orgId=0 uname= t=2025-07-31T20:36:11.971326789Z level=info msg="Request Completed" method=GET path=/ status=302 remote_addr=10.255.192.133 time_ms=82 duration=82.102194ms size=29 referer= handler=/ status_source=server
 logger=context userId=0 orgId=0 uname= t=2025-07-31T20:36:17.262081381Z level=info msg="Request Completed" method=GET path=/ status=302 remote_addr=10.255.192.133 time_ms=0 duration=155.601µs size=29 referer= handler=/ status_source=server
