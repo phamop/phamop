@@ -1,3 +1,6 @@
+[31/Jul/2025:23:28:28 +0000] "GET /grafana HTTP/1.1" 302 29 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36 Edg/138.0.0.0" 812 0.008 [eddv3-hbt-grafana-80] [] 10.244.4.168:3000 29 0.008 302 f9a914c3c8b9e549aa297bde3a5fdea8
+
+
 global:
   # -- Overrides the Docker registry globally for all images
   imageRegistry: null
