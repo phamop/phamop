@@ -1,35 +1,10 @@
-logger=ngalert.notifier.alertmanager org=1 t=2025-07-31T19:01:33.872738173Z level=info msg="Applying new configuration to Alertmanager" configHash=d2c56faca6af2a5772ff4253222f7386
-logger=ngalert t=2025-07-31T19:01:34.147877694Z level=info msg="Using simple database alert instance store"
-logger=ngalert.state.manager.persist t=2025-07-31T19:01:34.163420011Z level=info msg="Using sync state persister"
-logger=infra.usagestats.collector t=2025-07-31T19:01:34.200122007Z level=info msg="registering usage stat providers" usageStatsProvidersLen=2
-logger=ngalert.state.manager t=2025-07-31T19:01:34.290558579Z level=info msg="Warming state cache for startup"
-logger=ngalert.multiorg.alertmanager t=2025-07-31T19:01:34.347122986Z level=info msg="Starting MultiOrg Alertmanager"
-logger=http.server t=2025-07-31T19:01:34.505833582Z level=info msg="HTTP Server Listen" address=[::]:3000 protocol=http subUrl=/homeowner-gateway-dv3/grafana socket=    
-logger=grafanaStorageLogger t=2025-07-31T19:01:34.626569145Z level=info msg="Storage starting"
-logger=ngalert.state.manager t=2025-07-31T19:01:34.620566924Z level=info msg="State cache has been initialized" states=0 duration=330.009545ms
-logger=ngalert.scheduler t=2025-07-31T19:01:34.636522578Z level=info msg="Starting scheduler" tickInterval=10s maxAttempts=3
-logger=ticker t=2025-07-31T19:01:34.667886057Z level=info msg=starting first_tick=2025-07-31T19:01:40Z
-logger=sqlstore.transactions t=2025-07-31T19:01:35.260158663Z level=info msg="Database locked, sleeping then retrying" error="database is locked" retry=0
-logger=sqlstore.transactions t=2025-07-31T19:01:35.430519083Z level=info msg="Database locked, sleeping then retrying" error="database is locked" retry=1
-logger=plugins.update.checker t=2025-07-31T19:01:35.589829812Z level=info msg="Update check succeeded" duration=1.089699435s
-logger=grafana.update.checker t=2025-07-31T19:01:35.591197085Z level=info msg="Update check succeeded" duration=1.196745566s
-logger=provisioning.alerting t=2025-07-31T19:01:37.603758923Z level=info msg="starting to provision alerting"
-logger=provisioning.alerting t=2025-07-31T19:01:37.603803226Z level=info msg="finished to provision alerting"
-logger=provisioning.dashboard t=2025-07-31T19:01:37.666402477Z level=info msg="starting to provision dashboards"
-logger=grafana-apiserver t=2025-07-31T19:01:42.465887123Z level=info msg="Adding GroupVersion dashboard.grafana.app v1beta1 to ResourceManager"
-logger=grafana-apiserver t=2025-07-31T19:01:42.469184763Z level=info msg="Adding GroupVersion dashboard.grafana.app v0alpha1 to ResourceManager"
-logger=grafana-apiserver t=2025-07-31T19:01:42.485147559Z level=info msg="Adding GroupVersion dashboard.grafana.app v2alpha1 to ResourceManager"
-logger=grafana-apiserver t=2025-07-31T19:01:42.48689808Z level=info msg="Adding GroupVersion featuretoggle.grafana.app v0alpha1 to ResourceManager"
-logger=grafana-apiserver t=2025-07-31T19:01:42.491976343Z level=info msg="Adding GroupVersion folder.grafana.app v1beta1 to ResourceManager"
-logger=grafana-apiserver t=2025-07-31T19:01:42.499676337Z level=info msg="Adding GroupVersion iam.grafana.app v0alpha1 to ResourceManager"
-logger=grafana-apiserver t=2025-07-31T19:01:42.512083289Z level=info msg="Adding GroupVersion notifications.alerting.grafana.app v0alpha1 to ResourceManager"
-logger=grafana-apiserver t=2025-07-31T19:01:42.515668733Z level=info msg="Adding GroupVersion userstorage.grafana.app v0alpha1 to ResourceManager"
-logger=grafana-apiserver t=2025-07-31T19:01:42.517729459Z level=info msg="Adding GroupVersion playlist.grafana.app v0alpha1 to ResourceManager"
-logger=app-registry t=2025-07-31T19:01:42.980558605Z level=info msg="app registry initialized"
-logger=provisioning.dashboard t=2025-07-31T19:01:43.090754449Z level=info msg="finished to provision dashboards"
-logger=infra.usagestats t=2025-07-31T19:02:35.961380837Z level=info msg="Usage stats are ready to report"
-logger=cleanup t=2025-07-31T19:11:34.37272855Z level=info msg="Completed cleanup jobs" duration=40.073412ms
-logger=plugins.update.checker t=2025-07-31T19:11:36.587991555Z level=info msg="Update check succeeded" duration=996.302864ms
+10.244.4.1 - - [31/Jul/2025:19:18:57 +0000] "GET /grafana/ HTTP/1.1" 301 104 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36" 818 0.001 [eddv3-hbt-grafana-80] [] 10.244.4.197:3000 104 0.001 301 e074f8c173172750b1311611c249f484
+10.255.192.133 - - [31/Jul/2025:19:18:57 +0000] "GET /grafana/ HTTP/1.1" 301 104 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36" 818 0.002 [eddv3-hbt-grafana-80] [] 10.244.4.197:3000 104 0.002 301 020138a4bef8a184a7fb752488302dec
+10.255.192.132 - - [31/Jul/2025:19:18:57 +0000] "GET /grafana/ HTTP/1.1" 301 104 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36" 818 0.005 [eddv3-hbt-grafana-80] [] 10.244.4.197:3000 104 0.005 301 bcec27596a772208cfb2d8bc9bed378e
+10.255.192.135 - - [31/Jul/2025:19:18:57 +0000] "GET /grafana/ HTTP/1.1" 301 104 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36" 818 0.001 [eddv3-hbt-grafana-80] [] 10.244.4.197:3000 104 0.001 301 66c984ab09c51298625142d07b9487b1
+10.244.4.1 - - [31/Jul/2025:19:18:57 +0000] "GET /grafana/ HTTP/1.1" 301 104 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36" 818 0.001 [eddv3-hbt-grafana-80] [] 10.244.4.197:3000 104 0.001 301 69645e6b356ee5d4e5a291337b676018
+10.255.192.133 - - [31/Jul/2025:19:18:57 +0000] "GET /grafana/ HTTP/1.1" 301 104 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36" 818 0.001 [eddv3-hbt-grafana-80] [] 10.244.4.197:3000 104 0.001 301 777e514231aaf73af7aeb59bc1457508
+10.255.192.132 - - [31/Jul/2025:19:18:57 +0000] "GET /grafana/ HTTP/1.1" 301 104 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36" 818 0.004 [eddv3-hbt-grafana-80] [] 10.244.4.197:3000 104 0.004 301 790d8d354bd70283a633b2219c9ef8c3
 
 
 
