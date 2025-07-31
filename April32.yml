@@ -1,11 +1,31 @@
-10.244.4.1 - - [31/Jul/2025:19:18:57 +0000] "GET /grafana/ HTTP/1.1" 301 104 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36" 818 0.001 [eddv3-hbt-grafana-80] [] 10.244.4.197:3000 104 0.001 301 e074f8c173172750b1311611c249f484
-10.255.192.133 - - [31/Jul/2025:19:18:57 +0000] "GET /grafana/ HTTP/1.1" 301 104 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36" 818 0.002 [eddv3-hbt-grafana-80] [] 10.244.4.197:3000 104 0.002 301 020138a4bef8a184a7fb752488302dec
-10.255.192.132 - - [31/Jul/2025:19:18:57 +0000] "GET /grafana/ HTTP/1.1" 301 104 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36" 818 0.005 [eddv3-hbt-grafana-80] [] 10.244.4.197:3000 104 0.005 301 bcec27596a772208cfb2d8bc9bed378e
-10.255.192.135 - - [31/Jul/2025:19:18:57 +0000] "GET /grafana/ HTTP/1.1" 301 104 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36" 818 0.001 [eddv3-hbt-grafana-80] [] 10.244.4.197:3000 104 0.001 301 66c984ab09c51298625142d07b9487b1
-10.244.4.1 - - [31/Jul/2025:19:18:57 +0000] "GET /grafana/ HTTP/1.1" 301 104 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36" 818 0.001 [eddv3-hbt-grafana-80] [] 10.244.4.197:3000 104 0.001 301 69645e6b356ee5d4e5a291337b676018
-10.255.192.133 - - [31/Jul/2025:19:18:57 +0000] "GET /grafana/ HTTP/1.1" 301 104 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36" 818 0.001 [eddv3-hbt-grafana-80] [] 10.244.4.197:3000 104 0.001 301 777e514231aaf73af7aeb59bc1457508
-10.255.192.132 - - [31/Jul/2025:19:18:57 +0000] "GET /grafana/ HTTP/1.1" 301 104 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36" 818 0.004 [eddv3-hbt-grafana-80] [] 10.244.4.197:3000 104 0.004 301 790d8d354bd70283a633b2219c9ef8c3
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: hbt-grafana-ingress
+  namespace: eddv3-hbt
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+    nginx.ingress.kubernetes.io/auth-tls-secret: eddv3-hbt/hbt-ca-secret
+    nginx.ingress.kubernetes.io/auth-tls-verify-client: "on"
+    nginx.ingress.kubernetes.io/auth-tls-verify-depth: "2"
+    nginx.ingress.kubernetes.io/use-regex: "true"
 
+spec:
+  tls:
+    - hosts:
+        - eddv3-hbt
+      secretName: tls-secret  
+  rules:
+  - host: eddv3-hbt
+    http:
+      paths:
+      - path: /grafana
+        pathType: Prefix
+        backend:
+          service:
+            name: grafana
+            port:
+              number: 80
 
 
 
