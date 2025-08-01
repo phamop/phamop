@@ -1,4 +1,3 @@
-
 10.255.192.135 - - [01/Aug/2025:00:34:42 +0000] "GET /portal/grafana HTTP/1.1" 401 120 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36" 818 0.017 [eddv3-hbt-hbt-portal-service-3000] [] 10.244.3.25:3000 120 0.017 401 2096b0b9cad5a8661766b271792be4c4
 10.255.192.132 - - [01/Aug/2025:00:35:25 +0000] "GET /portal/grafana HTTP/1.1" 401 120 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36" 818 0.008 [eddv3-hbt-hbt-portal-service-3000] [] 10.244.3.25:3000 120 0.008 401 d01a512e8c8614c178d80a07a485d648
 10.255.192.132 - - [01/Aug/2025:00:35:31 +0000] "GET /grafana/ HTTP/1.1" 301 111 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36 Edg/138.0.0.0" 839 0.014 [eddv3-hbt-grafana-80] [] 10.244.4.240:3000 111 0.014 301 ff02fedf172546a81f21e195294fad2b
@@ -6,11 +5,7 @@
 10.244.4.1 - - [01/Aug/2025:00:35:31 +0000] "GET /grafana/grafanagrafana HTTP/1.1" 301 125 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36 Edg/138.0.0.0" 853 0.001 [eddv3-hbt-grafana-80] [] 10.244.4.240:3000 125 0.001 301 5309f038eb034bd940b880ca4b32c0d9
 10.255.192.133 - - [01/Aug/2025:00:35:31 +0000] "GET /grafana/grafanagrafanagrafana HTTP/1.1" 301 132 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36 Edg/138.0.0.0" 860 0.027 [eddv3-hbt-grafana-80] [] 10.244.4.240:3000 132 0.027 301 82fe6232ef707c56c9b754e814e151e5
 10.255.192.132 - - [01/Aug/2025:00:35:31 +0000] "GET /grafana/grafanagrafanagrafanagrafana HTTP/1.1" 301 139 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36 Edg/138.0.0.0" 867 0.003 [eddv3-hbt-grafana-80] [] 10.244.4.240:3000 139 0.003 301 c359757bdf59cb54ffdc0e872b66287f
-10.255.192.135 - - [01/Aug/2025:00:35:31 +0000] "GET /grafana/grafanagrafanagrafanagrafanagrafana HTTP/1.1" 301 146 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36 Edg/138.0.0.0" 874 0.001 [eddv3-hbt-grafana-80] [] 10.244.4.240:3000 146 0.001 301 3f46bdf4687eeeecfe79f78ecf467c63
-
-
-
-
+10.255.192.135 - - [01/Aug/2025:00:35:31 +0000] "GET /grafana/grafanagrafanagrafanagrafanagrafana HTTP/1.1" 301 146 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36 Edg/138.0.0.0" 874 0.012 [eddv3-hbt-grafana-80] [] 10.244.4.240:3000 146 0.012 301 0119d7e9ec97c9e070b2bfb5b1f3a3db
 
 global:
   # -- Overrides the Docker registry globally for all images
@@ -73,17 +68,6 @@ image:
   sha: ""
   pullPolicy: IfNotPresent
   pullSecrets: []
-
-testFramework:
-  enabled: true
-  image:
-    registry: docker.io
-    repository: bats/bats
-    tag: "v1.4.1"
-  imagePullPolicy: IfNotPresent
-  securityContext: {}
-  containerSecurityContext: {}
-  resources: {}
 
 # dns configuration for pod
 dnsPolicy: ~
@@ -169,15 +153,14 @@ hostAliases: []
 ingress:
   enabled: true
   name: hbt-grafana-ingress
-  # For Kubernetes >= 1.18 you should specify the ingress-controller via the field ingressClassName
   ingressClassName: nginx
   annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /grafana$2
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
     nginx.ingress.kubernetes.io/use-regex: "true"
-    nginx.ingress.kubernetes.io/auth-tls-secret: eddv3-hbt/hbt-ca-secret
-    nginx.ingress.kubernetes.io/auth-tls-verify-client: "on"
-    nginx.ingress.kubernetes.io/auth-tls-verify-depth: "2"
     nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    # nginx.ingress.kubernetes.io/auth-tls-secret: eddv3-hbt/hbt-ca-secret
+    # nginx.ingress.kubernetes.io/auth-tls-verify-client: "on"
+    # nginx.ingress.kubernetes.io/auth-tls-verify-depth: "2"
   labels: {}
   path: /grafana(/|$)(.*)
   pathType: ImplementationSpecific
@@ -478,6 +461,7 @@ sidecar:
     repository: kiwigrid/k8s-sidecar
     tag: 1.30.0
     sha: ""
+    pullPolicy: IfNotPresent
   imagePullPolicy: IfNotPresent
   resources: {}
   securityContext:
