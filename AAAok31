@@ -1,3 +1,10 @@
+10.255.192.133 - - [01/Aug/2025:15:04:27 +0000] "GET /grafana/ HTTP/1.1" 301 120 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36" 812 0.006 [eddv3-hbt-grafana-80] [] 10.244.4.112:3000 120 0.006 301 c7e3eac6c577f14d6af866b8cb849319
+10.255.192.132 - - [01/Aug/2025:15:04:27 +0000] "GET /grafana/ HTTP/1.1" 301 120 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36" 812 0.017 [eddv3-hbt-grafana-80] [] 10.244.4.112:3000 120 0.017 301 79f72f386c9b495c1d2c2fa54bfd58c2
+
+
+
+
+
 ---
 # Grafana Ingress
 apiVersion: networking.k8s.io/v1
