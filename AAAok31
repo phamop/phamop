@@ -1,5 +1,5 @@
-10.255.192.135 - - [01/Aug/2025:00:07:02 +0000] "GET /grafana/ HTTP/1.1" 301 104 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36 Edg/138.0.0.0" 839 0.002 [eddv3-hbt-grafana-80] [] 10.244.4.240:3000 104 0.002 301 40c5410ffbdbf8bca094f68c3a98aad0
-10.244.4.1 - - [01/Aug/2025:00:07:02 +0000] "GET /grafana/ HTTP/1.1" 301 104 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36 Edg/138.0.0.0" 839 0.002 [eddv3-hbt-grafana-80] [] 10.244.4.240:3000 104 0.002 301 dd3d4017b0c8b9b3ba20e95240156a51
+ [01/Aug/2025:00:16:32 +0000] "GET /portal/grafana HTTP/1.1" 401 120 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36" 818 0.007 [eddv3-hbt-hbt-portal-service-3000] [] 10.244.3.25:3000 120 0.007 401 18717ba2c186ad751489fb5ab46fac95
+
 
 global:
   # -- Overrides the Docker registry globally for all images
