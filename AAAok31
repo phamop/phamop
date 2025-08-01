@@ -1,4 +1,31 @@
- [01/Aug/2025:00:16:32 +0000] "GET /portal/grafana HTTP/1.1" 401 120 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36" 818 0.007 [eddv3-hbt-hbt-portal-service-3000] [] 10.244.3.25:3000 120 0.007 401 18717ba2c186ad751489fb5ab46fac95
+
+ingress:
+  enabled: true
+  name: grafana-ingress # Add this line if your chart supports it
+  ingressClassName: nginx
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /grafana$2
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/auth-tls-secret: eddv3-hbt/hbt-ca-secret
+    nginx.ingress.kubernetes.io/auth-tls-verify-client: "on"
+    nginx.ingress.kubernetes.io/auth-tls-verify-depth: "2"
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+  labels: {}
+  path: /grafana(/|$)(.*)
+  pathType: ImplementationSpecific
+  hosts:
+    - eddv3-hbt
+  extraPaths: []
+  tls:
+    - hosts:
+        - eddv3-hbt
+      secretName: tls-secret
+
+
+
+
+
+[01/Aug/2025:00:16:32 +0000] "GET /portal/grafana HTTP/1.1" 401 120 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36" 818 0.007 [eddv3-hbt-hbt-portal-service-3000] [] 10.244.3.25:3000 120 0.007 401 18717ba2c186ad751489fb5ab46fac95
 
 
 global:
