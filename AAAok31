@@ -1,9 +1,4 @@
-[eddv3-hbt-grafana-80] [] 10.244.4.44:3000 120 0.015 301 697da107c886c2af9603d3e629dd0b73
-10.255.192.132 - - [01/Aug/2025:15:32:57 +0000] "GET /grafana/ HTTP/1.1" 301 120 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36 Edg/138.0.0.0" 837 0.002 [eddv3-hbt-grafana-80] [] 10.244.4.44:3000 120 0.002 301 1d9970496ac190bff397c77b7e02f90d
-
-
-
-
+level=debug msg="No SSO Settings found in the database, using system settings
 
 
 
