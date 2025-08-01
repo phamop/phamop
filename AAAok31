@@ -1,33 +1,4 @@
-
-
-
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: grafana-ingress
-  namespace: eddv3-hbt
-  annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /
-    nginx.ingress.kubernetes.io/configuration-snippet: |
-      rewrite ^/grafana/(.*)$ /$1 break;
-      rewrite ^/grafana$ /grafana/ redirect;
-spec:
-  ingressClassName: nginx
-  tls:
-    - hosts:
-        - eddv3-hbt
-      secretName: tls-secret
-  rules:
-    - host: eddv3-hbt
-      http:
-        paths:
-          - path: /grafana
-            pathType: Prefix
-            backend:
-              service:
-                name: grafana
-                port:
-                  number: 3000
+Error from server (BadRequest): error when creating "../../grafana-proxy.yaml.yml": admission webhook "validate.nginx.ingress.kubernetes.io" denied the request: annotation group ConfigurationSnippet contains risky annotation based on ingress configuration
 
 
 
