@@ -1,6 +1,5 @@
-Error from server (BadRequest): error when creating "../../grafana-proxy.yaml.yml": admission webhook "validate.nginx.ingress.kubernetes.io" denied the request: annotation group ConfigurationSnippet contains risky annotation based on ingress configuration
-
-
+10.255.192.133 - - [01/Aug/2025:15:13:17 +0000] "GET /grafana/ HTTP/1.1" 301 120 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36 Edg/138.0.0.0" 837 0.050 [eddv3-hbt-grafana-3000] [] 10.244.4.227:3000 120 0.050 301 20190d3c5ab2930c3977f3371ba98ce7
+10.255.192.132 - - [01/Aug/2025:15:13:17 +0000] "GET /grafana/ HTTP/1.1" 301 120 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36 Edg/138.0.0.0" 837 0.002 [eddv3-hbt-grafana-3000] [] 10.244.4.227:3000 120 0.002 301 30b3fdfe12614afc917807c8b68dd21a
 
 
 ---
