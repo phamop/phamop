@@ -7,7 +7,7 @@ rbac:
   create: true
 
 serviceAccount:
-  create: false
+  create: true  # Changed from false - you need to create SA for managed identity
   name: grafana-sa   # reference to managed identity between Azure vault to secretstore.
   labels: {}
   automountServiceAccountToken: true
@@ -152,31 +152,28 @@ extraExposePorts: []
 # overrides pod.spec.hostAliases in the grafana deployment's pods
 hostAliases: []
 
-# ingress:
-#   enabled: true
-#   name: hbt-grafana-ingress
-#   # For Kubernetes >= 1.18 you should specify the ingress-controller via the field ingressClassName
-#   ingressClassName: nginx
-#   annotations:
-#     nginx.ingress.kubernetes.io/rewrite-target: /$2
-#     nginx.ingress.kubernetes.io/use-regex: "true"
-#     # nginx.ingress.kubernetes.io/auth-tls-secret: eddv3-hbt/hbt-ca-secret
-#     # nginx.ingress.kubernetes.io/auth-tls-verify-client: "on"
-#     # nginx.ingress.kubernetes.io/auth-tls-verify-depth: "2"
-#     nginx.ingress.kubernetes.io/ssl-redirect: "false"
-#   labels: {}
-#   path: /grafana(/|$)(.*)
-#   pathType: ImplementationSpecific
-#   hosts:
-#     - eddv3-hbt
-#   extraPaths: []
-#   tls:
-#     - hosts:
-#         - eddv3-hbt
-#       secretName: tls-secret
-
-
-
+ingress:
+  enabled: true
+  name: hbt-grafana-ingress
+  # For Kubernetes >= 1.18 you should specify the ingress-controller via the field ingressClassName
+  ingressClassName: nginx
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    # nginx.ingress.kubernetes.io/auth-tls-secret: eddv3-hbt/hbt-ca-secret
+    # nginx.ingress.kubernetes.io/auth-tls-verify-client: "on"
+    # nginx.ingress.kubernetes.io/auth-tls-verify-depth: "2"
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+  labels: {}
+  path: /grafana(/|$)(.*)
+  pathType: ImplementationSpecific
+  hosts:
+    - eddv3-hbt
+  extraPaths: []
+  tls:
+    - hosts:
+        - eddv3-hbt
+      secretName: tls-secret
 
 # -- BETA: Configure the gateway routes for the chart here.
 # Gateway routes are commented out as we're using Ingress instead
@@ -332,7 +329,7 @@ datasources:
       jsonData:
         timeInterval: "15s"
     - name: Alertmanager
-      type: Alertmanager
+      type: alertmanager  # Fixed: lowercase 'alertmanager'
       access: proxy
       url: http://kube-prometheus-stack-alertmanager.eddv3-hbt.svc.cluster.local:9093
       isDefault: false
@@ -377,38 +374,110 @@ dashboards:
             {
               "type": "stat",
               "title": "Ready Nodes",
-              "datasource": "Azure Monitor",
+              "datasource": {
+                "type": "grafana-azure-monitor-datasource",
+                "uid": "azure-monitor"
+              },
               "targets": [
                 {
-                  "query": "KubeNodeInventory | summarize count()",
-                  "format": "time_series"
+                  "azureMonitor": {
+                    "timeGrain": "auto",
+                    "allowedTimeGrainsMs": [60000, 300000, 900000, 1800000, 3600000, 21600000, 43200000, 86400000],
+                    "dimensionFilters": []
+                  },
+                  "azureLogAnalytics": {
+                    "query": "KubeNodeInventory | where Status == 'Ready' | summarize count()",
+                    "timeColumn": "TimeGenerated",
+                    "workspace": "/subscriptions/5918db9c-25c1-4564-9079-665362a0b0c2/resourceGroups/loganalytics-general-cd/providers/Microsoft.OperationalInsights/workspaces/cd-general-01"
+                  },
+                  "datasourceUid": "azure-monitor",
+                  "hide": false,
+                  "refId": "A"
                 }
               ],
-              "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 }
+              "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+              "fieldConfig": {
+                "defaults": {
+                  "mappings": [],
+                  "thresholds": {
+                    "steps": [
+                      { "color": "green", "value": null }
+                    ]
+                  }
+                }
+              }
             },
             {
               "type": "stat",
               "title": "Running Pods",
-              "datasource": "Azure Monitor",
+              "datasource": {
+                "type": "grafana-azure-monitor-datasource",
+                "uid": "azure-monitor"
+              },
               "targets": [
                 {
-                  "query": "KubePodInventory | where Phase == 'Running' | summarize count()",
-                  "format": "time_series"
+                  "azureMonitor": {
+                    "timeGrain": "auto",
+                    "allowedTimeGrainsMs": [60000, 300000, 900000, 1800000, 3600000, 21600000, 43200000, 86400000],
+                    "dimensionFilters": []
+                  },
+                  "azureLogAnalytics": {
+                    "query": "KubePodInventory | where PodStatus == 'Running' | summarize count()",
+                    "timeColumn": "TimeGenerated",
+                    "workspace": "/subscriptions/5918db9c-25c1-4564-9079-665362a0b0c2/resourceGroups/loganalytics-general-cd/providers/Microsoft.OperationalInsights/workspaces/cd-general-01"
+                  },
+                  "datasourceUid": "azure-monitor",
+                  "hide": false,
+                  "refId": "A"
                 }
               ],
-              "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 }
+              "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+              "fieldConfig": {
+                "defaults": {
+                  "mappings": [],
+                  "thresholds": {
+                    "steps": [
+                      { "color": "green", "value": null }
+                    ]
+                  }
+                }
+              }
             },
             {
               "type": "stat",
               "title": "CrashLoopBackOff Pods",
-              "datasource": "Azure Monitor",
+              "datasource": {
+                "type": "grafana-azure-monitor-datasource",
+                "uid": "azure-monitor"
+              },
               "targets": [
                 {
-                  "query": "KubePodInventory | where Reason == 'CrashLoopBackOff' | summarize count()",
-                  "format": "time_series"
+                  "azureMonitor": {
+                    "timeGrain": "auto",
+                    "allowedTimeGrainsMs": [60000, 300000, 900000, 1800000, 3600000, 21600000, 43200000, 86400000],
+                    "dimensionFilters": []
+                  },
+                  "azureLogAnalytics": {
+                    "query": "KubePodInventory | where ContainerStatusReason == 'CrashLoopBackOff' | summarize count()",
+                    "timeColumn": "TimeGenerated",
+                    "workspace": "/subscriptions/5918db9c-25c1-4564-9079-665362a0b0c2/resourceGroups/loganalytics-general-cd/providers/Microsoft.OperationalInsights/workspaces/cd-general-01"
+                  },
+                  "datasourceUid": "azure-monitor",
+                  "hide": false,
+                  "refId": "A"
                 }
               ],
-              "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 }
+              "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
+              "fieldConfig": {
+                "defaults": {
+                  "mappings": [],
+                  "thresholds": {
+                    "steps": [
+                      { "color": "red", "value": null }
+                    ]
+                  }
+                }
+              }
             }
           ]
         }
@@ -429,10 +498,6 @@ grafana.ini:
     mode: console
   grafana_net:
     url: https://grafana.net
-  env:
-    GF_SERVER_ROOT_URL: "https://eddv-apim-cor-01.azure-api.net/homeowner-gateway-dv3/grafana"
-    GF_SERVER_SERVE_FROM_SUB_PATH: "true"
-  
   server:
     root_url: "https://eddv-apim-cor-01.azure-api.net/homeowner-gateway-dv3/grafana"
     serve_from_sub_path: true
@@ -443,15 +508,14 @@ grafana.ini:
     cookie_samesite: "none"
     cookie_secure: true
     enable_embedding: true
-
   auth.azuread:
     enabled: true
     allow_sign_up: true
     client_id: "${AZUREAD_CLIENT_ID}"
     client_secret: "${AZUREAD_CLIENT_SECRET}"
     scopes: openid email profile
-    auth_url: https://login.microsoftonline.com/<TENANTID>/oauth2/v2.0/authorize
-    token_url: https://login.microsoftonline.com/<TENANTID>/oauth2/v2.0/token
+    auth_url: "https://login.microsoftonline.com/${TENANTID}/oauth2/v2.0/authorize"  # Fixed: Use variable
+    token_url: "https://login.microsoftonline.com/${TENANTID}/oauth2/v2.0/token"    # Fixed: Use variable
 
 ## Grafana's LDAP configuration
 ldap:
