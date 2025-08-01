@@ -1,10 +1,3 @@
-
-Error: Unable to continue with install: ServiceAccount "grafana-sa" in namespace "eddv3-hbt" exists and cannot be imported into the current release: invalid ownership metadata; label validation error: missing key "app.kubernetes.io/managed-by": must be set to "Helm"; annotation validation error: missing key "meta.helm.sh/release-name": must be set to "grafana"; annotation validation error: missing key "meta.helm.sh/release-namespace": must be set to "eddv3-hbt"
-##[error]Error: Unable to continue with install: ServiceAccount "grafana-sa" in namespace "eddv3-hbt" exists and cannot be imported into the current release: invalid ownership metadata; label validation error: missing key "app.kubernetes.io/managed-by": must be set to "Helm"; annotation validation error: missing key "meta.helm.sh/release-name": must be set to "grafana"; annotation validation error: missing key "meta.helm.sh/release-namespace": must be set to "eddv3-hbt"
-
-
-
-
 global:
   # -- Overrides the Docker registry globally for all images
   imageRegistry: null
@@ -14,8 +7,8 @@ rbac:
   create: true
 
 serviceAccount:
-  create: true  # Changed from false - you need to create SA for managed identity
-  name: grafana-sa   # reference to managed identity between Azure vault to secretstore.
+  create: false  # Set to false since SA already exists
+  name: grafana-sa   # reference to existing managed identity SA
   labels: {}
   automountServiceAccountToken: true
 
