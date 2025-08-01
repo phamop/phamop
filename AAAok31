@@ -1,3 +1,13 @@
+Error: 1 error occurred:
+	* Internal error occurred: failed to allocate a serviceIP: range is full
+
+
+Release "grafana" does not exist. Installing it now.
+##[error]Error: 1 error occurred:
+	* Internal error occurred: failed to allocate a serviceIP: range is full
+
+
+
 global:
   # -- Overrides the Docker registry globally for all images
   imageRegistry: null
