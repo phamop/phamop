@@ -1,3 +1,21 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-headers
+  namespace: eddv3-hbt
+data:
+  X-Forwarded-Proto: "https"
+  X-Forwarded-For: "$proxy_add_x_forwarded_for"
+  X-Forwarded-Host: "$host"
+  X-Real-IP: "$remote_addr"
+
+
+
+
+
+
+
+
 global:
   # -- Overrides the Docker registry globally for all images
   imageRegistry: null
