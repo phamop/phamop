@@ -1,3 +1,9 @@
+
+auth.generic_oauth:
+    redirect_uri: https://<your-domain>/grafana/login/generic_oauth
+
+
+
 10.255.192.135 - - [01/Aug/2025:19:10:58 +0000] "GET /grafana/ HTTP/1.1" 301 121 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36 Edg/138.0.0.0" 839 0.015 [eddv3-hbt-grafana-80] [] 10.244.4.56:3000 121 0.015 301 734eec1ce7cdb56edec82d5c6b29b4db
 10.244.4.1 - - [01/Aug/2025:19:10:58 +0000] "GET /grafana/ HTTP/1.1" 301 121 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36 Edg/138.0.0.0" 839 0.002 [eddv3-hbt-grafana-80] [] 10.244.4.56:3000 121 0.002 301 ebd191776c6f1b20f487a6b430d80e9b
 
