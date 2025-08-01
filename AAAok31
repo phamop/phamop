@@ -1,3 +1,30 @@
+kubectl get svc --all-namespaces -o jsonpath='{.items[*].spec.clusterIP}' | tr ' ' '\n' | sort -u
+
+az aks show --resource-group <your-resource-group> --name <your-cluster-name> --query "networkProfile.serviceCidr"
+
+kubectl -n kube-system get cm kube-proxy -o jsonpath='{.data.config\.conf}' | jq '.clusterCIDR'
+
+kubectl get svc --all-namespaces | grep -v "None" | awk '{print $3}' | sort | uniq -d
+
+kubectl cluster-info dump | grep -i service-cluster-ip-range
+
+kubectl -n kube-system get pods -l k8s-app=kube-proxy
+
+kubectl get networkpolicy --all-namespaces
+
+kubectl -n kube-system get pods -l k8s-app=kube-dns
+
+
+
+
+
+
+
+
+
+
+
+
 Error: 1 error occurred:
 	* Internal error occurred: failed to allocate a serviceIP: range is full
 
