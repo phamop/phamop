@@ -1,3 +1,5 @@
+---
+# Grafana Ingress
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -23,6 +25,27 @@ spec:
                 name: grafana
                 port:
                   number: 80
+
+---
+# Portal Service Ingress
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: portal-ingress
+  namespace: eddv3-hbt
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /$1
+    nginx.ingress.kubernetes.io/use-regex: "true"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - eddv3-hbt
+      secretName: tls-secret
+  rules:
+    - host: eddv3-hbt
+      http:
+        paths:
           - path: /(.*)
             pathType: ImplementationSpecific
             backend:
@@ -30,8 +53,6 @@ spec:
                 name: portal-service
                 port:
                   number: 3000
-
-
 
 
 
