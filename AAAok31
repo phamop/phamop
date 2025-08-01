@@ -1,4 +1,47 @@
-level=debug msg="No SSO Settings found in the database, using system settings
+# apiVersion: secrets-store.csi.x-k8s.io/v1
+# kind: SecretProviderClass
+# metadata:
+#   name: azure-kvname-user-msi
+# spec:
+#   provider: azure
+#   parameters:
+#     usePodIdentity: "false"
+#     useVMManagedIdentity: "true"          # Set to true for using managed identity
+#     userAssignedIdentityID: "95139264-bbe4-43d6-8dc4-b11d922fd051"   # Set the clientID of the user-assigned managed identity to use
+#     keyvaultName: "drumkeyvaultname"       # Set to the name of your key vault
+#     cloudName: ""                         # [OPTIONAL for Azure] if not provided, the Azure environment defaults to AzurePublicCloud
+#     objects:  |
+#       array:
+#         - |
+#           objectName: grafana-azure-monitor-client-secret
+#           objectType: secret 
+#         - |
+#           objectName: grafana-azure-monitor-app-id
+#           objectType: secret   
+#         - |
+#           objectName: grafana-azure-monitor-sub-id
+#           objectType: secret   
+#         - |
+#           objectName: grafana-azure-monitor-tenant-id
+#           objectType: secret   
+#         - |
+#           objectName: connection-string-appinsight
+#           objectType: secret   
+#     tenantId: "6891cc30-5460-4717-b26f-feea598f6768"  
+#   secretObjects:                                # secretObjects defines the desired state of synced K8s secret objects
+#   - secretName: azure-monitors
+#     type: Opaque
+#     data:
+#       - objectName: grafana-azure-monitor-client-secret
+#         key: CLIENTSECRET  
+#       - objectName: grafana-azure-monitor-app-id
+#         key: CLIENTID  
+#       - objectName: grafana-azure-monitor-sub-id
+#         key: SUBSCRIPTIONID  
+#       - objectName: grafana-azure-monitor-tenant-id
+#         key: TENANTID  
+#       - objectName: connection-string-appinsight
+#         key: APPLICATIONINSIGHTS_CONNECTION_STRING  
 
 
 
