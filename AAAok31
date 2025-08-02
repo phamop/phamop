@@ -1,30 +1,1680 @@
+#####Ingress#######
+
+# Grafana Ingress
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: grafana-ingress
+  namespace: eddv3-hbt
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /$1
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    nginx.ingress.kubernetes.io/proxy-set-headers: "eddv3-hbt/grafana-headers"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - eddv3-hbt
+      secretName: tls-secret
+  rules:
+    - host: eddv3-hbt
+      http:
+        paths:
+          - path: /grafana
+ #         - path: /grafana(/|$)(.*)
+            pathType: Prefix
+            backend:
+              service:
+                name: grafana
+                port:
+                  number: 80
+
+# ---
+
+# apiVersion: v1
+# kind: ConfigMap
+# metadata:
+#   name: grafana-headers
+#   namespace: eddv3-hbt
+# data:
 #   X-Forwarded-Proto: "https"
 #   X-Forwarded-For: "$proxy_add_x_forwarded_for"
 #   X-Forwarded-Host: "$host"
 #   X-Real-IP: "$remote_addr"
 
 
-apiVersion: networking.k8s.io/v1
-kind: Ingress
+
+
+
+
+### grafana values.file
+
+global:
+  # -- Overrides the Docker registry globally for all images
+  imageRegistry: null
+  imagePullSecrets: []
+
+rbac:
+  create: true
+
+serviceAccount:
+  create: false  # Set to false since SA already exists
+  name: grafana-sa   # reference to existing managed identity SA
+  labels: {}
+  automountServiceAccountToken: true
+
+replicas: 1
+
+## Create a headless service for the deployment
+headlessService: false
+
+## Should the service account be auto mounted on the pod
+automountServiceAccountToken: true
+
+## Create HorizontalPodAutoscaler object for deployment type
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 5
+  targetCPU: "60"
+  targetMemory: ""
+  behavior: {}
+
+## See `kubectl explain poddisruptionbudget.spec` for more
+## ref: https://kubernetes.io/docs/tasks/run-application/configure-pdb/
+podDisruptionBudget: {}
+
+deploymentStrategy:
+  type: RollingUpdate
+
+readinessProbe:
+  httpGet:
+    path: /api/health
+    port: 3000
+  initialDelaySeconds: 60
+  timeoutSeconds: 30
+  failureThreshold: 10
+
+livenessProbe:
+  httpGet:
+    path: /api/health
+    port: 3000
+  initialDelaySeconds: 60
+  timeoutSeconds: 30
+  failureThreshold: 10
+
+image:
+  # -- The Docker registry
+  registry: docker.io
+  # -- Docker image repository
+  repository: grafana/grafana
+  # Overrides the Grafana image tag whose default is the chart appVersion
+  tag: ""
+  sha: ""
+  pullPolicy: IfNotPresent
+  pullSecrets: []
+
+testFramework:
+  enabled: true
+  image:
+    registry: docker.io
+    repository: bats/bats
+    tag: "v1.4.1"
+  imagePullPolicy: IfNotPresent
+  securityContext: {}
+  containerSecurityContext: {}
+  resources: {}
+
+# dns configuration for pod
+dnsPolicy: ~
+dnsConfig: {}
+
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 472
+  runAsGroup: 472
+  fsGroup: 472
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+    - ALL
+  seccompProfile:
+    type: RuntimeDefault
+
+# Enable creating the grafana configmap
+createConfigmap: true
+
+extraConfigmapMounts: []
+extraEmptyDirMounts: []
+extraLabels: {}
+
+downloadDashboardsImage:
+  registry: docker.io
+  repository: curlimages/curl
+  tag: 8.9.1
+  sha: ""
+  pullPolicy: IfNotPresent
+
+downloadDashboards:
+  env: {}
+  envFromSecret: ""
+  resources: {}
+  securityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+      - ALL
+    seccompProfile:
+      type: RuntimeDefault
+  envValueFrom: {}
+
+podPortName: grafana
+gossipPortName: gossip
+
+# Service Configuration
+service:
+  enabled: true
+  type: ClusterIP
+  port: 80
+  targetPort: 3000
+  portName: grafana-http
+
+# Pod Labels
+podLabels:
+  app.kubernetes.io/name: grafana
+  app.kubernetes.io/version: "12.0.2" 
+  app.kubernetes.io/managed-by: Helm 
+  helm.sh/chart: grafana-9.2.10
+
+serviceMonitor:
+  enabled: false
+  path: /metrics
+  labels: {}
+  interval: 30s
+  scheme: http
+  tlsConfig: {}
+  scrapeTimeout: 30s
+  relabelings: []
+  metricRelabelings: []
+  basicAuth: {}
+  targetLabels: []
+
+extraExposePorts: []
+
+# overrides pod.spec.hostAliases in the grafana deployment's pods
+hostAliases: []
+
+
+
+# -- BETA: Configure the gateway routes for the chart here.
+# Gateway routes are commented out as we're using Ingress instead
+# route:
+#   main:
+#     enabled: false
+#     apiVersion: gateway.networking.k8s.io/v1
+#     kind: HTTPRoute
+#     annotations: {}
+#     labels: {}
+#     hostnames: []
+#     parentRefs: []
+#     matches:
+#       - path:
+#           type: PathPrefix
+#           value: /
+#     filters: []
+#     additionalRules: []
+
+resources: {}
+
+## Node labels for pod assignment
+nodeSelector: {}
+
+## Tolerations for pod assignment
+tolerations: []
+
+## Affinity for pod assignment (evaluated as template)
+affinity: {}
+
+## Topology Spread Constraints
+topologySpreadConstraints: []
+
+## Additional init containers (evaluated as template)
+extraInitContainers: []
+
+## Enable an Specify container in extraContainers.
+extraContainers: ""
+
+## Volumes that can be used in init containers that will not be mounted to deployment pods
+extraContainerVolumes: []
+
+## Enable persistence using Persistent Volume Claims
+persistence:
+  type: pvc
+  enabled: true
+  accessModes:
+    - ReadWriteOnce
+  size: 10Gi
+  finalizers:
+    - kubernetes.io/pvc-protection
+  extraPvcLabels: {}
+  disableWarning: false
+  inMemory:
+    enabled: false
+  lookupVolumeName: true
+
+initChownData:
+  enabled: true
+  image:
+    registry: docker.io
+    repository: library/busybox
+    tag: "1.31.1"
+    sha: ""
+    pullPolicy: IfNotPresent
+  resources: {}
+  securityContext:
+    runAsNonRoot: false
+    runAsUser: 0
+    seccompProfile:
+      type: RuntimeDefault
+    capabilities:
+      add:
+        - CHOWN
+
+# Administrator credentials when not using an existing secret
+adminUser: admin
+
+# Use an existing secret for the admin user.
+admin:
+  existingSecret: ""
+  userKey: admin-user
+  passwordKey: admin-password
+
+env: {}
+envValueFrom: {}
+envFromSecret: "azure-monitors"
+envRenderSecret: {}
+
+## The names of secrets in the same kubernetes namespace which contain values to be added to the environment
+envFromSecrets: []
+
+## ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#configmapenvsource-v1-core
+envFromConfigMaps: []
+
+# See https://kubernetes.io/docs/concepts/services-networking/connect-applications-service/#environment-variables
+enableServiceLinks: true
+
+## Additional grafana server secret mounts
+extraSecretMounts: []
+
+## Additional grafana server volume mounts
+extraVolumeMounts: []
+
+## Additional Grafana server volumes
+extraVolumes: []
+
+## Container Lifecycle Hooks
+lifecycleHooks: {}
+
+## Pass the plugins you want installed as a list.
+plugins:
+  - grafana-azure-monitor-datasource
+
+## ref: http://docs.grafana.org/administration/provisioning/#datasources
+datasources:
+  datasources.yaml:
+    apiVersion: 1
+    datasources:
+    - name: Azure Monitor
+      type: grafana-azure-monitor-datasource
+      access: proxy
+      jsonData:
+        azureAuthType: clientsecret
+        cloudName: azuremonitor
+        tenantId: $TENANTID
+        clientId: $CLIENTID
+        logAnalyticsDefaultWorkspace: "/subscriptions/SUB_ID/resourceGroups/RESOURE_NAME/providers/Microsoft.OperationalInsights/workspaces/cd-general-01"
+      secureJsonData:
+        clientSecret: $CLIENTSECRET
+      version: 1
+    - name: loki 
+      type: loki
+      access: proxy
+      url: http://loki-read.eddv3-hbt.svc.cluster.local:3100
+      isDefault: false
+      jsonData:
+        maxLines: 1000
+    - name: Jaeger
+      type: jaeger
+      access: proxy
+      url: http://jaeger-query.eddv3-hbt.svc.cluster.local:16686
+      isDefault: false
+      jsonData:
+        traceDuration: 24h
+        traceURL: "/jaeger"
+      secureJsonData: {}
+    - name: Prometheus
+      type: prometheus
+      access: proxy
+      url: http://kube-prometheus-stack-prometheus.eddv3-hbt.svc.cluster.local:9090
+      isDefault: true
+      jsonData:
+        timeInterval: "15s"
+    - name: Alertmanager
+      type: alertmanager  
+      access: proxy
+      url: http://kube-prometheus-stack-alertmanager.eddv3-hbt.svc.cluster.local:9093
+      isDefault: false
+      jsonData:
+        timeInterval: "15s"
+
+## Configure grafana alerting (can be templated)
+alerting: {}
+
+## Configure notifiers
+notifiers: {}
+
+## Configure grafana dashboard providers
+dashboardProviders:
+  dashboardproviders.yaml:
+    apiVersion: 1
+    providers:
+    - name: 'default'
+      orgId: 1
+      folder: 'AKS eddv3-hbt'
+      type: file
+      disableDeletion: false
+      editable: true
+      options:
+        path: /var/lib/grafana/dashboards/default
+
+## Configure grafana dashboard to import
+dashboards:
+  default:
+    aks-node-pod-health-dashboard:
+      json: |
+        {
+          "id": null,
+          "uid": "akshealthdashboard",
+          "title": "AKS Node & Pod Health",
+          "tags": ["aks", "health"],
+          "timezone": "browser",
+          "schemaVersion": 36,
+          "version": 1,
+          "refresh": "30s",
+          "panels": [
+            {
+              "type": "stat",
+              "title": "Ready Nodes",
+              "datasource": {
+                "type": "grafana-azure-monitor-datasource",
+                "uid": "azure-monitor"
+              },
+              "targets": [
+                {
+                  "azureMonitor": {
+                    "timeGrain": "auto",
+                    "allowedTimeGrainsMs": [60000, 300000, 900000, 1800000, 3600000, 21600000, 43200000, 86400000],
+                    "dimensionFilters": []
+                  },
+                  "azureLogAnalytics": {
+                    "query": "KubeNodeInventory | where Status == 'Ready' | summarize count()",
+                    "timeColumn": "TimeGenerated",
+                    "workspace": "/subscriptions/SUB_ID/resourceGroups/RESOURE_NAME/providers/Microsoft.OperationalInsights/workspaces/cd-general-01"
+                  },
+                  "datasourceUid": "azure-monitor",
+                  "hide": false,
+                  "refId": "A"
+                }
+              ],
+              "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+              "fieldConfig": {
+                "defaults": {
+                  "mappings": [],
+                  "thresholds": {
+                    "steps": [
+                      { "color": "green", "value": null }
+                    ]
+                  }
+                }
+              }
+            },
+            {
+              "type": "stat",
+              "title": "Running Pods",
+              "datasource": {
+                "type": "grafana-azure-monitor-datasource",
+                "uid": "azure-monitor"
+              },
+              "targets": [
+                {
+                  "azureMonitor": {
+                    "timeGrain": "auto",
+                    "allowedTimeGrainsMs": [60000, 300000, 900000, 1800000, 3600000, 21600000, 43200000, 86400000],
+                    "dimensionFilters": []
+                  },
+                  "azureLogAnalytics": {
+                    "query": "KubePodInventory | where PodStatus == 'Running' | summarize count()",
+                    "timeColumn": "TimeGenerated",
+                    "workspace": "/subscriptions/SUB_ID/resourceGroups/RESOURE_NAME/providers/Microsoft.OperationalInsights/workspaces/cd-general-01"
+                  },
+                  "datasourceUid": "azure-monitor",
+                  "hide": false,
+                  "refId": "A"
+                }
+              ],
+              "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+              "fieldConfig": {
+                "defaults": {
+                  "mappings": [],
+                  "thresholds": {
+                    "steps": [
+                      { "color": "green", "value": null }
+                    ]
+                  }
+                }
+              }
+            },
+            {
+              "type": "stat",
+              "title": "CrashLoopBackOff Pods",
+              "datasource": {
+                "type": "grafana-azure-monitor-datasource",
+                "uid": "azure-monitor"
+              },
+              "targets": [
+                {
+                  "azureMonitor": {
+                    "timeGrain": "auto",
+                    "allowedTimeGrainsMs": [60000, 300000, 900000, 1800000, 3600000, 21600000, 43200000, 86400000],
+                    "dimensionFilters": []
+                  },
+                  "azureLogAnalytics": {
+                    "query": "KubePodInventory | where ContainerStatusReason == 'CrashLoopBackOff' | summarize count()",
+                    "timeColumn": "TimeGenerated",
+                    "workspace": "/subscriptions/SUB_ID/resourceGroups/RESOURE_NAME/providers/Microsoft.OperationalInsights/workspaces/cd-general-01"
+                  },
+                  "datasourceUid": "azure-monitor",
+                  "hide": false,
+                  "refId": "A"
+                }
+              ],
+              "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
+              "fieldConfig": {
+                "defaults": {
+                  "mappings": [],
+                  "thresholds": {
+                    "steps": [
+                      { "color": "red", "value": null }
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        }
+
+## Reference to external ConfigMap per provider.
+dashboardsConfigMaps: {}
+
+## Grafana's primary configuration
+grafana.ini:
+  paths:
+    data: /var/lib/grafana/
+    logs: /var/log/grafana
+    plugins: /var/lib/grafana/plugins
+    provisioning: /etc/grafana/provisioning
+  analytics:
+    check_for_updates: true
+  log:
+    mode: console
+    level: debug 
+  grafana_net:
+    url: https://grafana.net
+  server:
+   # root_url: "https://APIM_URL/homeowner-gateway-dv3/grafana"
+    root_url: "https://eddv3-hbt/grafana"
+    serve_from_sub_path: true
+  #  enforce_domain: true
+   # domain: "APIM_URL/homeowner-gateway-dv3/grafana"
+    # auth.generic_oauth:
+    #   redirect_uri: "https://APIM_URL/homeowner-gateway-dv3/grafana/login/generic_oauth"
+    # enable_gzip: true
+    # router_logging: false
+    # cookie_samesite: "none"
+    # cookie_secure: true
+    # enable_embedding: true
+  auth.azuread:
+    enabled: true
+ #   allow_sign_up: true
+    client_id: "${AZUREAD_CLIENT_ID}"
+    client_secret: "${AZUREAD_CLIENT_SECRET}"
+    scopes: openid email profile
+    auth_url: "https://login.microsoftonline.com/${TENANTID}/oauth2/v2.0/authorize"  
+    token_url: "https://login.microsoftonline.com/${TENANTID}/oauth2/v2.0/token"    
+
+## Grafana's LDAP configuration
+ldap:
+  enabled: false
+  existingSecret: ""
+  config: ""
+
+# When process namespace sharing is enabled, processes in a container are visible to all other containers in the same pod
+shareProcessNamespace: false
+
+## Grafana's SMTP configuration
+smtp:
+  existingSecret: ""
+  userKey: "user"
+  passwordKey: "password"
+
+## Sidecars that collect the configmaps with specified label and stores the included files them into the respective folders
+sidecar:
+  image:
+    registry: quay.io
+    repository: kiwigrid/k8s-sidecar
+    tag: 1.30.0
+    sha: ""
+  imagePullPolicy: IfNotPresent
+  resources: {}
+  securityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+      - ALL
+    seccompProfile:
+      type: RuntimeDefault
+  enableUniqueFilenames: false
+  readinessProbe: {}
+  livenessProbe: {}
+  alerts:
+    enabled: false
+    env: {}
+    label: grafana_alert
+    labelValue: ""
+    searchNamespace: null
+    watchMethod: WATCH
+    resource: both
+    reloadURL: "http://localhost:3000/api/admin/provisioning/alerting/reload"
+    script: null
+    skipReload: false
+    initAlerts: false
+    extraMounts: []
+    sizeLimit: {}
+  dashboards:
+    enabled: false
+    env: {}
+    envValueFrom: {}
+    SCProvider: true
+    label: grafana_dashboard
+    labelValue: ""
+    folder: /tmp/dashboards
+    defaultFolderName: null
+    searchNamespace: null
+    watchMethod: WATCH
+    resource: both
+    folderAnnotation: null
+    reloadURL: "http://localhost:3000/api/admin/provisioning/dashboards/reload"
+    script: null
+    skipReload: false
+    provider:
+      name: sidecarProvider
+      orgid: 1
+      folder: ''
+      folderUid: ''
+      type: file
+      disableDelete: false
+      allowUiUpdates: false
+      foldersFromFilesStructure: false
+    extraMounts: []
+    sizeLimit: {}
+  datasources:
+    enabled: false
+    env: {}
+    envValueFrom: {}
+    label: grafana_datasource
+    labelValue: ""
+    searchNamespace: null
+    watchMethod: WATCH
+    resource: both
+    reloadURL: "http://localhost:3000/api/admin/provisioning/datasources/reload"
+    script: null
+    skipReload: false
+    initDatasources: false
+    extraMounts: []
+    sizeLimit: {}
+  plugins:
+    enabled: false
+    env: {}
+    label: grafana_plugin
+    labelValue: ""
+    searchNamespace: null
+    watchMethod: WATCH
+    resource: both
+    reloadURL: "http://localhost:3000/api/admin/provisioning/plugins/reload"
+    script: null
+    skipReload: false
+    initPlugins: true
+    extraMounts: []
+    sizeLimit: {}
+  notifiers:
+    enabled: false
+    env: {}
+    label: grafana_notifier
+    labelValue: ""
+    searchNamespace: null
+    watchMethod: WATCH
+    resource: both
+    reloadURL: "http://localhost:3000/api/admin/provisioning/notifications/reload"
+    script: null
+    skipReload: false
+    initNotifiers: false
+    extraMounts: []
+    sizeLimit: {}
+
+## Override the deployment namespace
+namespaceOverride: ""
+
+## Number of old ReplicaSets to retain
+revisionHistoryLimit: 10
+
+## Add a separate remote image renderer deployment/service
+imageRenderer:
+  deploymentStrategy: {}
+  enabled: false
+  replicas: 1
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 5
+    targetCPU: "60"
+    targetMemory: ""
+    behavior: {}
+  serverURL: ""
+  renderingCallbackURL: ""
+  image:
+    registry: docker.io
+    repository: grafana/grafana-image-renderer
+    tag: latest
+    sha: ""
+    pullPolicy: Always
+  env:
+    HTTP_HOST: "0.0.0.0"
+    XDG_CONFIG_HOME: /tmp/.chromium
+    XDG_CACHE_HOME: /tmp/.chromium
+  envValueFrom: {}
+  serviceAccountName: ""
+  automountServiceAccountToken: false
+  securityContext: {}
+  containerSecurityContext:
+    seccompProfile:
+      type: RuntimeDefault
+    capabilities:
+      drop: ['ALL']
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+  podAnnotations: {}
+  hostAliases: []
+  priorityClassName: ''
+  service:
+    enabled: true
+    portName: 'http'
+    port: 8081
+    targetPort: 8081
+    appProtocol: ""
+  serviceMonitor:
+    enabled: false
+    path: /metrics
+    labels: {}
+    interval: 1m
+    scheme: http
+    tlsConfig: {}
+    scrapeTimeout: 30s
+    relabelings: []
+    targetLabels: []
+  grafanaProtocol: http
+  grafanaSubPath: ""
+  podPortName: http
+  revisionHistoryLimit: 10
+  networkPolicy:
+    limitIngress: true
+    limitEgress: false
+    extraIngressSelectors: []
+  resources: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  extraConfigmapMounts: []
+  extraSecretMounts: []
+  extraVolumeMounts: []
+  extraVolumes: []
+
+networkPolicy:
+  enabled: false
+  ingress: true
+  allowExternal: true
+  explicitNamespacesSelector: {}
+  egress:
+    enabled: false
+    blockDNSResolution: false
+    ports: []
+    to: []
+
+# Enable backward compatibility of kubernetes where version below 1.13 doesn't have the enableServiceLinks option
+enableKubeBackwardCompatibility: false
+useStatefulSet: false
+
+# extraObjects could be utilized to add dynamic manifests via values
+extraObjects: []
+
+# assertNoLeakedSecrets is a helper function defined in _helpers.tpl that checks if secret
+# values are not exposed in the rendered grafana.ini configmap.
+assertNoLeakedSecrets: true
+
+
+-----
+#############loki#############################
+loki:
+  auth_enabled: false
+  limits_config:
+    allow_structured_metadata: true
+    retention_period: 744h  # 31 days retention
+  schemaConfig:
+    configs:
+      - from: 2024-04-01
+        store: tsdb
+        object_store: s3
+        schema: v13
+        index:
+          prefix: loki_index_
+          period: 24h
+
+# Deployment configuration
+deploymentMode: SimpleScalable
+backend:
+  replicas: 1
+read:
+  replicas: 1
+write:
+  replicas: 2
+
+# Storage configuration
+minio:
+  enabled: true
+chunksCache:
+  enabled: false
+
+# Disable unused components
+singleBinary:
+  replicas: 0
+ingester:
+  replicas: 0
+querier:
+  replicas: 0
+queryFrontend:
+  replicas: 0
+queryScheduler:
+  replicas: 0
+distributor:
+  replicas: 0
+compactor:
+  replicas: 0
+indexGateway:
+  replicas: 0
+bloomCompactor:
+  replicas: 0
+bloomGateway:
+  replicas: 0
+---
+# Enable OpenTelemetry receiver
+gateway:
+  enabled: true
+  otlp:
+    enabled: true
+    grpc:
+      enabled: true
+      service:
+        port: 4317
+    http:
+      enabled: true
+      service:
+        port: 4318
+################Prometheus operator####################################
+
+grafana:
+  enabled: false
+
+installCRDs: true
+
+prometheus:
+  prometheusSpec:
+    additionalScrapeConfigs:
+      - job_name: "otel-collector"
+        scrape_interval: 10s
+        static_configs:
+          - targets: ["otelcollector-collector.eddv3-hbt.svc.cluster.local:8889"]
+        metrics_path: "/metrics"
+        honor_labels: true
+
+---
+
+prometheus:
+  additionalServiceMonitors:
+    - name: otel-collector-monitor
+      selector:
+        matchLabels:
+          app.kubernetes.io/name: opentelemetry-collector
+      namespaceSelector:
+        matchNames:
+          - eddv3-hbt
+      endpoints:
+        - port: prometheus
+          interval: 10s
+
+################Jaeger####################################
+
+global:
+  imageRegistry:
+
+provisionDataStore:
+  cassandra: false
+  elasticsearch: false
+  kafka: false
+
+networkPolicy:
+  enabled: false
+
+allInOne:
+  enabled: true
+storage:
+  type: memory
+agent:
+  enabled: false
+collector:
+  enabled: false
+  replicaCount: 1
+  service:
+    type: ClusterIP
+ 
+query:
+  enabled: false
+  replicaCount: 1
+  service:
+    type: ClusterIP
+
+# resources:
+#   limits:
+#     cpu: 500m
+#     memory: 512Mi
+#   requests:
+#     cpu: 100m
+#     memory: 128Mi
+
+################otel-operator-values####################################
+
+
+# ServiceAccount for OpenTelemetry Collector
+apiVersion: v1
+kind: ServiceAccount
 metadata:
-  name: grafana
-  annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /external/grafana/$2
-    nginx.ingress.kubernetes.io/use-regex: "true"
-    nginx.ingress.kubernetes.io/configuration-snippet: |
-      proxy_set_header X-Forwarded-Prefix /external/grafana;
-      proxy_set_header Host apim.company.com;
-      proxy_set_header X-Forwarded-Host apim.company.com;
-      proxy_set_header X-Forwarded-Proto https;
+  name: opentelemetry-operator
+  namespace: eddv3-hbt
+  labels:
+    app: opentelemetry-operator
+---
+# ClusterRole for OpenTelemetry Collector ServiceAccount
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: opentelemetry-operator
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "namespaces", "nodes"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["apps"]
+    resources: ["replicasets"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["extensions"]
+    resources: ["replicasets"]
+    verbs: ["get", "list", "watch"]
+---
+# ClusterRoleBinding for OpenTelemetry Collector ServiceAccount
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: opentelemetry-operator
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: opentelemetry-collector
+subjects:
+  - kind: ServiceAccount
+    name: opentelemetry-collector
+    namespace: eddv3-hbt
+---
+
+# OpenTelemetry Operator configuration
+manager:
+  image:
+    repository: otel/opentelemetry-operator
+    tag: v0.127.0
+
+rbac:
+  create: true
+---
+# Additional ClusterRole for OpenTelemetry Operator
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: otel-operator-extra
+rules:
+  - apiGroups: ["opentelemetry.io"]
+    resources: ["targetallocators"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["eddv3-hbt.coreos.com"]
+    resources: ["servicemonitors", "podmonitors"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["policy"]
+    resources: ["poddisruptionbudgets"]
+    verbs: ["get", "list", "watch"]
+---
+# ClusterRoleBinding for OpenTelemetry Operator extra permissions
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: otel-operator-extra-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: otel-operator-extra
+subjects:
+  - kind: ServiceAccount
+    name: opentelemetry-operator
+    namespace: eddv3-hbt
+
+
+#########################otel-collector-crd############################################
+apiVersion: opentelemetry.io/v1beta1
+kind: OpenTelemetryCollector
+metadata:
+  name: otelcollector
+  namespace: eddv3-hbt
+  labels:
+    app: opentelemetry-collector
 spec:
-  rules:
-    - host: apim.company.com
-      http:
-        paths:
-          - path: /grafana(/|$)(.*)
-            pathType: ImplementationSpecific
-            backend:
-              service:
-                name: grafana
-                port:
-                  number: 80
+  mode: deployment
+  image: otel/opentelemetry-collector-contrib:0.128.0
+  serviceAccount: opentelemetry-collector
+  replicas: 2
+
+  env:
+    - name: K8S_NODE_NAME
+      valueFrom:
+        fieldRef:
+          fieldPath: spec.nodeName
+    - name: K8S_POD_NAME
+      valueFrom:
+        fieldRef:
+          fieldPath: metadata.name
+    - name: K8S_POD_NAMESPACE
+      valueFrom:
+        fieldRef:
+          fieldPath: metadata.namespace
+    - name: K8S_POD_IP
+      valueFrom:
+        fieldRef:
+          fieldPath: status.podIP
+
+  resources:
+    requests:
+      cpu: 500m
+      memory: 800Mi
+    limits:
+      cpu: 1000m
+      memory: 1600Mi
+
+  config:
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: "0.0.0.0:4317"
+          http:
+            endpoint: "0.0.0.0:4318"
+      jaeger:
+        protocols:
+          grpc:
+            endpoint: "0.0.0.0:14250"
+          thrift_http:
+            endpoint: "0.0.0.0:14268"
+          thrift_compact:
+            endpoint: "0.0.0.0:6831"
+      loki:
+        protocols:
+          http:
+            endpoint: "0.0.0.0:3500"
+            include_metadata: true
+          grpc:
+            endpoint: "0.0.0.0:3600"
+        use_incoming_timestamp: true
+
+    processors:
+      batch:
+        timeout: 200ms
+        send_batch_size: 1024
+        send_batch_max_size: 4096
+      memory_limiter:
+        check_interval: 5s
+        limit_percentage: 80
+        spike_limit_mib: 64
+        limit_mib: 512
+      groupbytrace: {}
+      resource:
+        attributes:
+          - key: service.name
+            from_attribute: service.name
+            action: insert
+          - key: k8s.container.name
+            from_attribute: k8s.container.name
+            action: insert
+          - key: k8s.namespace.name
+            from_attribute: k8s.namespace.name
+            action: insert
+          - key: k8s.pod.name
+            from_attribute: k8s.pod.name
+            action: insert
+          - key: k8s.node.name
+            from_attribute: k8s.node.name
+            action: insert
+          - key: host.name
+            from_attribute: host.name
+            action: insert
+          - key: service.name
+            from_attribute: service.name
+            action: upsert
+          - key: service.namespace
+            from_attribute: service.namespace
+            action: upsert
+          - key: cluster.name
+            value: "clustername"
+            action: insert
+      resourcedetection:
+        detectors: [env, system]
+        override: false
+        timeout: 2s
+      transform:
+        log_statements:
+          - context: log
+            statements:
+              - set(attributes["processing.note"], "Log enriched with resource and trace context")
+              - set(attributes["service.name"], resource.attributes["service.name"])
+              - set(attributes["k8s.pod.name"], resource.attributes["k8s.pod.name"])
+              - set(attributes["k8s.node.name"], resource.attributes["k8s.node.name"])
+              - set(attributes["host.name"], resource.attributes["host.name"])
+              - set(attributes["cluster.name"], resource.attributes["cluster.name"])
+              - set(attributes["trace_id"], trace_id)
+              - set(attributes["span_id"], span_id)
+      metricstransform:
+        transforms:
+          - include: system.cpu.usage
+            action: update
+            operations:
+              - action: add_label
+                new_label: host.name
+                new_value: host.name
+              - action: add_label
+                new_label: cluster.name
+                new_value: clustername
+          - include: system.memory.usage
+            action: update
+            operations:
+              - action: add_label
+                new_label: host.name
+                new_value: host.name
+              - action: add_label
+                new_label: cluster.name
+                new_value: clustername
+
+    exporters:
+      debug:
+        verbosity: basic
+      otlphttp:
+        endpoint: "http://loki-write.eddv3-hbt.svc.cluster.local:3100/otlp"
+        tls:
+          insecure: true
+        headers:
+          X-Scope-OrgID: tenant-1
+      prometheus:
+        endpoint: "0.0.0.0:8889"
+        namespace: "eddv3-hbt"
+        const_labels:
+          k8s_cluster: "clustername"
+        send_timestamps: true
+        enable_open_metrics: true
+      otlp/jaeger:
+        endpoint: "http://jaeger-collector.eddv3-hbt.svc.cluster.local:4317"
+        tls:
+          insecure: true
+        headers:
+          "X-Tenant-ID": "default"
+
+    extensions:
+      health_check:
+        endpoint: "0.0.0.0:13133"
+        path: "/health"
+      pprof:
+        endpoint: "0.0.0.0:1777"
+      zpages:
+        endpoint: "0.0.0.0:55679"
+
+    service:
+      telemetry:
+       # metrics_address: "0.0.0.0:8888"
+        metrics:
+          level: detailed
+          readers: 
+             - pull: 
+                exporter:
+                  prometheus:
+                    host: 0.0.0.0 
+                    port: 9464
+        logs:
+          level: debug
+      extensions: [health_check, pprof, zpages]
+      pipelines:
+        metrics:
+          receivers: [otlp]
+          processors: [memory_limiter, resourcedetection, resource, metricstransform, batch]
+          exporters: [debug, prometheus]
+        traces:
+          receivers: [otlp, jaeger]
+          processors: [memory_limiter, resourcedetection, resource, groupbytrace, batch]
+          exporters: [debug, otlp/jaeger]
+        logs:
+          receivers: [otlp, loki]
+          processors: [memory_limiter, resourcedetection, resource, transform, batch]
+          exporters: [debug, otlphttp]
+
+
+######otel-values-dev###################
+
+# OpenTelemetry Collector Helm Values Configuration
+# Deploy with: helm install otel-collector open-telemetry/opentelemetry-collector -f values.yaml
+
+# mode: "deployment"
+# nameOverride: "opentelemetry-collector"
+# fullnameOverride: "opentelemetry-collector"
+# replicaCount: 2
+
+# image:
+#   repository: "otel/opentelemetry-collector-contrib"
+#   pullPolicy: IfNotPresent
+#   tag: "0.128.0"
+
+# resources:
+#   requests:
+#     cpu: 500m
+#     memory: 800Mi
+#   limits:
+#     cpu: 1000m
+#     memory: 1600Mi
+
+# serviceAccount:
+#   create: true
+
+# configMap:
+#   create: true
+#   existingName: ""
+
+
+
+# config:
+#   receivers:
+#     otlp:
+#       protocols:
+#         grpc:
+#           endpoint: 0.0.0.0:4317
+#         http:
+#           endpoint: 0.0.0.0:4318
+#     jaeger:
+#       protocols:
+#         grpc:
+#           endpoint: 0.0.0.0:14250
+#         thrift_http:
+#           endpoint: 0.0.0.0:14268
+#         thrift_compact:
+#           endpoint: 0.0.0.0:6831
+#     loki:
+#       protocols:
+#         http:
+#           endpoint: 0.0.0.0:3500
+#           include_metadata: true 
+#         grpc:
+#           endpoint: 0.0.0.0:3600
+#       use_incoming_timestamp: true
+  
+#   processors:
+#     batch: 
+#       timeout: 200ms
+#       send_batch_size: 1024 
+#       send_batch_max_size: 4096
+
+#     memory_limiter:
+#       check_interval: 5s
+#       limit_percentage: 80
+#       spike_limit_mib: 64
+#       limit_mib: 512
+
+#     resource:
+#       attributes:
+#         - key: service.name
+#           from_attribute: service.name
+#           action: insert
+#         - key: k8s.container.name
+#           from_attribute: k8s.container.name
+#           action: insert
+#         - key: k8s.namespace.name
+#           from_attribute: k8s.namespace.name
+#           action: insert
+#         - key: k8s.pod
+#           from_attribute: k8s.pod
+#           action: insert
+#         - key: service.name
+#           from_attribute: service.name
+#           action: upsert 
+#         - key: service.namespace
+#           from_attribute: service.namespace
+#           action: upsert
+
+#     groupbytrace: {}
+
+#     transform:
+#       log_statements:
+#         - context: log
+#           statements:
+#             - set(attributes["processing.note"], "Log enriched with resource and trace context")
+#             - set(attributes["service.name"], resource.attributes["service.name"])
+#             - set(attributes["k8s.pod.name"], resource.attributes["k8s.pod.name"])
+#             - set(attributes["host.name"], resource.attributes["host.name"])
+#             - set(attributes["trace_id"], trace_id)
+#             - set(attributes["span_id"], span_id)
+
+
+#   # Metric transformations (optional)
+#     metricstransform:
+#       transforms:
+#         - include: system.cpu.usage
+#           action: update
+#           operations:
+#             - action: add_label
+#               new_label: host.name
+#               new_value: host.name
+#         - include: system.memory.usage
+#           action: update
+#           operations:
+#             - action: add_label
+#               new_label: host.name
+#               new_value: host.name
+
+#     span:
+#       include:
+#  #       match_type: strict
+#         attributes:
+#           - key: http.method 
+#           - key: http.status_code
+#           - key: trace_id
+#           - key: span_id
+           
+
+#   exporters:
+#     debug: 
+#       verbosity: basic
+#     otlphttp:
+#       endpoint: "http://loki-write.eddv3-hbt.svc.cluster.local:3100/otlp"
+      
+#       # default_labels_enabled:
+#       #   exporter: true
+#       #   job: true      
+#       # labels:
+#       #   attributes:
+#       #     container_name: "k8s.container.name"
+#       #     namespace_name:  "k8s.namespace.name"
+#       #     pod_name: "k8s.pod.name"
+          
+#       tls:
+#         insecure: true
+#     prometheus:
+#       endpoint: "0.0.0.0:8889"
+#       namespace: "eddv3-hbt"
+#       const_labels:
+#         k8s_cluster: "CLSUTER_NAME"
+#       send_timestamps: true 
+#       enable_open_metrics: true 
+#     otlp:
+#       endpoint: "http://jaeger-collector.eddv3-hbt.svc.cluster.local:4317"
+#       tls:
+#         insecure: true
+#     # Named OTLP exporter for Jaeger
+#     otlp/jaeger:
+#       endpoint: "http://jaeger-collector.eddv3-hbt.svc.cluster.local:4317"
+#       tls:
+#         insecure: true
+  
+#   extensions:
+#     health_check:
+#       endpoint: 0.0.0.0:13133
+
+#   service:
+#     telemetry:
+#       logs: 
+#         level: debug
+#     extensions:
+#       - health_check
+#     pipelines: 
+#       metrics:
+#         receivers: [otlp]
+#         processors: [memory_limiter, resource, metricstransform, batch]
+#         exporters: [debug, prometheus]
+#       traces:
+#         receivers: [otlp, jaeger]
+#         processors: [memory_limiter, resource, span, groupbytrace, batch]
+#         exporters: [debug, otlp/jaeger]
+#       logs:
+#         receivers: [otlp, loki]
+#         processors: [resource,  transform, memory_limiter, batch]
+#         exporters: [debug, otlphttp]
+
+
+# ports:
+#   otlp:
+#     enabled: true
+#     containerPort: 4317
+#     servicePort: 4317
+#     hostPort: 4317
+#   otlp-http:
+#     enabled: true
+#     containerPort: 4318
+#     servicePort: 4318
+#   jaeger-compact:
+#     enabled: true
+#     containerPort: 6831
+#     protocol: UDP
+#   jaeger-thrift:
+#     enabled: true
+#     containerPort: 14268
+#   jaeger-grpc:
+#     enabled: true
+#     containerPort: 14250
+#   metrics:
+#     enabled: true
+#     containerPort: 8888
+#     servicePort: 8888
+#     hostPort: 8888
+#     protocol: TCP 
+#   prometheus:
+#     enabled: true
+#     containerPort: 8889
+#     servicePort: 8889
+#     hostPort: 8889
+#     protocol: TCP 
+
+
+# livenessProbe:
+#   httpGet:
+#     path: /
+#     port: 13133
+#   initialDelaySeconds: 15
+#   periodSeconds: 20
+#   timeoutSeconds: 5
+#   failureThreshold: 3
+
+# readinessProbe:
+#   httpGet:
+#     path: /
+#     port: 13133
+#   initialDelaySeconds: 5
+#   periodSeconds: 10
+#   timeoutSeconds: 3
+#   failureThreshold: 3
+
+# autoscaling:
+#   enabled: true
+#   minReplicas: 2
+#   maxReplicas: 7
+#   targetCPUUtilizationPercentage: 90
+#   targetMemoryUtilizationPercentage: 90
+
+# useGOMEMLIMIT: true
+
+mode: "deployment"
+nameOverride: "opentelemetry-collector"
+fullnameOverride: "opentelemetry-collector"
+replicaCount: 2
+
+image:
+  repository: "otel/opentelemetry-collector-contrib"
+  pullPolicy: IfNotPresent
+  tag: "0.128.0"
+
+resources:
+  requests:
+    cpu: 500m
+    memory: 800Mi
+  limits:
+    cpu: 1000m
+    memory: 1600Mi
+
+serviceAccount:
+  create: true
+
+configMap:
+  create: true
+  existingName: ""
+
+config:
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: 0.0.0.0:4317
+        http:
+          endpoint: 0.0.0.0:4318
+    jaeger:
+      protocols:
+        grpc:
+          endpoint: 0.0.0.0:14250
+        thrift_http:
+          endpoint: 0.0.0.0:14268
+        thrift_compact:
+          endpoint: 0.0.0.0:6831
+    loki:
+      protocols:
+        http:
+          endpoint: 0.0.0.0:3500
+          include_metadata: true 
+        grpc:
+          endpoint: 0.0.0.0:3600
+      use_incoming_timestamp: true
+
+  processors:
+    batch: 
+      timeout: 200ms
+      send_batch_size: 1024 
+      send_batch_max_size: 4096
+
+    memory_limiter:
+      check_interval: 5s
+      limit_percentage: 80
+      spike_limit_mib: 64
+      limit_mib: 512
+
+    # resourcedetection:
+    #   detectors: [env, system, kubernetes]
+    #   timeout: 2s
+    #   override: false
+
+    resource:
+      attributes:
+        - key: service.name
+          from_attribute: service.name
+          action: insert
+        - key: k8s.container.name
+          from_attribute: k8s.container.name
+          action: insert
+        - key: k8s.namespace.name
+          from_attribute: k8s.namespace.name
+          action: insert
+        - key: k8s.pod.name
+          from_attribute: k8s.pod.name
+          action: insert
+        - key: host.name
+          from_attribute: host.name
+          action: insert
+        - key: service.name
+          from_attribute: service.name
+          action: upsert 
+        - key: service.namespace
+          from_attribute: service.namespace
+          action: upsert
+
+    groupbytrace: {}
+
+    transform:
+      log_statements:
+        - context: log
+          statements:
+            - set(attributes["processing.note"], "Log enriched with resource and trace context")
+            - set(attributes["service.name"], resource.attributes["service.name"])
+            - set(attributes["k8s.pod.name"], resource.attributes["k8s.pod.name"])
+            - set(attributes["host.name"], resource.attributes["host.name"])
+            - set(attributes["trace_id"], trace_id)
+            - set(attributes["span_id"], span_id)
+
+    metricstransform:
+      transforms:
+        - include: system.cpu.usage
+          action: update
+          operations:
+            - action: add_label
+              new_label: host.name
+              new_value: host.name
+        - include: system.memory.usage
+          action: update
+          operations:
+            - action: add_label
+              new_label: host.name
+              new_value: host.name
+
+  exporters:
+    debug: 
+      verbosity: basic
+    otlphttp:
+      endpoint: "http://loki-write.eddv3-hbt.svc.cluster.local:3100/otlp"
+      tls:
+        insecure: true
+    prometheus:
+      endpoint: "0.0.0.0:8889"
+      namespace: "eddv3-hbt"
+      const_labels:
+        k8s_cluster: "CLUSTER_NAME"
+      send_timestamps: true 
+      enable_open_metrics: true 
+    otlp:
+      endpoint: "http://jaeger-collector.eddv3-hbt.svc.cluster.local:4317"
+      tls:
+        insecure: true
+    otlp/jaeger:
+      endpoint: "http://jaeger-collector.eddv3-hbt.svc.cluster.local:4317"
+      tls:
+        insecure: true
+
+  extensions:
+    health_check:
+      endpoint: 0.0.0.0:13133
+
+  service:
+    telemetry:
+      logs: 
+        level: debug
+    extensions:
+      - health_check
+    pipelines: 
+      metrics:
+        receivers: [otlp]
+        processors: [memory_limiter, resource, metricstransform, batch]
+        exporters: [debug, prometheus]
+
+      traces:
+        receivers: [otlp, jaeger]
+        processors: [memory_limiter,  resource, groupbytrace, batch]
+        exporters: [debug, otlp/jaeger]
+
+      logs:
+        receivers: [otlp, loki]
+        processors: [ resource, transform, memory_limiter, batch]
+        exporters: [debug, otlphttp]
+
+ports:
+  otlp:
+    enabled: true
+    containerPort: 4317
+    servicePort: 4317
+    hostPort: 4317
+  otlp-http:
+    enabled: true
+    containerPort: 4318
+    servicePort: 4318
+  jaeger-compact:
+    enabled: true
+    containerPort: 6831
+    protocol: UDP
+  jaeger-thrift:
+    enabled: true
+    containerPort: 14268
+  jaeger-grpc:
+    enabled: true
+    containerPort: 14250
+  metrics:
+    enabled: true
+    containerPort: 8888
+    servicePort: 8888
+    hostPort: 8888
+    protocol: TCP 
+  prometheus:
+    enabled: true
+    containerPort: 8889
+    servicePort: 8889
+    hostPort: 8889
+    protocol: TCP 
+
+livenessProbe:
+  httpGet:
+    path: /
+    port: 13133
+  initialDelaySeconds: 15
+  periodSeconds: 20
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /
+    port: 13133
+  initialDelaySeconds: 5
+  periodSeconds: 10
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 7
+  targetCPUUtilizationPercentage: 90
+  targetMemoryUtilizationPercentage: 90
+
+useGOMEMLIMIT: true
+
+
+
