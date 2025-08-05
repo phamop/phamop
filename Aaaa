@@ -1,2 +1,82 @@
 Error creating: pods "otelcollector-collector-c6f7bcb-" is forbidden: error looking up service account eddv3-hbt/opentelemetry-collector: serviceaccount "opentelemetry-collector" not found
-10m         Warning   FailedCreate              replicaset/otelcollector-collector-6487bf8fb7          Er
+
+
+# ServiceAccount for OpenTelemetry Collector
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: opentelemetry-collector
+  namespace: eddv3-hbt
+  labels:
+    app: opentelemetry-collector
+---
+# ClusterRole for OpenTelemetry Collector ServiceAccount
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: opentelemetry-collector
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "namespaces", "nodes"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["apps"]
+    resources: ["replicasets"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["extensions"]
+    resources: ["replicasets"]
+    verbs: ["get", "list", "watch"]
+---
+# ClusterRoleBinding for OpenTelemetry Collector ServiceAccount
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: opentelemetry-collector
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: opentelemetry-collector
+subjects:
+  - kind: ServiceAccount
+    name: opentelemetry-collector
+    namespace: eddv3-hbt
+---
+
+# OpenTelemetry Operator configuration
+manager:
+  image:
+    repository: otel/opentelemetry-operator
+    tag: v0.127.0
+
+rbac:
+  create: true
+---
+# Additional ClusterRole for OpenTelemetry Operator
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: otel-operator-extra
+rules:
+  - apiGroups: ["opentelemetry.io"]
+    resources: ["targetallocators"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["eddv3-hbt.coreos.com"]
+    resources: ["servicemonitors", "podmonitors"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["policy"]
+    resources: ["poddisruptionbudgets"]
+    verbs: ["get", "list", "watch"]
+---
+# ClusterRoleBinding for OpenTelemetry Operator extra permissions
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: otel-operator-extra-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: otel-operator-extra
+subjects:
+  - kind: ServiceAccount
+    name: opentelemetry-operator
+    namespace: eddv3-hbt
+
