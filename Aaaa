@@ -1,9 +1,28 @@
-  - apiGroups: ["batch"]
-    resources: ["jobs", "cronjobs"]
-    verbs: ["get", "list", "watch"]
-  - apiGroups: ["autoscaling"]
-    resources: ["horizontalpodautoscalers"]
-    verbs: ["get", "list", "watch"]
+# OpenTelemetry Operator Configuration
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: opentelemetry-operator
+  namespace: eddv3-hbt
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: opentelemetry-operator
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: opentelemetry-operator
+    spec:
+      serviceAccountName: opentelemetry-operator
+      containers:
+      - name: opentelemetry-operator
+        image: otel/opentelemetry-operator:v0.127.0
+        env:
+        - name: WATCH_NAMESPACE
+          value: ""
+        - name: OPERATOR_NAME
+          value: "opentelemetry-operator"
 
 
 
