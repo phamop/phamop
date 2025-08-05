@@ -1,3 +1,52 @@
+grafana:
+  enabled: false
+
+installCRDs: true
+
+prometheus:
+  prometheusSpec:
+    additionalScrapeConfigs:
+      - job_name: "otel-collector"
+        scrape_interval: 10s
+        static_configs:
+          - targets: ["otelcollector-collector.eddv3-hbt.svc.cluster.local:8889"]
+        metrics_path: "/metrics"
+        honor_labels: true
+
+---
+
+prometheus:
+  additionalServiceMonitors:
+    - name: otel-collector-monitor
+      selector:
+        matchLabels:
+          app.kubernetes.io/name: opentelemetry-collector
+      namespaceSelector:
+        matchNames:
+          - eddv3-hbt
+      endpoints:
+        - port: prometheus
+          interval: 10s
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: otel-collector-metrics
+  namespace: eddv3-hbt
+spec:
+  selector:
+    app: opentelemetry-collector
+  ports:
+    - name: prometheus
+      port: 8889
+      targetPort: 8889
+
+
+
+
+
+
 apiVersion: opentelemetry.io/v1beta1
 kind: OpenTelemetryCollector
 metadata:
