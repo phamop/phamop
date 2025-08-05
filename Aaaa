@@ -1,3 +1,13 @@
+  - apiGroups: ["batch"]
+    resources: ["jobs", "cronjobs"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["autoscaling"]
+    resources: ["horizontalpodautoscalers"]
+    verbs: ["get", "list", "watch"]
+
+
+
+
 Error creating: pods "otelcollector-collector-c6f7bcb-" is forbidden: error looking up service account eddv3-hbt/opentelemetry-collector: serviceaccount "opentelemetry-collector" not found
 
 
