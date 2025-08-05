@@ -1,3 +1,7 @@
+Warning   FailedCreate              replicaset/otel-collector-collector-5f94b9b7f4         Error creating: pods "otel-collector-collector-5f94b9b7f4-" is forbidden: error looking up service accoun
+
+
+
 apiVersion: opentelemetry.io/v1beta1
 kind: OpenTelemetryCollector
 metadata:
