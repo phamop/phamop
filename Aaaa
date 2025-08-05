@@ -1,6 +1,25 @@
-Warning: OpenTelemetryCollector v1alpha1 is deprecated. Migrate to v1beta1.
-Error from server (BadRequest): error when creating "/azp/agent/_work/37/s/devops/helm-charts/observability/otelcollector/otel-collector-crd.yaml": OpenTelemetryCollector in version "v1alpha1" cannot be handled as a OpenTelemetryCollector: strict decoding error: unknown field "spec.config.exporters", unknown field "spec.config.extensions", unknown field "spec.config.processors", unknown field "spec.config.receivers", unknown field "spec.config.service"
+  config: |
+    extensions:
+      health_check:
+        endpoint: 0.0.0.0:13133
+      pprof:
+        endpoint: 0.0.0.0:1777
+      zpages:
+        endpoint: 0.0.0.0:55679
 
-##[error]Warning: OpenTelemetryCollector v1alpha1 is deprecated. Migrate to v1beta1.
-##[error]Error from server (BadRequest): error when creating "/azp/agent/_work/37/s/devops/helm-charts/observability/otelcollector/otel-collector-crd.yaml": OpenTelemetryCollector in version "v1alpha1" cannot be handled as a OpenTelemetryCollector: strict decoding error: unknown field "spec.config.exporters", unknown field "spec.config.extensions", unknown field "spec.config.processors", unknown field "spec.config.receivers", unknown field "spec.config.service"
-##[error]The process '/usr/local/bin/kubectl' failed with exit code 1
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+          http:
+      jaeger:
+        protocols:
+          grpc:
+          thrift_http:
+          thrift_compact:
+      loki:
+        protocols:
+          http:
+            include_metadata: true
+          grpc:
+        use_incoming_timestamp: true
