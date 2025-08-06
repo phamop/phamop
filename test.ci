@@ -3,13 +3,18 @@ otel-collector
 0 / 1 up
 
 Endpoint	Labels	Last scrape	State
-http://otel-collector-metrics.eddv3-hbt.svc.cluster.local:8888/metrics
-instance="otel-collector-metrics.eddv3-hbt.svc.cluster.local:8888"
+http://otel-collector-collector.eddv3-hbt.svc.cluster.local:8888/metrics
+instance="otel-collector-collector.eddv3-hbt.svc.cluster.local:8888"
 job="otel-collector"
-1.37s ago
-50ms
+684ms ago
+68ms
 down
-Error scraping target: Get "http://otel-collector-metrics.eddv3-hbt.svc.cluster.local:8888/metrics": dial tcp: lookup otel-collector-metrics.eddv3-hbt.svc.cluster.local on 10.0.0.10:53: no such host
+Error scraping target: Get "http://otel-collector-collector.eddv3-hbt.svc.cluster.local:8888/metrics": dial tcp 10.0.0.3:8888: connect: connection refused
+
+
+
+
+
 apiVersion: v1
 kind: Service
 metadata:
