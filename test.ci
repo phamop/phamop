@@ -1,3 +1,9 @@
+kube-prometheus-stack-alertmanager               ClusterIP   10.0.0.78    <none>        9093/TCP,8080/TCP                                                                     5d23h
+kube-prometheus-stack-kube-state-metrics         ClusterIP   10.0.0.58    <none>        8080/TCP                                                                              5d23h
+kube-prometheus-stack-operator                   ClusterIP   10.0.0.53    <none>        443/TCP                                                                               5d23h
+kube-prometheus-stack-prometheus                 ClusterIP   10.0.0.20    <none>        9090/TCP,8080/TCP                                                                     5d23h
+kube-prometheus-stack-prometheus-node-exporter   ClusterIP   10.0.0.36    <none>        9100/TCP                                                                              5d23h
+
 otel-collector
 
 0 / 1 up
