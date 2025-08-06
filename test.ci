@@ -1,101 +1,4 @@
-otel-collector
-
-0 / 1 up
-
-Endpoint	Labels	Last scrape	State
-http://otel-collector.eddv3-hbt.svc.cluster.local:8889/metrics
-instance="otel-collector.eddv3-hbt.svc.cluster.local:8889"
-job="otel-collector"
-4.313s ago
-420ms
-down
-Error scraping target: Get "http://otel-collector.eddv3-hbt.svc.cluster.local:8889/metrics": dial tcp: lookup otel-collector.eddv3-hbt.svc.cluster.local on 10.0.0.10:53: no such host
-
-
-
-
-
-
-apiVersion: v1
-kind: Service
-metadata:
-  name: otel-collector
-  namespace: eddv3-hbt
-  labels:
-    app: opentelemetry-collector
-spec:
-  selector:
-    app: opentelemetry-collector
-  ports:
-    - name: prom-metrics
-      port: 8889
-      targetPort: 8889
-    - name: metrics
-      port: 8888
-      targetPort: 8888
-    - name: otlp-grpc
-      port: 4317
-      targetPort: 4317
-    - name: otlp-http
-      port: 4318
-      targetPort: 4318
-
-
-
-
-
-
-apiVersion: monitoring.coreos.com/v1
-kind: ServiceMonitor
-metadata:
-  name: otel-collector-monitor
-  namespace: eddv3-hbt
-  labels:
-    release: kube-prometheus-stack
-spec:
-  selector:
-    matchLabels:
-      app: opentelemetry-collector
-  endpoints:
-    - port: prom-metrics
-      interval: 10s
-      path: /metrics
-      honorLabels: true
-      relabelings:
-        - action: labelmap
-          regex: __meta_kubernetes_pod_label_(.+)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-otel-collector
-
-0 / 1 up
-
-Endpoint	Labels	Last scrape	State
-http://otelcollector-collector-monitoring.eddv3-hbt.svc.cluster.local:8888/metrics
-instance="otelcollector-collector-monitoring.eddv3-hbt.svc.cluster.local:8888"
-job="otel-collector"
-1.315s ago
-43ms
-down
-Error scraping target: Get "http://otelcollector-collector-monitoring.eddv3-hbt.svc.cluster.local:8888/metrics": dial tcp 10.0.0.118:8888: connect: connection refused
-
----
+Error scraping target: Get "http://10.244.1.192:8889/metrics": dial tcp 10.244.1.192:8889: connect: connection refused
 
 apiVersion: opentelemetry.io/v1beta1
 kind: OpenTelemetryCollector
@@ -130,7 +33,7 @@ spec:
       port: 8888
       protocol: TCP
     - name: prom-metrics
-      port: 9090
+      port: 8889
       protocol: TCP
     - name: health
       port: 13133
@@ -163,10 +66,10 @@ spec:
       cpu: 1000m
       memory: 1600Mi
 
-  # Health checks moved to pod annotations
-  podAnnotations:
-    checks/health: "/health"
-    checks/port: "13133"
+  # # Health checks moved to pod annotations
+  # podAnnotations:
+  #   checks/health: "/health"
+  #   checks/port: "13133"
 
   config:
     extensions:
@@ -181,9 +84,9 @@ spec:
       otlp:
         protocols:
           grpc:
-            endpoint: "0.0.0.0:4317"  # Added explicit endpoint
+            endpoint: "0.0.0.0:4317"  
           http:
-            endpoint: "0.0.0.0:4318"  # Added explicit endpoint
+            endpoint: "0.0.0.0:4318"  
       jaeger:
         protocols:
           grpc:
@@ -331,40 +234,9 @@ spec:
           receivers: [otlp, loki]
           processors: [memory_limiter, resourcedetection, resource, transform, batch]
           exporters: [debug, otlphttp]
----
-grafana:
-  enabled: false
-
-installCRDs: true
-
-prometheus:
-  prometheusSpec:
-    additionalScrapeConfigs:
-      - job_name: "otel-collector"
-        scrape_interval: 10s
-        static_configs:
-          - targets: ["otelcollector-collector-monitoring.eddv3-hbt.svc.cluster.local:8888"]
-        metrics_path: "/metrics"
-        honor_labels: true
-
-  additionalServiceMonitors:
-    - name: otel-collector-monitor
-      selector:
-        matchLabels:
-          app: opentelemetry-collector
-      namespaceSelector:
-        matchNames:
-          - eddv3-hbt
-      endpoints:
-        - port: metrics
-          interval: 10s
-          path: /metrics
-          honorLabels: true
-          relabelings:
-            - action: labelmap
-              regex: __meta_kubernetes_pod_label_(.+)
 
 ---
+
 apiVersion: v1
 kind: Service
 metadata:
@@ -373,20 +245,39 @@ metadata:
   labels:
     app: opentelemetry-collector
 spec:
+  selector:
+    app: opentelemetry-collector
   ports:
+    - name: prom-metrics
+      port: 8889
+      targetPort: 8889
     - name: metrics
       port: 8888
       targetPort: 8888
-    - name: prom-metrics
-      port: 9090
-      targetPort: 9090
     - name: otlp-grpc
       port: 4317
       targetPort: 4317
     - name: otlp-http
       port: 4318
       targetPort: 4318
-  selector:
-    app: opentelemetry-collector
 
-----
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: otel-collector-monitor
+  namespace: eddv3-hbt
+  labels:
+    release: kube-prometheus-stack
+spec:
+  selector:
+    matchLabels:
+      app: opentelemetry-collector
+  endpoints:
+    - port: prom-metrics
+      interval: 10s
+      path: /metrics
+      honorLabels: true
+      relabelings:
+        - action: labelmap
+          regex: __meta_kubernetes_pod_label_(.+)
