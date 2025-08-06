@@ -1,1 +1,187 @@
+apiVersion: opentelemetry.io/v1beta1
+kind: OpenTelemetryCollector
+metadata:
+  name: otel-collector
+  namespace: eddv3-hbt
+  labels:
+    app: opentelemetry-collector
+spec:
+  mode: deployment
+  image: otel/opentelemetry-collector-contrib:0.128.0
+  serviceAccount: opentelemetry-collector
+  replicas: 2
 
+  env:
+    - name: K8S_NODE_NAME
+      valueFrom:
+        fieldRef:
+          fieldPath: spec.nodeName
+    - name: K8S_POD_NAME
+      valueFrom:
+        fieldRef:
+          fieldPath: metadata.name
+    - name: K8S_POD_NAMESPACE
+      valueFrom:
+        fieldRef:
+          fieldPath: metadata.namespace
+    - name: K8S_POD_IP
+      valueFrom:
+        fieldRef:
+          fieldPath: status.podIP
+
+  resources:
+    requests:
+      cpu: 500m
+      memory: 800Mi
+    limits:
+      cpu: 1000m
+      memory: 1600Mi
+
+  # Health checks moved to pod annotations
+  podAnnotations:
+    checks/health: "/health"
+    checks/port: "13133"
+
+  config:
+    extensions:
+      health_check:
+        endpoint: "0.0.0.0:13133"
+      pprof:
+        endpoint: "0.0.0.0:1777"
+      zpages:
+        endpoint: "0.0.0.0:55679"
+
+    receivers:
+      otlp:
+        protocols:
+          grpc: {}
+          http: {}
+      jaeger:
+        protocols:
+          grpc: {}
+          thrift_compact: {}
+          thrift_http: {}
+      loki:
+        protocols:
+          grpc: {}
+          http:
+            include_metadata: true
+        use_incoming_timestamp: true
+
+    processors:
+      batch:
+        timeout: 200ms
+        send_batch_size: 1024
+        send_batch_max_size: 4096
+      memory_limiter:
+        check_interval: 5s
+        limit_percentage: 80
+        spike_limit_mib: 64
+        limit_mib: 512
+      groupbytrace: {}
+      resource:
+        attributes:
+          - key: service.name
+            from_attribute: service.name
+            action: insert
+          - key: k8s.container.name
+            from_attribute: k8s.container.name
+            action: insert
+          - key: k8s.namespace.name
+            from_attribute: k8s.namespace.name
+            action: insert
+          - key: k8s.pod.name
+            from_attribute: k8s.pod.name
+            action: insert
+          - key: k8s.node.name
+            from_attribute: k8s.node.name
+            action: insert
+          - key: host.name
+            from_attribute: host.name
+            action: insert
+          - key: service.name
+            from_attribute: service.name
+            action: upsert
+          - key: service.namespace
+            from_attribute: service.namespace
+            action: upsert
+          - key: cluster.name
+            value: clustername
+            action: insert
+      resourcedetection:
+        detectors: [env, system]
+        override: false
+        timeout: 2s
+      transform:
+        log_statements:
+          - context: log
+            statements:
+              - set(attributes["processing.note"], "Log enriched with resource and trace context")
+              - set(attributes["service.name"], resource.attributes["service.name"])
+              - set(attributes["k8s.pod.name"], resource.attributes["k8s.pod.name"])
+              - set(attributes["k8s.node.name"], resource.attributes["k8s.node.name"])
+              - set(attributes["host.name"], resource.attributes["host.name"])
+              - set(attributes["cluster.name"], resource.attributes["cluster.name"])
+              - set(attributes["trace_id"], trace_id)
+              - set(attributes["span_id"], span_id)
+      metricstransform:
+        transforms:
+          - include: system.cpu.usage
+            action: update
+            operations:
+              - action: add_label
+                new_label: host.name
+                new_value: host.name
+              - action: add_label
+                new_label: cluster.name
+                new_value: clustername
+          - include: system.memory.usage
+            action: update
+            operations:
+              - action: add_label
+                new_label: host.name
+                new_value: host.name
+              - action: add_label
+                new_label: cluster.name
+                new_value: clustername
+
+    exporters:
+      debug:
+        verbosity: detailed
+      otlphttp:
+        endpoint: http://loki-write.eddv3-hbt.svc.cluster.local:3100/otlp
+        tls:
+          insecure: true
+        headers:
+          X-Scope-OrgID: tenant-1
+      prometheus:
+        endpoint: "0.0.0.0:9090"
+        namespace: eddv3-hbt
+        const_labels:
+          k8s_cluster: clustername
+        send_timestamps: true
+        enable_open_metrics: true
+      otlp/jaeger:
+        endpoint: jaeger-collector.eddv3-hbt.svc.cluster.local:4317
+        tls:
+          insecure: true
+
+    service:
+      telemetry:
+        metrics:
+          level: detailed
+          address: "0.0.0.0:8888"
+      extensions: [health_check, pprof, zpages]
+      pipelines:
+        metrics:
+          receivers: [otlp]
+          processors: [memory_limiter, resourcedetection, resource, metricstransform, batch]
+          exporters: [debug, prometheus]
+        traces:
+          receivers: [otlp, jaeger]
+          processors: [memory_limiter, resourcedetection, resource, groupbytrace, batch]
+          exporters: [debug, otlp/jaeger]
+        logs:
+          receivers: [otlp, loki]
+          processors: [memory_limiter, resourcedetection, resource, transform, batch]
+          exporters: [debug, otlphttp]
