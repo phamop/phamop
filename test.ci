@@ -1,3 +1,11 @@
+http://otel-collector-metrics.eddv3-hbt.svc.cluster.local:8889/metrics
+instance="otel-collector-metrics.eddv3-hbt.svc.cluster.local:8889"
+job="otel-collector"
+1.885s ago
+1.445s
+down
+Error scraping target: Get "http://otel-collector-metrics.eddv3-hbt.svc.cluster.local:8889/metrics": dial tcp: lookup otel-collector-metrics.eddv3-hbt.svc.cluster.local
+
 apiVersion: v1
 kind: Service
 metadata:
