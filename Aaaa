@@ -1,6 +1,42 @@
-kubectl get serviceaccount -n eddv3-hbt opentelemetry-collector
-Warning   FailedCreate              replicaset/otel-collector-collector-5f94b9b7f4         Error creating: pods "otel-collector-collector-5f94b9b7f4-" is forbidden: error looking up service accoun
-
+ift-compact","port.name.new":"jaeger-thrift-c"}
+{"level":"info","ts":"2025-08-06T11:56:38Z","logger":"controllers.OpenTelemetryCollector","msg":"truncating container port name","opentelemetrycollector":"eddv3-hbt/otelcollector","port.name.prev":"jaeger-thrift-http","port.name.new":"jaeger-thrift-h"}
+{"level":"info","ts":"2025-08-06T11:56:38Z","logger":"controllers.OpenTelemetryCollector","msg":"couldn't determine metrics port from configuration, using 8888 default value","opentelemetrycollector":"eddv3-hbt/otelcollector","error":"missing port in address"}
+{"level":"info","ts":"2025-08-06T11:56:38Z","logger":"controllers.OpenTelemetryCollector","msg":"receiver's endpoint isn't a string","opentelemetrycollector":"eddv3-hbt/otel-collector"}
+{"level":"info","ts":"2025-08-06T11:56:38Z","logger":"controllers.OpenTelemetryCollector","msg":"receiver's endpoint isn't a string","opentelemetrycollector":"eddv3-hbt/otel-collector"}
+{"level":"info","ts":"2025-08-06T11:56:38Z","logger":"controllers.OpenTelemetryCollector","msg":"receiver's endpoint isn't a string","opentelemetrycollector":"eddv3-hbt/otel-collector"}
+{"level":"info","ts":"2025-08-06T11:56:38Z","logger":"controllers.OpenTelemetryCollector","msg":"truncating container port name","opentelemetrycollector":"eddv3-hbt/otel-collector","port.name.prev":"jaeger-thrift-compact","port.name.new":"jaeger-thrift-c"}
+{"level":"info","ts":"2025-08-06T11:56:38Z","logger":"controllers.OpenTelemetryCollector","msg":"truncating container port name","opentelemetrycollector":"eddv3-hbt/otel-collector","port.name.prev":"jaeger-thrift-http","port.name.new":"jaeger-thrift-h"}
+{"level":"info","ts":"2025-08-06T11:56:39Z","logger":"controllers.OpenTelemetryCollector","msg":"couldn't determine metrics port from configuration, using 8888 default value","opentelemetrycollector":"telemetry-sandbox/collector-sandbox","error":"missing port in address"}
+{"level":"info","ts":"2025-08-06T11:56:39Z","logger":"controllers.OpenTelemetryCollector","msg":"receiver's endpoint isn't a string","opentelemetrycollector":"eddv3-hbt/otelcollector"}
+{"level":"info","ts":"2025-08-06T11:56:39Z","logger":"controllers.OpenTelemetryCollector","msg":"receiver's endpoint isn't a string","opentelemetrycollector":"eddv3-hbt/otelcollector"}
+{"level":"info","ts":"2025-08-06T11:56:39Z","logger":"controllers.OpenTelemetryCollector","msg":"receiver's endpoint isn't a string","opentelemetrycollector":"eddv3-hbt/otelcollector"}
+{"level":"info","ts":"2025-08-06T11:56:39Z","logger":"controllers.OpenTelemetryCollector","msg":"truncating container port name","opentelemetrycollector":"eddv3-hbt/otelcollector","port.name.prev":"jaeger-thrift-compact","port.name.new":"jaeger-thrift-c"}
+{"level":"info","ts":"2025-08-06T11:56:39Z","logger":"controllers.OpenTelemetryCollector","msg":"truncating container port name","opentelemetrycollector":"eddv3-hbt/otelcollector","port.name.prev":"jaeger-thrift-http","port.name.new":"jaeger-thrift-h"}
+{"level":"info","ts":"2025-08-06T11:56:39Z","logger":"controllers.OpenTelemetryCollector","msg":"couldn't determine metrics port from configuration, using 8888 default value","opentelemetrycollector":"eddv3-hbt/otelcollector","error":"missing port in address"}
+{"level":"info","ts":"2025-08-06T11:56:40Z","logger":"controllers.OpenTelemetryCollector","msg":"receiver's endpoint isn't a string","opentelemetrycollector":"eddv3-hbt/otel-collector"}
+{"level":"info","ts":"2025-08-06T11:56:40Z","logger":"controllers.OpenTelemetryCollector","msg":"receiver's endpoint isn't a string","opentelemetrycollector":"eddv3-hbt/otel-collector"}
+{"level":"info","ts":"2025-08-06T11:56:40Z","logger":"controllers.OpenTelemetryCollector","msg":"receiver's endpoint isn't a string","opentelemetrycollector":"eddv3-hbt/otel-collector"}
+{"level":"info","ts":"2025-08-06T11:56:40Z","logger":"controllers.OpenTelemetryCollector","msg":"truncating container port name","opentelemetrycollector":"eddv3-hbt/otel-collector","port.name.prev":"jaeger-thrift-compact","port.name.new":"jaeger-thrift-c"}
+{"level":"info","ts":"2025-08-06T11:56:40Z","logger":"controllers.OpenTelemetryCollector","msg":"truncating container port name","opentelemetrycollector":"eddv3-hbt/otel-collector","port.name.prev":"jaeger-thrift-http","port.name.new":"jaeger-thrift-h"}
+{"level":"info","ts":"2025-08-06T11:56:41Z","logger":"controllers.OpenTelemetryCollector","msg":"couldn't determine metrics port from configuration, using 8888 default value","opentelemetrycollector":"telemetry-sandbox/collector-sandbox","error":"missing port in address"}
+{"level":"info","ts":"2025-08-06T11:56:42Z","logger":"controllers.OpenTelemetryCollector","msg":"receiver's endpoint isn't a string","opentelemetrycollector":"eddv3-hbt/otelcollector"}
+{"level":"info","ts":"2025-08-06T11:56:42Z","logger":"controllers.OpenTelemetryCollector","msg":"receiver's endpoint isn't a string","opentelemetrycollector":"eddv3-hbt/otelcollector"}
+{"level":"info","ts":"2025-08-06T11:56:42Z","logger":"controllers.OpenTelemetryCollector","msg":"receiver's endpoint isn't a string","opentelemetrycollector":"eddv3-hbt/otelcollector"}
+{"level":"info","ts":"2025-08-06T11:56:42Z","logger":"controllers.OpenTelemetryCollector","msg":"truncating container port name","opentelemetrycollector":"eddv3-hbt/otelcollector","port.name.prev":"jaeger-thrift-compact","port.name.new":"jaeger-thrift-c"}
+{"level":"info","ts":"2025-08-06T11:56:42Z","logger":"controllers.OpenTelemetryCollector","msg":"truncating container port name","opentelemetrycollector":"eddv3-hbt/otelcollector","port.name.prev":"jaeger-thrift-http","port.name.new":"jaeger-thrift-h"}
+{"level":"info","ts":"2025-08-06T11:56:42Z","logger":"controllers.OpenTelemetryCollector","msg":"couldn't determine metrics port from configuration, using 8888 default value","opentelemetrycollector":"eddv3-hbt/otelcollector","error":"missing port in address"}
+{"level":"info","ts":"2025-08-06T11:56:42Z","logger":"controllers.OpenTelemetryCollector","msg":"receiver's endpoint isn't a string","opentelemetrycollector":"eddv3-hbt/otel-collector"}
+{"level":"info","ts":"2025-08-06T11:56:42Z","logger":"controllers.OpenTelemetryCollector","msg":"receiver's endpoint isn't a string","opentelemetrycollector":"eddv3-hbt/otel-collector"}
+{"level":"info","ts":"2025-08-06T11:56:42Z","logger":"controllers.OpenTelemetryCollector","msg":"receiver's endpoint isn't a string","opentelemetrycollector":"eddv3-hbt/otel-collector"}
+{"level":"info","ts":"2025-08-06T11:56:42Z","logger":"controllers.OpenTelemetryCollector","msg":"truncating container port name","opentelemetrycollector":"eddv3-hbt/otel-collector","port.name.prev":"jaeger-thrift-compact","port.name.new":"jaeger-thrift-c"}
+{"level":"info","ts":"2025-08-06T11:56:42Z","logger":"controllers.OpenTelemetryCollector","msg":"truncating container port name","opentelemetrycollector":"eddv3-hbt/otel-collector","port.name.prev":"jaeger-thrift-http","port.name.new":"jaeger-thrift-h"}
+{"level":"info","ts":"2025-08-06T11:56:43Z","logger":"controllers.OpenTelemetryCollector","msg":"couldn't determine metrics port from configuration, using 8888 default value","opentelemetrycollector":"telemetry-sandbox/collector-sandbox","error":"missing port in address"}
+{"level":"info","ts":"2025-08-06T11:56:43Z","logger":"controllers.OpenTelemetryCollector","msg":"receiver's endpoint isn't a string","opentelemetrycollector":"eddv3-hbt/otelcollector"}
+{"level":"info","ts":"2025-08-06T11:56:43Z","logger":"controllers.OpenTelemetryCollector","msg":"receiver's endpoint isn't a string","opentelemetrycollector":"eddv3-hbt/otelcollector"}
+{"level":"info","ts":"2025-08-06T11:56:43Z","logger":"controllers.OpenTelemetryCollector","msg":"receiver's endpoint isn't a string","opentelemetrycollector":"eddv3-hbt/otelcollector"}
+{"level":"info","ts":"2025-08-06T11:56:43Z","logger":"controllers.OpenTelemetryCollector","msg":"truncating container port name","opentelemetrycollector":"eddv3-hbt/otelcollector","port.name.prev":"jaeger-thrift-compact","port.name.new":"jaeger-thrift-c"}
+{"level":"info","ts":"2025-08-06T11:56:43Z","logger":"controllers.OpenTelemetryCollector","msg":"truncating container port name","opentelemetrycollector":"eddv3-hbt/otelcollector","port.name.prev":"jaeger-thrift-http","port.name.new":"jaeger-thrift-h"}
+{"level":"info","ts":"2025-08-06T11:56:43Z","logger":"controllers.OpenTelemetryCollector","msg":"couldn't determine metrics port from configuration, using 8888 default value","opentelemetrycollector":"eddv3-hbt/otelcollector","error":"missing port in address"}
 
 
 apiVersion: opentelemetry.io/v1beta1
