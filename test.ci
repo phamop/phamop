@@ -1,8 +1,68 @@
-kube-prometheus-stack-alertmanager               ClusterIP   10.0.0.78    <none>        9093/TCP,8080/TCP                                                                     5d23h
-kube-prometheus-stack-kube-state-metrics         ClusterIP   10.0.0.58    <none>        8080/TCP                                                                              5d23h
-kube-prometheus-stack-operator                   ClusterIP   10.0.0.53    <none>        443/TCP                                                                               5d23h
-kube-prometheus-stack-prometheus                 ClusterIP   10.0.0.20    <none>        9090/TCP,8080/TCP                                                                     5d23h
-kube-prometheus-stack-prometheus-node-exporter   ClusterIP   10.0.0.36    <none>        9100/TCP                                                                              5d23h
+apiVersion: v1
+kind: Service
+metadata:
+  name: otel-collector
+  namespace: eddv3-hbt
+  labels:
+    app: opentelemetry-collector
+spec:
+  selector:
+    app: opentelemetry-collector
+  ports:
+    - name: prom-metrics
+      port: 8889
+      targetPort: 8889
+    - name: metrics
+      port: 8888
+      targetPort: 8888
+    - name: otlp-grpc
+      port: 4317
+      targetPort: 4317
+    - name: otlp-http
+      port: 4318
+      targetPort: 4318
+
+
+
+
+
+
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: otel-collector-monitor
+  namespace: eddv3-hbt
+  labels:
+    release: kube-prometheus-stack
+spec:
+  selector:
+    matchLabels:
+      app: opentelemetry-collector
+  endpoints:
+    - port: prom-metrics
+      interval: 10s
+      path: /metrics
+      honorLabels: true
+      relabelings:
+        - action: labelmap
+          regex: __meta_kubernetes_pod_label_(.+)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 otel-collector
 
