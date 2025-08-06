@@ -1,3 +1,29 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: otel-collector
+  namespace: eddv3-hbt
+  labels:
+    app: opentelemetry-collector
+spec:
+  ports:
+    - name: metrics
+      port: 8888
+      targetPort: 8888
+    - name: prom-metrics
+      port: 9090
+      targetPort: 9090
+    - name: otlp-grpc
+      port: 4317
+      targetPort: 4317
+    - name: otlp-http
+      port: 4318
+      targetPort: 4318
+  selector:
+    app: opentelemetry-collector
+
+
+
 apiVersion: opentelemetry.io/v1beta1
 kind: OpenTelemetryCollector
 metadata:
