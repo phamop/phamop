@@ -1,3 +1,274 @@
+
+scrape_configs:
+  - job_name: 'node-exporter'
+    kubernetes_sd_configs:
+      - role: endpoints
+        namespaces:
+          names: [monitoring]
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_service_name]
+        action: keep
+        regex: kube-prometheus-stack-prometheus-node-exporter
+
+
+
+
+apiVersion: opentelemetry.io/v1beta1
+kind: OpenTelemetryCollector
+metadata:
+  name: otel-collector
+  namespace: eddv3-hbt
+spec:
+  # ... (keep your existing spec configuration)
+
+  config:
+    receivers:
+      # Add prometheus receiver for node-exporter
+      prometheus/node:
+        config:
+          scrape_configs:
+            - job_name: 'node-exporter'
+              scrape_interval: 10s
+              static_configs:
+                - targets: ['kube-prometheus-stack-prometheus-node-exporter.monitoring.svc:9100']
+                  labels:
+                    job: 'node-exporter'
+                    cluster: 'clustername'
+
+    # ... (keep your existing processors)
+
+    exporters:
+      # ... (keep your existing exporters)
+      prometheus:
+        endpoint: "0.0.0.0:9090"
+        namespace: eddv3-hbt
+        const_labels:
+          k8s_cluster: clustername
+
+    service:
+      pipelines:
+        metrics:
+          receivers: [otlp, prometheus/node]  # Add prometheus/node receiver
+          processors: [memory_limiter, resourcedetection, resource, metricstransform, batch]
+          exporters: [debug, prometheus]
+        # ... (keep your existing traces and logs pipelines)
+
+
+
+
+processors:
+  resource:
+    attributes:
+      - key: exporter
+        value: "node-exporter"
+        action: insert
+
+
+
+apiVersion: opentelemetry.io/v1beta1
+kind: OpenTelemetryCollector
+metadata:
+  name: otel-collector
+  namespace: eddv3-hbt
+  labels:
+    app: opentelemetry-collector  # Fixed typo in label
+spec:
+  mode: deployment
+  image: otel/opentelemetry-collector-contrib:0.128.0
+  serviceAccount: opentelemetry-collector
+  replicas: 2
+
+  # Add explicit port definitions to prevent truncation
+  ports:
+    - name: otlp-grpc
+      port: 4317
+      protocol: TCP
+    - name: otlp-http
+      port: 4318
+      protocol: TCP
+    - name: jaeger-grpc
+      port: 14250
+      protocol: TCP
+    - name: jaeger-thrift-c  # Compact thrift
+      port: 6831
+      protocol: TCP
+    - name: jaeger-thrift-h  # HTTP thrift
+      port: 14268
+      protocol: TCP
+    - name: metrics
+      port: 8888
+      protocol: TCP
+    - name: prom-metrics
+      port: 9090
+      protocol: TCP
+    - name: health
+      port: 13133
+      protocol: TCP
+
+  env:
+    - name: K8S_NODE_NAME
+      valueFrom:
+        fieldRef:
+          fieldPath: spec.nodeName
+    - name: K8S_POD_NAME
+      valueFrom:
+        fieldRef:
+          fieldPath: metadata.name
+    - name: K8S_POD_NAMESPACE
+      valueFrom:
+        fieldRef:
+          fieldPath: metadata.namespace
+    - name: K8S_POD_IP
+      valueFrom:
+        fieldRef:
+          fieldPath: status.podIP
+
+  resources:
+    requests:
+      cpu: 500m
+      memory: 800Mi
+    limits:
+      cpu: 1000m
+      memory: 1600Mi
+
+  podAnnotations:
+    checks/health: "/health"
+    checks/port: "13133"
+
+  config:
+    extensions:
+      health_check:
+        endpoint: "0.0.0.0:13133"
+      pprof:
+        endpoint: "0.0.0.0:1777"
+      zpages:
+        endpoint: "0.0.0.0:55679"
+
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: "0.0.0.0:4317"  # Explicit endpoint
+          http:
+            endpoint: "0.0.0.0:4318"  # Explicit endpoint
+      jaeger:
+        protocols:
+          grpc:
+            endpoint: "0.0.0.0:14250"  # Explicit endpoint
+          thrift_compact:
+            endpoint: "0.0.0.0:6831"   # Explicit endpoint
+          thrift_http:
+            endpoint: "0.0.0.0:14268"   # Explicit endpoint
+      loki:
+        protocols:
+          grpc:
+            endpoint: "0.0.0.0:4317"    # Explicit endpoint
+          http:
+            endpoint: "0.0.0.0:4318"    # Explicit endpoint
+            include_metadata: true
+        use_incoming_timestamp: true
+
+    processors:
+      batch:
+        timeout: 200ms
+        send_batch_size: 1024
+        send_batch_max_size: 4096
+      memory_limiter:
+        check_interval: 5s
+        limit_percentage: 80
+        spike_limit_mib: 64
+        limit_mib: 512
+      groupbytrace: {}
+      resource:
+        attributes: [...]  # (Keep your existing resource attributes)
+      resourcedetection:
+        detectors: [env, system]
+        override: false
+        timeout: 2s
+      transform:
+        log_statements: [...]  # (Keep your existing transform config)
+      metricstransform:
+        transforms: [...]  # (Keep your existing metric transforms)
+
+    exporters:
+      debug:
+        verbosity: detailed
+      otlphttp:
+        endpoint: http://loki-write.eddv3-hbt.svc.cluster.local:3100/otlp
+        tls:
+          insecure: true
+        headers:
+          X-Scope-OrgID: tenant-1
+      prometheus:
+        endpoint: "0.0.0.0:9090"
+        namespace: eddv3-hbt
+        const_labels:
+          k8s_cluster: clustername
+        send_timestamps: true
+        enable_open_metrics: true
+      otlp/jaeger:
+        endpoint: jaeger-collector.eddv3-hbt.svc.cluster.local:4317
+        tls:
+          insecure: true
+
+    service:
+      telemetry:
+        metrics:
+          level: detailed
+          address: "0.0.0.0:8888"  # Explicit metrics endpoint
+      extensions: [health_check, pprof, zpages]
+      pipelines:
+        metrics:
+          receivers: [otlp]
+          processors: [memory_limiter, resourcedetection, resource, metricstransform, batch]
+          exporters: [debug, prometheus]
+        traces:
+          receivers: [otlp, jaeger]
+          processors: [memory_limiter, resourcedetection, resource, groupbytrace, batch]
+          exporters: [debug, otlp/jaeger]
+        logs:
+          receivers: [otlp, loki]
+          processors: [memory_limiter, resourcedetection, resource, transform, batch]
+          exporters: [debug, otlphttp]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ift-compact","port.name.new":"jaeger-thrift-c"}
 {"level":"info","ts":"2025-08-06T11:56:38Z","logger":"controllers.OpenTelemetryCollector","msg":"truncating container port name","opentelemetrycollector":"eddv3-hbt/otelcollector","port.name.prev":"jaeger-thrift-http","port.name.new":"jaeger-thrift-h"}
 {"level":"info","ts":"2025-08-06T11:56:38Z","logger":"controllers.OpenTelemetryCollector","msg":"couldn't determine metrics port from configuration, using 8888 default value","opentelemetrycollector":"eddv3-hbt/otelcollector","error":"missing port in address"}
