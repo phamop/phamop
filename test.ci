@@ -1,9 +1,15 @@
-Warning  BackOff    32m (x7 over 33m)       kubelet  Back-off restarting failed container prometheus in pod prometheus-kube-prometheus-stack-prometheus-0_eddv3-hbt(594efffe-d358-4f47-9a43-ad587b54ffb1)     
-  Warning  Unhealthy  11m (x352 over 3h4m)    kubelet  Readiness probe failed: Get "http://10.244.4.136:9090/-/ready": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
-  Warning  Unhealthy  7m21s (x50 over 101m)   kubelet  Startup probe failed: HTTP probe failed with statuscode: 503
-  Warning  Unhealthy  2m18s (x210 over 3h4m)  kubelet  Liveness probe failed: Get "http://10.244.4.136:9090/-/healthy": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+otel-collector
 
+0 / 1 up
 
+Endpoint	Labels	Last scrape	State
+http://otel-collector.eddv3-hbt.svc.cluster.local:8889/metrics
+instance="otel-collector.eddv3-hbt.svc.cluster.local:8889"
+job="otel-collector"
+4.313s ago
+420ms
+down
+Error scraping target: Get "http://otel-collector.eddv3-hbt.svc.cluster.local:8889/metrics": dial tcp: lookup otel-collector.eddv3-hbt.svc.cluster.local on 10.0.0.10:53: no such host
 
 
 
