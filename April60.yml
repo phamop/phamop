@@ -1,3 +1,39 @@
+
+
+
+# kube-prometheus-stack values.yaml
+grafana:
+  enabled: false
+
+installCRDs: true
+
+prometheus:
+  prometheusSpec:
+    additionalScrapeConfigs:
+      - job_name: "otel-collector-direct"
+        scrape_interval: 10s
+        static_configs:
+          - targets: ["otel-collector.eddv3-hbt.svc.cluster.local:8888"]
+        metrics_path: "/metrics"
+        honor_labels: true
+
+  additionalServiceMonitors:
+    - name: otel-collector-monitor
+      selector:
+        matchLabels:
+          app: opentelemetry-collector
+      namespaceSelector:
+        matchNames:
+          - eddv3-hbt
+      endpoints:
+        - port: metrics
+          interval: 10s
+          path: /metrics
+          honorLabels: true
+          relabelings:
+            - action: labelmap
+              regex: __meta_kubernetes_pod_label_(.+)
+              
 apiVersion: opentelemetry.io/v1beta1
 kind: OpenTelemetryCollector
 metadata:
