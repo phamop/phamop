@@ -1,11 +1,15 @@
-http://otel-collector-metrics.eddv3-hbt.svc.cluster.local:8889/metrics
-instance="otel-collector-metrics.eddv3-hbt.svc.cluster.local:8889"
-job="otel-collector"
-1.885s ago
-1.445s
-down
-Error scraping target: Get "http://otel-collector-metrics.eddv3-hbt.svc.cluster.local:8889/metrics": dial tcp: lookup otel-collector-metrics.eddv3-hbt.svc.cluster.local
+otel-collector
 
+0 / 1 up
+
+Endpoint	Labels	Last scrape	State
+http://otel-collector-metrics.eddv3-hbt.svc.cluster.local:8888/metrics
+instance="otel-collector-metrics.eddv3-hbt.svc.cluster.local:8888"
+job="otel-collector"
+1.37s ago
+50ms
+down
+Error scraping target: Get "http://otel-collector-metrics.eddv3-hbt.svc.cluster.local:8888/metrics": dial tcp: lookup otel-collector-metrics.eddv3-hbt.svc.cluster.local on 10.0.0.10:53: no such host
 apiVersion: v1
 kind: Service
 metadata:
