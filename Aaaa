@@ -1,5 +1,6 @@
-kubectl  apply -k overlays/EDIT
-error: invalid Kustomization: json: cannot unmarshal string into Go struct field Kustomization.patches of type types.Patch
+kubectl kustomize ./kustomize | kubectl apply -f- 
+error: unable to find one of 'kustomization.yaml', 'kustomization.yml' or 'Kustomization' in directory 'C:\Users\ooridota\data-repo\CMHC-SCHL-HBT-K8S-CHARTS\kustomize'
+error: no objects passed to apply
 
 grafana:
   enabled: false
