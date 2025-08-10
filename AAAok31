@@ -1,1 +1,13 @@
-
+patches:
+  - target:
+      group: kustomize.config.k8s.io
+      version: v1beta1
+      kind: Kustomization
+    patch: |
+      - op: remove
+        path: /helmCharts/0/valuesFile
+      - op: add
+        path: /helmCharts/0/valuesFiles
+        value:
+          - ../../base/grafana/helm-values.yaml       
+          - grafana.values.patch.yaml
