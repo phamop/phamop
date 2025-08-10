@@ -1,3 +1,10 @@
+kubectl get all -n monitoring -o json \
+  | jq '.items[] | select(.metadata.finalizers != null) | {kind: .kind, name: .metadata.name, finalizers: .metadata.finalizers}'
+
+
+
+
+
 patches:
   - target:
       group: kustomize.config.k8s.io
