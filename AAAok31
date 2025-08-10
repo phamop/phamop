@@ -1,6 +1,8 @@
 kubectl get all -n monitoring -o json \
   | jq '.items[] | select(.metadata.finalizers != null) | {kind: .kind, name: .metadata.name, finalizers: .metadata.finalizers}'
 
+kubectl get all -n monitoring -o yaml | grep -B5 "finalizers:"
+
 
 
 
