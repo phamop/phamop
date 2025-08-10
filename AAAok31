@@ -3,6 +3,15 @@ kubectl get all -n monitoring -o json \
 
 kubectl get all -n monitoring -o yaml | grep -B5 "finalizers:"
 
+# Delete all OpenTelemetry Collector instances in the namespace
+kubectl delete opentelemetrycollectors --all -n <namespace>
+
+# Delete the operator deployment (if installed in the namespace)
+kubectl delete deployment opentelemetry-operator-controller-manager -n <namespace>
+
+# Then delete the namespace
+kubectl delete ns <namespace>
+
 
 
 
