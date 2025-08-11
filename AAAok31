@@ -7,3 +7,17 @@ service/otel-collector unchanged
 opentelemetrycollector.opentelemetry.io/otel-collector configured
 error: resource mapping not found for name: "otel-collector-monitor" namespace: "monitoring" from "/azp/agent/_work/17/s/kustomize/overlays/EDIT/opentelemetry/kustomization-output.yaml": no matches for kind "ServiceMonitor" in version "monitoring.coreos.com/v1"
 ensure CRDs are installed first
+
+
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Installs CRDs first (and the operator) for v0.83.0.
+# If you only want CRDs (and NOT the operator), replace this with the CRD-only URL for v0.83.0.
+resources:
+  - https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/v0.83.0/bundle.yaml
+  # CRD-only option (uncomment one-per-CRD you need and REMOVE bundle.yaml above):
+  # - https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/v0.83.0/example/prometheus-operator-crd/monitoring.coreos.com_servicemonitors.yaml
+  # - https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/v0.83.0/example/prometheus-operator-crd/monitoring.coreos.com_podmonitors.yaml
+  # - https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/v0.83.0/example/prometheus-operator-crd/monitoring.coreos.com_probes.yaml
+  # ...add others as needed
