@@ -1,3 +1,26 @@
+apiVersion: v2
+name: prom-operator-crds-bootstrap
+description: Installs Prometheus Operator CRDs (v0.83.0) via dependency chart
+type: application
+version: 1.0.0
+appVersion: "0.83.0"
+
+dependencies:
+  - name: prometheus-operator-crds
+    alias: promOperatorCRDs
+    version: 22.0.2
+    repository: oci://private-registry.azurecr.io/
+    condition: promOperatorCRDs.enabled
+
+# values.yaml
+promOperatorCRDs:
+  enabled: true
+
+
+
+
+
+
 #source.yaml
 apiVersion: source.toolkit.fluxcd.io/v1beta2
 kind: HelmRepository
