@@ -1,3 +1,5 @@
+error: Error: failed to perform "FetchReference" on source: from ACR after it confirned it has been pushed to the ACR
+
 apiVersion: v2
 name: prom-operator-crds-bootstrap
 description: Installs Prometheus Operator CRDs (v0.83.0) via dependency chart
