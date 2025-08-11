@@ -1,3 +1,8 @@
+
+kubectl patch deployment otel-collector -n <namespace> -p '{"metadata":{"finalizers":[]}}' --type=merge
+
+
+
 kubectl get all -n monitoring -o json \
   | jq '.items[] | select(.metadata.finalizers != null) | {kind: .kind, name: .metadata.name, finalizers: .metadata.finalizers}'
 
