@@ -1,3 +1,8 @@
+
+Environmental constraints have redirected OSS observability priorities, leading to the closure of this story
+
+
+
 error: Error: failed to perform "FetchReference" on source: from ACR after it confirned it has been pushed to the ACR
 
 apiVersion: v2
