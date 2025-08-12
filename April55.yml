@@ -1,1 +1,79 @@
+Architecture at a glance
+========================
+Flow
+
+AKS apps → OTEL SDK/exporters → AKS OTEL Collector (DaemonSet) → OTLP/mTLS → VM OTEL Collector (gateway) →
+Logs→Loki, Traces→Jaeger, Metrics→Prometheus → Grafana dashboards & alerts
+
+Based on this design there are 2 approach to Otel collector Deployment
+1. Sidecar OTel Collector 
+2. OTel Collector as a DaemonSet
+
+VM Specifications
+Recommended VM Size
+Tier	  vCPUs	 RAM	     Disk (SSD)	   Use Case
+Medium	4-8	   16-32GB	  1TB	          Dev/POC
+Large	  8-16	 32-64GB	  1TB+	        Dev/POC
+
+Recommended Azure VM SKUs:
+
+Medium: Standard_D8s_v3 (8 vCPUs, 32GB RAM)
+Large: Standard_D16s_v3 (16 vCPUs, 64GB RAM)
+
+Networking
+==========
+Same VNET as AKS (ensures low-latency communication)
+
+Subnet: Dedicated subnet (Recommended)
+
+NSG Rules (Inbound):
+
+OTel Collector: 4317 (gRPC), 4318 (HTTP)
+Prometheus: 9090 (Scrape)
+Loki: 3100 (Log Ingestion)
+Jaeger: 14268 (Collector), 16686 (UI)
+Grafana: 3000 (Dashboard)
+
+Outbound: Allow all (for updates, external integrations)
+
+
+NSG (inbound):
+
+From snet-aks-nodepools → 4317/tcp (OTLP gRPC), 4318/tcp (OTLP HTTP, optional)
+From admin/VPN subnets → 3000/tcp (Grafana), 16686/tcp (Jaeger UI), 9090/tcp (Prometheus UI optional)
+SSH only via Bastion; block everything else.
+DNS: Private A record obs-gw.internal → VM private IP (AKS targets this).
+Transport: mTLS end-to-end OTLP.
+Auth: Grafana OIDC with Azure Entra ID; least-privileged local admin.
+
+Storage & Retention
+=======================
+Separate managed data disks/mountpoint:
+
+/data/loki (Primary log volume): start 200–500 GB (P20/P30); 7–14 days retention.
+/data/prom (metrics): 50–150 GB; 7–15 days retention.
+/data/grafana (SQLite/plugins): 20–50 GB.
+/data/jaeger (if using all-in-one with local Badger): 20–50 GB; 3–7 days + 5–10% sampling
+
+File structure
+===============
+/opt/obs/
+  docker-compose.yml
+  loki/config/config.yml
+  prom/prometheus.yml
+  jaeger/                      # (all-in-one)
+  otel/config/config.yaml
+  otel/config/certs/{ca.crt,server.crt,server.key}
+  grafana/provisioning/datasources/datasources.yml
+/data/
+  loki/        # chunks+index
+  prom/        # TSDB
+  grafana/     # grafana.db & plugins
+  jaeger/      # badger (if used)
+
+
+Deployment via Docker Compose
+===============================
+
+Docker Compose Deployment
 
