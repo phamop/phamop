@@ -1,4 +1,11 @@
 
+
+
+o	How data is pulled or pushed between the VM and AKS
+o	What exactly do we install on the VM and AKS
+o	Visualize the network planes in those data flows to ensure things like firewalls nsg's etc. don't become hurdles during implementation
+o	How do we secure the flow (mTLS, authentication, etc.)
+
 Environmental constraints have redirected OSS observability priorities, leading to the closure of this story
 
 
