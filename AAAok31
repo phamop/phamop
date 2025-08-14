@@ -1,3 +1,54 @@
+What We Install on the VM
+The dedicated VM runs the entire observability stack via Docker:
+Installed Components (Docker Containers)
+Component	Role	Data Type	Port
+OpenTelemetry Collector	Central telemetry receiver	Logs/Metrics/Traces	4317, 4318
+Loki	Log aggregation & storage	Logs	3100
+Prometheus	Metrics scraping & storage	Metrics	9090
+Jaeger	Distributed tracing	Traces	14268, 16686
+Grafana	Dashboards & visualization	UI	3000
+Configuration Files
+•	otel-collector-config.yaml (Routes telemetry to Loki/Prometheus/Jaeger)
+•	prometheus.yml (Defines scrape targets in AKS)
+•	loki-config.yaml (Log retention, storage settings)
+•	grafana-datasources.yaml (Pre-configures Loki/Prometheus as data sources)
+
+
+High-Level Flow details
+------------------------------
+AKS Applications generate telemetry (instrumented via OpenTelemetry SDKs or sidecars).
+
+OTel Collector (Sidecar in AKS) collects and forwards data to the VM’s OTel Collector.
+
+VM OTel Collector distributes data:
+
+Metrics → Prometheus (scraped or pushed)
+
+Logs → Loki (HTTP push)
+
+Traces → Jaeger (gRPC push)
+
+Grafana queries all backends (Loki, Prometheus, Jaeger) for visualization.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
