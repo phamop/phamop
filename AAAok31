@@ -1,3 +1,34 @@
+Apps & PaaS → Opentelemetry AutoInstrumentation(Optional)  → VM OTel Collector (gateway)
+    → Prometheus (metrics) → Grafana
+    → Loki (logs)          → Grafana
+    → Jaeger (traces)      → Grafana
+Components
+Azure VM (Obs Gateway & Backends):
+OTel Collector (gateway)
+Prometheus (scrape & remote_write endpoints)
+Loki (log ingestion)
+Jaeger (collector + query + UI)
+Grafana (dashboards/alerts)
+In Cluster: OpenTelemetry AutoInstrumentation CRD ( Autoinstrumentation injection for node/app scraping/export).
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 What We Install on the VM
 The dedicated VM runs the entire observability stack via Docker:
 Installed Components (Docker Containers)
