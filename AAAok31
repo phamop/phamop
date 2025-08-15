@@ -1,3 +1,53 @@
+## Title  
+Dev: Implement Temporary VM-hosted OSS Observability Stack
+
+## 1. Description  
+- **Problem/Need:**  
+  Implement the approved design to deploy a temporary, private VM-hosted OSS observability stack (Grafana, Prometheus, Loki, Jaeger) and wire AKS telemetry via OpenTelemetry Collector, without changing AKS/APIM ingress.
+
+- **Expected Outcome:**  
+  Working deployment on a Linux VM using Docker Compose and Ansible, with existing network-only access, short retention, and a brief runbook. Telemetry from AKS is visible end-to-end.
+
+- **Related Links:**  
+  - (Link to the approved design story)
+
+## 2. Implementation Approach  
+- **Key Steps:**  
+  - Provision VM in the existing subnet; apply firewall/NSG rules for local-only access.  
+  - Use Ansible to install Docker, deploy Docker Compose stack (Grafana, Prometheus with remote write receiver, Loki, Jaeger), configure restart policies.  
+  - Configure OpenTelemetry Collector in AKS to forward metrics (remote write), logs (Loki HTTP), and traces (OTLP) to the VM.  
+  - Apply credentials, RBAC, and disable anonymous access; set retention in Prometheus/Loki per design.  
+  - Validate telemetry flow and UI access; create a short runbook for common tasks and troubleshooting.  
+  - Version compose files and Ansible playbooks in the repo; record decommission/sunset steps.
+
+## 3. Value & Priority  
+- **Impact:**  
+  Restores developer observability rapidly with minimal risk and clear rollback path.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 Apps & PaaS → Opentelemetry AutoInstrumentation(Optional)  → VM OTel Collector (gateway)
     → Prometheus (metrics) → Grafana
     → Loki (logs)          → Grafana
