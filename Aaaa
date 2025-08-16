@@ -1,557 +1,139 @@
-kubectl kustomize ./kustomize | kubectl apply -f- 
-error: unable to find one of 'kustomization.yaml', 'kustomization.yml' or 'Kustomization' in directory 'C:\Users\ooridota\data-repo\CMHC-SCHL-HBT-K8S-CHARTS\kustomize'
-error: no objects passed to apply
-
-grafana:
-  enabled: false
-
-installCRDs: true
-
-prometheus:
-  prometheusSpec:
-    additionalScrapeConfigs:
-      - job_name: "otel-collector"
-        scrape_interval: 10s
-        static_configs:
-          - targets: ["otel-collector-metrics.eddv3-hbt.svc.cluster.local:8889"]
-        metrics_path: "/metrics"
-        honor_labels: true
-
-  additionalServiceMonitors:
-    - name: otel-collector-monitor
-      selector:
-        matchLabels:
-          app: opentelemetry-collector
-      namespaceSelector:
-        matchNames:
-          - eddv3-hbt
-      endpoints:
-        - port: prometheus
-          interval: 10s
-          path: /metrics
-          honorLabels: true
-
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: otel-collector-metrics
-  namespace: eddv3-hbt
-  labels:
-    app: opentelemetry-collector
-spec:
-  selector:
-    app: opentelemetry-collector
-  ports:
-    - name: prometheus
-      port: 8889
-      targetPort: 8889
-      protocol: TCP
-
-
-
-
-
-
-
-
-
-
-scrape_configs:
-  - job_name: 'node-exporter'
-    kubernetes_sd_configs:
-      - role: endpoints
-        namespaces:
-          names: [monitoring]
-    relabel_configs:
-      - source_labels: [__meta_kubernetes_service_name]
-        action: keep
-        regex: kube-prometheus-stack-prometheus-node-exporter
-
-
-
-
-apiVersion: opentelemetry.io/v1beta1
-kind: OpenTelemetryCollector
-metadata:
-  name: otel-collector
-  namespace: eddv3-hbt
-spec:
-  # ... (keep your existing spec configuration)
-
-  config:
-    receivers:
-      # Add prometheus receiver for node-exporter
-      prometheus/node:
-        config:
-          scrape_configs:
-            - job_name: 'node-exporter'
-              scrape_interval: 10s
-              static_configs:
-                - targets: ['kube-prometheus-stack-prometheus-node-exporter.monitoring.svc:9100']
-                  labels:
-                    job: 'node-exporter'
-                    cluster: 'clustername'
-
-    # ... (keep your existing processors)
-
-    exporters:
-      # ... (keep your existing exporters)
-      prometheus:
-        endpoint: "0.0.0.0:9090"
-        namespace: eddv3-hbt
-        const_labels:
-          k8s_cluster: clustername
-
-    service:
-      pipelines:
-        metrics:
-          receivers: [otlp, prometheus/node]  # Add prometheus/node receiver
-          processors: [memory_limiter, resourcedetection, resource, metricstransform, batch]
-          exporters: [debug, prometheus]
-        # ... (keep your existing traces and logs pipelines)
-
-
-
-
-processors:
-  resource:
-    attributes:
-      - key: exporter
-        value: "node-exporter"
-        action: insert
-
-
-
-apiVersion: opentelemetry.io/v1beta1
-kind: OpenTelemetryCollector
-metadata:
-  name: otel-collector
-  namespace: eddv3-hbt
-  labels:
-    app: opentelemetry-collector  # Fixed typo in label
-spec:
-  mode: deployment
-  image: otel/opentelemetry-collector-contrib:0.128.0
-  serviceAccount: opentelemetry-collector
-  replicas: 2
-
-  # Add explicit port definitions to prevent truncation
-  ports:
-    - name: otlp-grpc
-      port: 4317
-      protocol: TCP
-    - name: otlp-http
-      port: 4318
-      protocol: TCP
-    - name: jaeger-grpc
-      port: 14250
-      protocol: TCP
-    - name: jaeger-thrift-c  # Compact thrift
-      port: 6831
-      protocol: TCP
-    - name: jaeger-thrift-h  # HTTP thrift
-      port: 14268
-      protocol: TCP
-    - name: metrics
-      port: 8888
-      protocol: TCP
-    - name: prom-metrics
-      port: 9090
-      protocol: TCP
-    - name: health
-      port: 13133
-      protocol: TCP
-
-  env:
-    - name: K8S_NODE_NAME
-      valueFrom:
-        fieldRef:
-          fieldPath: spec.nodeName
-    - name: K8S_POD_NAME
-      valueFrom:
-        fieldRef:
-          fieldPath: metadata.name
-    - name: K8S_POD_NAMESPACE
-      valueFrom:
-        fieldRef:
-          fieldPath: metadata.namespace
-    - name: K8S_POD_IP
-      valueFrom:
-        fieldRef:
-          fieldPath: status.podIP
-
-  resources:
-    requests:
-      cpu: 500m
-      memory: 800Mi
-    limits:
-      cpu: 1000m
-      memory: 1600Mi
-
-  podAnnotations:
-    checks/health: "/health"
-    checks/port: "13133"
-
-  config:
-    extensions:
-      health_check:
-        endpoint: "0.0.0.0:13133"
-      pprof:
-        endpoint: "0.0.0.0:1777"
-      zpages:
-        endpoint: "0.0.0.0:55679"
-
-    receivers:
-      otlp:
-        protocols:
-          grpc:
-            endpoint: "0.0.0.0:4317"  # Explicit endpoint
-          http:
-            endpoint: "0.0.0.0:4318"  # Explicit endpoint
-      jaeger:
-        protocols:
-          grpc:
-            endpoint: "0.0.0.0:14250"  # Explicit endpoint
-          thrift_compact:
-            endpoint: "0.0.0.0:6831"   # Explicit endpoint
-          thrift_http:
-            endpoint: "0.0.0.0:14268"   # Explicit endpoint
-      loki:
-        protocols:
-          grpc:
-            endpoint: "0.0.0.0:4317"    # Explicit endpoint
-          http:
-            endpoint: "0.0.0.0:4318"    # Explicit endpoint
-            include_metadata: true
-        use_incoming_timestamp: true
-
-    processors:
-      batch:
-        timeout: 200ms
-        send_batch_size: 1024
-        send_batch_max_size: 4096
-      memory_limiter:
-        check_interval: 5s
-        limit_percentage: 80
-        spike_limit_mib: 64
-        limit_mib: 512
-      groupbytrace: {}
-      resource:
-        attributes: [...]  # (Keep your existing resource attributes)
-      resourcedetection:
-        detectors: [env, system]
-        override: false
-        timeout: 2s
-      transform:
-        log_statements: [...]  # (Keep your existing transform config)
-      metricstransform:
-        transforms: [...]  # (Keep your existing metric transforms)
-
-    exporters:
-      debug:
-        verbosity: detailed
-      otlphttp:
-        endpoint: http://loki-write.eddv3-hbt.svc.cluster.local:3100/otlp
-        tls:
-          insecure: true
-        headers:
-          X-Scope-OrgID: tenant-1
-      prometheus:
-        endpoint: "0.0.0.0:9090"
-        namespace: eddv3-hbt
-        const_labels:
-          k8s_cluster: clustername
-        send_timestamps: true
-        enable_open_metrics: true
-      otlp/jaeger:
-        endpoint: jaeger-collector.eddv3-hbt.svc.cluster.local:4317
-        tls:
-          insecure: true
-
-    service:
-      telemetry:
-        metrics:
-          level: detailed
-          address: "0.0.0.0:8888"  # Explicit metrics endpoint
-      extensions: [health_check, pprof, zpages]
-      pipelines:
-        metrics:
-          receivers: [otlp]
-          processors: [memory_limiter, resourcedetection, resource, metricstransform, batch]
-          exporters: [debug, prometheus]
-        traces:
-          receivers: [otlp, jaeger]
-          processors: [memory_limiter, resourcedetection, resource, groupbytrace, batch]
-          exporters: [debug, otlp/jaeger]
-        logs:
-          receivers: [otlp, loki]
-          processors: [memory_limiter, resourcedetection, resource, transform, batch]
-          exporters: [debug, otlphttp]
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-ift-compact","port.name.new":"jaeger-thrift-c"}
-{"level":"info","ts":"2025-08-06T11:56:38Z","logger":"controllers.OpenTelemetryCollector","msg":"truncating container port name","opentelemetrycollector":"eddv3-hbt/otelcollector","port.name.prev":"jaeger-thrift-http","port.name.new":"jaeger-thrift-h"}
-{"level":"info","ts":"2025-08-06T11:56:38Z","logger":"controllers.OpenTelemetryCollector","msg":"couldn't determine metrics port from configuration, using 8888 default value","opentelemetrycollector":"eddv3-hbt/otelcollector","error":"missing port in address"}
-{"level":"info","ts":"2025-08-06T11:56:38Z","logger":"controllers.OpenTelemetryCollector","msg":"receiver's endpoint isn't a string","opentelemetrycollector":"eddv3-hbt/otel-collector"}
-{"level":"info","ts":"2025-08-06T11:56:38Z","logger":"controllers.OpenTelemetryCollector","msg":"receiver's endpoint isn't a string","opentelemetrycollector":"eddv3-hbt/otel-collector"}
-{"level":"info","ts":"2025-08-06T11:56:38Z","logger":"controllers.OpenTelemetryCollector","msg":"receiver's endpoint isn't a string","opentelemetrycollector":"eddv3-hbt/otel-collector"}
-{"level":"info","ts":"2025-08-06T11:56:38Z","logger":"controllers.OpenTelemetryCollector","msg":"truncating container port name","opentelemetrycollector":"eddv3-hbt/otel-collector","port.name.prev":"jaeger-thrift-compact","port.name.new":"jaeger-thrift-c"}
-{"level":"info","ts":"2025-08-06T11:56:38Z","logger":"controllers.OpenTelemetryCollector","msg":"truncating container port name","opentelemetrycollector":"eddv3-hbt/otel-collector","port.name.prev":"jaeger-thrift-http","port.name.new":"jaeger-thrift-h"}
-{"level":"info","ts":"2025-08-06T11:56:39Z","logger":"controllers.OpenTelemetryCollector","msg":"couldn't determine metrics port from configuration, using 8888 default value","opentelemetrycollector":"telemetry-sandbox/collector-sandbox","error":"missing port in address"}
-{"level":"info","ts":"2025-08-06T11:56:39Z","logger":"controllers.OpenTelemetryCollector","msg":"receiver's endpoint isn't a string","opentelemetrycollector":"eddv3-hbt/otelcollector"}
-{"level":"info","ts":"2025-08-06T11:56:39Z","logger":"controllers.OpenTelemetryCollector","msg":"receiver's endpoint isn't a string","opentelemetrycollector":"eddv3-hbt/otelcollector"}
-{"level":"info","ts":"2025-08-06T11:56:39Z","logger":"controllers.OpenTelemetryCollector","msg":"receiver's endpoint isn't a string","opentelemetrycollector":"eddv3-hbt/otelcollector"}
-{"level":"info","ts":"2025-08-06T11:56:39Z","logger":"controllers.OpenTelemetryCollector","msg":"truncating container port name","opentelemetrycollector":"eddv3-hbt/otelcollector","port.name.prev":"jaeger-thrift-compact","port.name.new":"jaeger-thrift-c"}
-{"level":"info","ts":"2025-08-06T11:56:39Z","logger":"controllers.OpenTelemetryCollector","msg":"truncating container port name","opentelemetrycollector":"eddv3-hbt/otelcollector","port.name.prev":"jaeger-thrift-http","port.name.new":"jaeger-thrift-h"}
-{"level":"info","ts":"2025-08-06T11:56:39Z","logger":"controllers.OpenTelemetryCollector","msg":"couldn't determine metrics port from configuration, using 8888 default value","opentelemetrycollector":"eddv3-hbt/otelcollector","error":"missing port in address"}
-{"level":"info","ts":"2025-08-06T11:56:40Z","logger":"controllers.OpenTelemetryCollector","msg":"receiver's endpoint isn't a string","opentelemetrycollector":"eddv3-hbt/otel-collector"}
-{"level":"info","ts":"2025-08-06T11:56:40Z","logger":"controllers.OpenTelemetryCollector","msg":"receiver's endpoint isn't a string","opentelemetrycollector":"eddv3-hbt/otel-collector"}
-{"level":"info","ts":"2025-08-06T11:56:40Z","logger":"controllers.OpenTelemetryCollector","msg":"receiver's endpoint isn't a string","opentelemetrycollector":"eddv3-hbt/otel-collector"}
-{"level":"info","ts":"2025-08-06T11:56:40Z","logger":"controllers.OpenTelemetryCollector","msg":"truncating container port name","opentelemetrycollector":"eddv3-hbt/otel-collector","port.name.prev":"jaeger-thrift-compact","port.name.new":"jaeger-thrift-c"}
-{"level":"info","ts":"2025-08-06T11:56:40Z","logger":"controllers.OpenTelemetryCollector","msg":"truncating container port name","opentelemetrycollector":"eddv3-hbt/otel-collector","port.name.prev":"jaeger-thrift-http","port.name.new":"jaeger-thrift-h"}
-{"level":"info","ts":"2025-08-06T11:56:41Z","logger":"controllers.OpenTelemetryCollector","msg":"couldn't determine metrics port from configuration, using 8888 default value","opentelemetrycollector":"telemetry-sandbox/collector-sandbox","error":"missing port in address"}
-{"level":"info","ts":"2025-08-06T11:56:42Z","logger":"controllers.OpenTelemetryCollector","msg":"receiver's endpoint isn't a string","opentelemetrycollector":"eddv3-hbt/otelcollector"}
-{"level":"info","ts":"2025-08-06T11:56:42Z","logger":"controllers.OpenTelemetryCollector","msg":"receiver's endpoint isn't a string","opentelemetrycollector":"eddv3-hbt/otelcollector"}
-{"level":"info","ts":"2025-08-06T11:56:42Z","logger":"controllers.OpenTelemetryCollector","msg":"receiver's endpoint isn't a string","opentelemetrycollector":"eddv3-hbt/otelcollector"}
-{"level":"info","ts":"2025-08-06T11:56:42Z","logger":"controllers.OpenTelemetryCollector","msg":"truncating container port name","opentelemetrycollector":"eddv3-hbt/otelcollector","port.name.prev":"jaeger-thrift-compact","port.name.new":"jaeger-thrift-c"}
-{"level":"info","ts":"2025-08-06T11:56:42Z","logger":"controllers.OpenTelemetryCollector","msg":"truncating container port name","opentelemetrycollector":"eddv3-hbt/otelcollector","port.name.prev":"jaeger-thrift-http","port.name.new":"jaeger-thrift-h"}
-{"level":"info","ts":"2025-08-06T11:56:42Z","logger":"controllers.OpenTelemetryCollector","msg":"couldn't determine metrics port from configuration, using 8888 default value","opentelemetrycollector":"eddv3-hbt/otelcollector","error":"missing port in address"}
-{"level":"info","ts":"2025-08-06T11:56:42Z","logger":"controllers.OpenTelemetryCollector","msg":"receiver's endpoint isn't a string","opentelemetrycollector":"eddv3-hbt/otel-collector"}
-{"level":"info","ts":"2025-08-06T11:56:42Z","logger":"controllers.OpenTelemetryCollector","msg":"receiver's endpoint isn't a string","opentelemetrycollector":"eddv3-hbt/otel-collector"}
-{"level":"info","ts":"2025-08-06T11:56:42Z","logger":"controllers.OpenTelemetryCollector","msg":"receiver's endpoint isn't a string","opentelemetrycollector":"eddv3-hbt/otel-collector"}
-{"level":"info","ts":"2025-08-06T11:56:42Z","logger":"controllers.OpenTelemetryCollector","msg":"truncating container port name","opentelemetrycollector":"eddv3-hbt/otel-collector","port.name.prev":"jaeger-thrift-compact","port.name.new":"jaeger-thrift-c"}
-{"level":"info","ts":"2025-08-06T11:56:42Z","logger":"controllers.OpenTelemetryCollector","msg":"truncating container port name","opentelemetrycollector":"eddv3-hbt/otel-collector","port.name.prev":"jaeger-thrift-http","port.name.new":"jaeger-thrift-h"}
-{"level":"info","ts":"2025-08-06T11:56:43Z","logger":"controllers.OpenTelemetryCollector","msg":"couldn't determine metrics port from configuration, using 8888 default value","opentelemetrycollector":"telemetry-sandbox/collector-sandbox","error":"missing port in address"}
-{"level":"info","ts":"2025-08-06T11:56:43Z","logger":"controllers.OpenTelemetryCollector","msg":"receiver's endpoint isn't a string","opentelemetrycollector":"eddv3-hbt/otelcollector"}
-{"level":"info","ts":"2025-08-06T11:56:43Z","logger":"controllers.OpenTelemetryCollector","msg":"receiver's endpoint isn't a string","opentelemetrycollector":"eddv3-hbt/otelcollector"}
-{"level":"info","ts":"2025-08-06T11:56:43Z","logger":"controllers.OpenTelemetryCollector","msg":"receiver's endpoint isn't a string","opentelemetrycollector":"eddv3-hbt/otelcollector"}
-{"level":"info","ts":"2025-08-06T11:56:43Z","logger":"controllers.OpenTelemetryCollector","msg":"truncating container port name","opentelemetrycollector":"eddv3-hbt/otelcollector","port.name.prev":"jaeger-thrift-compact","port.name.new":"jaeger-thrift-c"}
-{"level":"info","ts":"2025-08-06T11:56:43Z","logger":"controllers.OpenTelemetryCollector","msg":"truncating container port name","opentelemetrycollector":"eddv3-hbt/otelcollector","port.name.prev":"jaeger-thrift-http","port.name.new":"jaeger-thrift-h"}
-{"level":"info","ts":"2025-08-06T11:56:43Z","logger":"controllers.OpenTelemetryCollector","msg":"couldn't determine metrics port from configuration, using 8888 default value","opentelemetrycollector":"eddv3-hbt/otelcollector","error":"missing port in address"}
-
-
-apiVersion: opentelemetry.io/v1beta1
-kind: OpenTelemetryCollector
-metadata:
-  name: otel-collector
-  namespace: eddv3-hbt
-  labels:
-    app: opentelemetry-collector
-spec:
-  mode: deployment
-  image: otel/opentelemetry-collector-contrib:0.128.0
-  serviceAccount: opentelemetry-collector
-  replicas: 2
-
-  env:
-    - name: K8S_NODE_NAME
-      valueFrom:
-        fieldRef:
-          fieldPath: spec.nodeName
-    - name: K8S_POD_NAME
-      valueFrom:
-        fieldRef:
-          fieldPath: metadata.name
-    - name: K8S_POD_NAMESPACE
-      valueFrom:
-        fieldRef:
-          fieldPath: metadata.namespace
-    - name: K8S_POD_IP
-      valueFrom:
-        fieldRef:
-          fieldPath: status.podIP
-
-  resources:
-    requests:
-      cpu: 500m
-      memory: 800Mi
-    limits:
-      cpu: 1000m
-      memory: 1600Mi
-
-  # Health checks moved to pod annotations
-  podAnnotations:
-    checks/health: "/health"
-    checks/port: "13133"
-
-  config:
-    extensions:
-      health_check:
-        endpoint: 0.0.0.0:13133
-      pprof:
-        endpoint: 0.0.0.0:1777
-      zpages:
-        endpoint: 0.0.0.0:55679
-
-    receivers:
-      otlp:
-        protocols:
-          grpc: {}
-          http: {}
-      jaeger:
-        protocols:
-          grpc: {}
-          thrift_compact: {}
-          thrift_http: {}
-      loki:
-        protocols:
-          grpc: {}
-          http:
-            include_metadata: true
-        use_incoming_timestamp: true
-
-    processors:
-      batch:
-        timeout: 200ms
-        send_batch_size: 1024
-        send_batch_max_size: 4096
-      memory_limiter:
-        check_interval: 5s
-        limit_percentage: 80
-        spike_limit_mib: 64
-        limit_mib: 512
-      groupbytrace: {}
-      resource:
-        attributes:
-          - key: service.name
-            from_attribute: service.name
-            action: insert
-          - key: k8s.container.name
-            from_attribute: k8s.container.name
-            action: insert
-          - key: k8s.namespace.name
-            from_attribute: k8s.namespace.name
-            action: insert
-          - key: k8s.pod.name
-            from_attribute: k8s.pod.name
-            action: insert
-          - key: k8s.node.name
-            from_attribute: k8s.node.name
-            action: insert
-          - key: host.name
-            from_attribute: host.name
-            action: insert
-          - key: service.name
-            from_attribute: service.name
-            action: upsert
-          - key: service.namespace
-            from_attribute: service.namespace
-            action: upsert
-          - key: cluster.name
-            value: clustername
-            action: insert
-      resourcedetection:
-        detectors: [env, system]
-        override: false
-        timeout: 2s
-      transform:
-        log_statements:
-          - context: log
-            statements:
-              - set(attributes["processing.note"], "Log enriched with resource and trace context")
-              - set(attributes["service.name"], resource.attributes["service.name"])
-              - set(attributes["k8s.pod.name"], resource.attributes["k8s.pod.name"])
-              - set(attributes["k8s.node.name"], resource.attributes["k8s.node.name"])
-              - set(attributes["host.name"], resource.attributes["host.name"])
-              - set(attributes["cluster.name"], resource.attributes["cluster.name"])
-              - set(attributes["trace_id"], trace_id)
-              - set(attributes["span_id"], span_id)
-      metricstransform:
-        transforms:
-          - include: system.cpu.usage
-            action: update
-            operations:
-              - action: add_label
-                new_label: host.name
-                new_value: host.name
-              - action: add_label
-                new_label: cluster.name
-                new_value: clustername
-          - include: system.memory.usage
-            action: update
-            operations:
-              - action: add_label
-                new_label: host.name
-                new_value: host.name
-              - action: add_label
-                new_label: cluster.name
-                new_value: clustername
-
-    exporters:
-      debug:
-        verbosity: detailed
-      otlphttp:
-        endpoint: http://loki-write.eddv3-hbt.svc.cluster.local:3100/otlp
-        tls:
-          insecure: true
-        headers:
-          X-Scope-OrgID: tenant-1
-      prometheus:
-        endpoint: 0.0.0.0:8889
-        namespace: eddv3-hbt
-        const_labels:
-          k8s_cluster: clustername
-        send_timestamps: true
-        enable_open_metrics: true
-      otlp/jaeger:
-        endpoint: jaeger-collector.eddv3-hbt.svc.cluster.local:4317
-        tls:
-          insecure: true
-
-    service:
-      telemetry:
-        metrics:
-          level: detailed
-          address: 0.0.0.0:8888
-      extensions: [health_check, pprof, zpages]
-      pipelines:
-        metrics:
-          receivers: [otlp]
-          processors: [memory_limiter, resourcedetection, resource, metricstransform, batch]
-          exporters: [debug, prometheus]
-        traces:
-          receivers: [otlp, jaeger]
-          processors: [memory_limiter, resourcedetection, resource, groupbytrace, batch]
-          exporters: [debug, otlp/jaeger]
-        logs:
-          receivers: [otlp, loki]
-          processors: [memory_limiter, resourcedetection, resource, transform, batch]
-          exporters: [debug, otlphttp]
+@startuml
+' C4-PlantUML: Container-level diagram for AKS Observability with styled sections
+!includeurl https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+' Define background colors for grouping
+skinparam rectangle<<UserSection>> {
+  BackgroundColor #FFF2CC
+  FontColor black
+}
+skinparam rectangle<<ExternalSystems>> {
+  BackgroundColor #D5E8D4
+  FontColor black
+}
+skinparam rectangle<<ObservabilityVM>> {
+  BackgroundColor #DAE8FC
+  FontColor black
+}
+skinparam rectangle<<NetworkSecurity>> {
+  BackgroundColor #E1D5E7
+  FontColor black
+}
+
+' People
+rectangle "User Section" <<UserSection>> {
+  Person(user, "Users", "Developers/analysts who access Grafana dashboards")
+}
+
+' External systems / services
+rectangle "External Systems" <<ExternalSystems>> {
+  System(entrA, "Microsoft Entra ID (OIDC)", "Identity provider for Grafana")
+  System(akv, "Azure Key Vault", "CA/keys; issues client & server certificates")
+  System(pdns, "Private DNS", "Resolves internal FQDNs")
+  System(blob, "Azure Blob Storage", "Backups: snapshots/WAL/chunks")
+  System(afiles, "Azure Files", "Backups: Grafana DB")
+  System(aks, "AKS Cluster", "Instrumented workloads emit telemetry via OTel SDK/sidecars")
+}
+
+' Network Security Layer
+rectangle "Network Security" <<NetworkSecurity>> {
+  System(nsg, "NSG", "Allows AKS outbound traffic to VM inbound ports")
+  System(afw, "Azure Firewall (optional)", "Traffic inspection for internal traffic")
+}
+
+' Observability VM boundary and containers
+rectangle "Observability VM" <<ObservabilityVM>> {
+  System_Boundary(obs, "Observability VM") {
+    Container(otel, "OTel Collector", "Go", "Receives OTLP and forwards to backends; TLS server cert from AKV")
+    Container(prom, "Prometheus", "Go", "Metrics TSDB (:9090)")
+    Container(loki, "Loki", "Go", "Logs store (:3100)")
+    Container(jaeger, "Jaeger", "Go", "Tracing backend & Query (:16686)")
+    Container(grafana, "Grafana", "Go", "Dashboards & visualization; OIDC enabled")
+    ContainerDb(grafdb, "Grafana DB", "SQLite/Postgres", "Stores dashboards/config/auth state")
+  }
+}
+
+' Relationships (data plane & queries)
+Rel(user, grafana, "HTTPS 443")
+Rel(grafana, entrA, "OIDC authentication")
+
+Rel(aks, nsg, "Outbound telemetry traffic")
+Rel(nsg, otel, "Inbound telemetry allowed")
+
+Rel(aks, otel, "OTLP gRPC 4317 / HTTP 4318 + TLS (client cert)")
+Rel(otel, prom, "Push metrics (HTTPS)")
+Rel(otel, loki, "Push logs (HTTPS)")
+Rel(otel, jaeger, "Push traces (gRPC 14250 or OTLP 4317)")
+
+Rel(grafana, prom, "Query metrics (HTTPS)")
+Rel(grafana, loki, "Query logs (HTTPS)")
+Rel(grafana, jaeger, "Query traces (HTTPS)")
+
+' Certificates, DNS, firewall
+Rel(akv, aks, "Issue client certificates")
+Rel(akv, otel, "Provision server certificate")
+Rel(pdns, grafana, "Resolve Grafana FQDN")
+Rel(afw, otel, "Optional inspection")
+
+' Backups
+Rel(prom, blob, "Backup")
+Rel(loki, blob, "Backup")
+Rel(jaeger, blob, "Backup")
+Rel(grafdb, afiles, "Backup")
+
+SHOW_LEGEND()
+@enduml
+
+
+
+
+
+
+########
+
+
+@startuml
+' C4-PlantUML: Container-level diagram for AKS Observability
+!includeurl https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+' Define styles
+skinparam rectangle<<Observability>> {
+  BackgroundColor #DAE8FC
+  FontColor black
+}
+skinparam rectangle<<AKS>> {
+  BackgroundColor #D5E8D4
+  FontColor black
+}
+skinparam rectangle<<Security>> {
+  BackgroundColor #E1D5E7
+  FontColor black
+}
+
+' Observability Components
+rectangle "Observability" <<Observability>> {
+  Container(otel, "OTel Collector", "Go", "Receives telemetry via OTLP")
+}
+
+' AKS Cluster
+rectangle "AKS Cluster" <<AKS>> {
+  Container(aks_workloads, "Instrumented Workloads", "Containers", "Send telemetry via OTel SDK/sidecars")
+}
+
+' Network Security
+rectangle "Network Security" <<Security>> {
+  System(nsg, "NSG", "Network Security Group", "Controls traffic between AKS and Observability")
+}
+
+' Core telemetry flow with NSG
+Rel(aks_workloads, otel, "OTLP gRPC 4317/HTTP 4318", "Telemetry data")
+Rel(nsg, otel, "Allow inbound", "From AKS CIDR")
+Rel(nsg, aks_workloads, "Allow outbound", "To OTel Collector")
+
+' Optional security elements
+System(akv, "Azure Key Vault", "Manages TLS certificates")
+Rel(akv, otel, "Provision server cert")
+Rel(akv, aks_workloads, "Provision client certs")
+
+SHOW_LEGEND()
+@enduml
