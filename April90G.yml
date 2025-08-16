@@ -1,2 +1,4 @@
+http://demo-collector:4318 the demo-collector here would be the VM DNS for the VM otel collector
+
 
 https://opentelemetry.io/docs/platforms/kubernetes/operator/automatic/
