@@ -1,3 +1,7 @@
+o	Visualize the network planes in those data flows to ensure things like firewalls nsg's etc. don't become hurdles during implementation
+o	How do we secure the flow (mTLS, authentication, etc.)
+
+
 http://demo-collector:4318 the demo-collector here would be the VM DNS for the VM otel collector
 
 
