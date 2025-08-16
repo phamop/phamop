@@ -1,3 +1,4 @@
+Ideally this should be a visual diagram where you can see all that, with the protocols in use, direction of the data flow or request flow
 o	Visualize the network planes in those data flows to ensure things like firewalls nsg's etc. don't become hurdles during implementation
 o	How do we secure the flow (mTLS, authentication, etc.)
 
