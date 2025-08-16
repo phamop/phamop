@@ -19,6 +19,126 @@ skinparam rectangle<<NetworkSecurity>> {
   BackgroundColor #E1D5E7
   FontColor black
 }
+skinparam rectangle<<BackupStorage>> {
+  BackgroundColor #F8CECC
+  FontColor black
+}
+
+' People
+rectangle "User Section" <<UserSection>> as US {
+  Person(user, "Users", "Developers/analysts who access Grafana dashboards")
+}
+
+' External systems / services
+rectangle "External Systems" <<ExternalSystems>> as ES {
+  System(entrA, "Microsoft Entra ID (OIDC)", "Identity provider for Grafana")
+  System(akv, "Azure Key Vault", "CA/keys; issues client & server certificates")
+  System(pdns, "Private DNS", "Resolves internal FQDNs")
+  System(aks, "AKS Cluster", "Instrumented workloads emit telemetry via OTel SDK/sidecars")
+}
+
+' Network Security Layer
+rectangle "Network Security" <<NetworkSecurity>> as NS {
+  System(nsg, "NSG", "Allows AKS outbound traffic to VM inbound ports")
+  System(afw, "Azure Firewall (optional)", "Traffic inspection for internal traffic")
+}
+
+' Observability VM boundary and containers
+rectangle "Observability VM" <<ObservabilityVM>> as VM {
+  System_Boundary(obs, "Observability VM") {
+    Container(otel, "OTel Collector", "Go", "Receives OTLP and forwards to backends; TLS server cert from AKV")
+    Container(prom, "Prometheus", "Go", "Metrics TSDB (:9090)")
+    Container(loki, "Loki", "Go", "Logs store (:3100)")
+    Container(jaeger, "Jaeger", "Go", "Tracing backend & Query (:16686)")
+    Container(grafana, "Grafana", "Go", "Dashboards & visualization; OIDC enabled")
+    ContainerDb(grafdb, "Grafana DB", "SQLite/Postgres", "Stores dashboards/config/auth state")
+  }
+}
+
+' Backup/Storage systems
+rectangle "Backup/Storage" <<BackupStorage>> as BAK {
+  System(blob, "Azure Blob Storage", "Backups: snapshots/WAL/chunks")
+  System(afiles, "Azure Files", "Backups: Grafana DB")
+}
+
+' Force alignment top-to-bottom
+top to bottom direction
+US -[hidden]-> ES
+ES -[hidden]-> NS
+NS -[hidden]-> VM
+VM -[hidden]-> BAK
+
+' Relationships (data plane & queries)
+Rel(user, grafana, "HTTPS 443")
+Rel(grafana, entrA, "OIDC authentication")
+
+Rel(aks, nsg, "Outbound telemetry traffic")
+Rel(nsg, otel, "Inbound telemetry allowed")
+
+Rel(aks, otel, "OTLP gRPC 4317 / HTTP 4318 + TLS (client cert)")
+Rel(otel, prom, "Push metrics (HTTPS)")
+Rel(otel, loki, "Push logs (HTTPS)")
+Rel(otel, jaeger, "Push traces (gRPC 14250 or OTLP 4317)")
+
+Rel(grafana, prom, "Query metrics (HTTPS)")
+Rel(grafana, loki, "Query logs (HTTPS)")
+Rel(grafana, jaeger, "Query traces (HTTPS)")
+
+' Certificates, DNS, firewall
+Rel(akv, aks, "Issue client certificates")
+Rel(akv, otel, "Provision server certificate")
+Rel(pdns, grafana, "Resolve Grafana FQDN")
+Rel(afw, otel, "Optional inspection")
+
+' Backups
+Rel(prom, blob, "Backup")
+Rel(loki, blob, "Backup")
+Rel(jaeger, blob, "Backup")
+Rel(grafdb, afiles, "Backup")
+
+SHOW_LEGEND()
+@enduml
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+@startuml
+' C4-PlantUML: Container-level diagram for AKS Observability with styled sections
+!includeurl https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+' Define background colors for grouping
+skinparam rectangle<<UserSection>> {
+  BackgroundColor #FFF2CC
+  FontColor black
+}
+skinparam rectangle<<ExternalSystems>> {
+  BackgroundColor #D5E8D4
+  FontColor black
+}
+skinparam rectangle<<ObservabilityVM>> {
+  BackgroundColor #DAE8FC
+  FontColor black
+}
+skinparam rectangle<<NetworkSecurity>> {
+  BackgroundColor #E1D5E7
+  FontColor black
+}
 
 ' People
 rectangle "User Section" <<UserSection>> {
