@@ -42,6 +42,26 @@ Storage	$224.00	$224.00
 Network	$8.70	$8.70
 Total	~$525.50	~$818.30
 
+https://azure.microsoft.com/en-ca/pricing/calculator/
+
+
+Cost Optimization Tips
+Reserved Instances (1- or 3-year commitment)
+
+Save up to 72% on compute costs (e.g., D8s_v3 drops to ~$82/month).
+
+Azure Hybrid Benefit
+
+Use existing Linux licenses to reduce costs by ~40%.
+
+Storage Tiering
+
+Move older logs/metrics to Cool Blob Storage (~$0.02/GB/month).
+
+Auto-Shutdown for Dev/Test
+
+Shut down VMs nights/weekends to save ~50% on compute.
+
 
 
 we’ll need estimated actual costs; please add a table with the costs per/month for compute, storage and traffic; use the azure price calculator to get pricing, Canada Central Region
