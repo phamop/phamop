@@ -1,3 +1,9 @@
+To ensure the design is consistence Otel-collector will be used to collect all the 3 signals and they will all be exported to their various backend within the VM. 
+Yes, Push will used from the AKS to allow the signal to the  VM. The shared documents has been updated so please kindly review and share your comments
+
+
+
+
 ## Title  
 Dev: Implement Temporary VM-hosted OSS Observability Stack
 
