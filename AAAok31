@@ -1,9 +1,4 @@
-To maintain design consistency, the OpenTelemetry Collector (OTel Collector) will be used to collect all three signals—metrics, logs, and traces—and export them to their respective backends within the VM.
-
-A push-based approach will be implemented from the AKS cluster to transmit the signals to the VM.
-
-The shared design document has been updated accordingly. Please review and provide your feedback at your earliest convenience.
-
+we’ll need estimated actual costs; please add a table with the costs per/month for compute, storage and traffic; use the azure price calculator to get pricing, Canada Central Region
 
 
 ## Title  
