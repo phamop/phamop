@@ -1,3 +1,49 @@
+1. Compute Costs (VM)
+VM Size	vCPUs	RAM	Cost (CAD/month)	Use Case
+Standard_D8s_v3	8	32GB	~$292.80	Medium workload (Dev/Test)
+Standard_D16s_v3	16	64GB	~$585.60	Large workload (Production)
+Notes:
+
+
+2. Storage Costs (Premium SSD)
+Disk Type	Size	Cost (CAD/month)	Purpose
+OS Disk (P10)	128GB	~$22.40	Boot volume
+Data Disk (P20)	512GB	~$89.60	Loki (logs)
+Data Disk (P15)	256GB	~$44.80	Prometheus (metrics)
+Data Disk (P15)	256GB	~$44.80	Jaeger (traces)
+Data Disk (P10)	128GB	~$22.40	Grafana (dashboards)
+Total Storage	1.25TB	~$224.00	
+Notes:
+
+Premium SSD (P10/P15/P20) is recommended for high IOPS.
+
+Standard SSD could reduce costs by ~30% but may impact performance.
+
+
+
+
+3. Network Traffic Costs
+Traffic Type	Data Volume	Cost (CAD/month)
+Inbound Data	Free	$0.00
+Outbound Data	First 5GB	$0.00
+Additional Outbound	$0.087/GB	~$8.70 (100GB est.)
+Assumptions:
+
+100GB/month outbound (AKS → VM telemetry).
+
+Inbound traffic is always free in Azure.
+
+
+
+ . Total Estimated Monthly Cost
+Component	Medium VM (D8s_v3)	Large VM (D16s_v3)
+Compute	$292.80	$585.60
+Storage	$224.00	$224.00
+Network	$8.70	$8.70
+Total	~$525.50	~$818.30
+
+
+
 we’ll need estimated actual costs; please add a table with the costs per/month for compute, storage and traffic; use the azure price calculator to get pricing, Canada Central Region
 
 
