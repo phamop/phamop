@@ -1,3 +1,7 @@
+The below link provide access to the azure price calculator estimate 
+
+
+
 1. Compute Costs (VM)
 VM Size	vCPUs	RAM	Cost (CAD/month)	Use Case
 Standard_D8s_v3	8	32GB	~$292.80	Medium workload (Dev/Test)
