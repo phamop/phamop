@@ -1,120 +1,93 @@
-Option A — Centralized VM Observability Stack (Current Proposal)
-High-Level Diagram
-High-Level Flow details
-------------------------------
-AKS Applications generate telemetry (instrumented via OpenTelemetry SDKs, opentelemetry annotations or sidecars).
+@startuml Azure_VMSS_Observability_Fixed
 
- OpenTelemetry Auto instrumentation is configured to collects and push data VM’s OTel Collector  Endpoints
+title Azure VMSS OSS Observability (ILB-centric)
 
-VM OTel Collector distributes data to the respective exporter in the vm:
+skinparam shadowing false
+skinparam componentStyle rectangle
+skinparam rectangle {
+  BorderColor #4E7DD1
+  RoundCorner 12
+}
+skinparam ArrowColor #555555
+skinparam packageStyle rectangle
 
-Metrics → Prometheus (scraped or pushed)
+rectangle "Azure Subscription" as Azure {
+  package "AKS Cluster" as AKS {
+    component "Workloads" as Workloads
+    component "OTel Agents\\n(DaemonSet)" as OTelAgents
+    component "Optional OTel Sidecars" as OTelSidecars
+  }
 
-Logs → Loki (HTTP push)
+  rectangle "Standard Internal Load Balancer\\n(VIP: otel-gw.internal.corp)" as ILB
 
-Traces → Jaeger (gRPC push)
+  package "VM Scale Set (3..10 VMs)" as VMSS {
+    rectangle "VM #n" as VMN {
+      component "nginx\\n(443)" as Nginx
+      component "OTel Collector\\nGateway (4317/4318)\\nProm Exporter (9464)" as Gateway
+      component "Prometheus\\n(local TSDB on Premium SSD)" as Prom
+      component "Thanos Sidecar" as ThanosSidecar
+      component "Thanos Query / Store" as ThanosQS
+      component "Loki Distributor\\n(3100)" as LokiDist
+      component "Loki Ingester\\n(WAL on SSD)" as LokiIngest
+      component "Loki Querier / Query-Frontend" as LokiQuery
+      component "Loki Compactor\\n(ONE active)" as LokiComp
+      component "Jaeger Collector\\n(14250 / 14268)" as JaegerCol
+      component "Jaeger Query UI\\n(16686)" as JaegerQuery
+      component "Grafana\\n(3000)" as Grafana
+    }
+  }
 
-Grafana queries all backends (Loki, Prometheus, Jaeger) for visualization.
+  database "Azure Blob Storage\\n(thanos-bucket, loki-bucket)" as Blob
+  database "Elastic / OpenSearch\\n(Traces Storage)" as TraceStore
+  database "Azure Database for PostgreSQL\\n(Grafana DB)" as PG
+  component "Azure Key Vault\\n(Secrets & Certs)" as KV
+  rectangle "App Gateway (WAF v2)\\n443" as AppGW
+}
 
+' Flows
+Workloads --> OTelAgents : telemetry (metrics/logs/traces)
+OTelSidecars --> ILB : OTLP gRPC/HTTP 4317/4318
+OTelAgents --> ILB : OTLP gRPC/HTTP 4317/4318
 
-Apps & PaaS → Opentelemetry AutoInstrumentation (optional)→ VM OTel Collector 
-    → Prometheus (metrics) → Grafana
-    → Loki (logs)          → Grafana
-    → Jaeger (traces)      → Grafana
-Components
-	Azure VM (Observability Component & Backends):
-	OTel Collector 
-	Prometheus (scrape & remote_write endpoints)
-	Loki (log ingestion)
-	Jaeger (collector + query + UI)
-	Grafana (dashboards/alerts)
-Installed Components on VM
-Implementation
-Component	Role	Data Type	Port
-Loki	Log Aggregation & Storage	Logs	3100
-Prometheus	Metrics and Storage	Metrics	9090
-Jaeger	Distributed Tracing	Traces	14268, 16686
-Grafana Dashboard	Data Visualization 	UI	3000
-Opentelemetry Collector	Central Telemetry 	Log/Metrics/Traces	4317, 4318
+ILB --> Gateway : LB new connections
 
+' In-VM flows
+Gateway --> Prom : metrics via scrape 9464
+Gateway --> LokiDist : logs push
+Gateway --> JaegerCol : traces (OTLP)
 
+' Storage flows
+ThanosSidecar --> Blob : upload immutable blocks
+LokiIngest --> Blob : chunks + index (boltdb-shipper)
+JaegerCol --> TraceStore : spans\\n(index + documents)
 
-Installed Components on Cluster
-Instrumentation: OpenTelemetry Operator ( OpenTelemetry instrumentation CRD, Opentelemetry Annotation and Sidecar)
-Sizing & Ports (initial)
-	VM sizes: Medium (D8s_v3) or Large (D16s_v3) depending on environment.
-	Ports (inbound): 4317/4318 (OTLP) – AKS to VM (Egress – AKS outbound)
-	Inbound (within OS): 9090 (Prometheus), 3100 (Loki), 14268 & 16686 (Jaeger), 3000/443(Grafana - DNS ).
-	Disk layout: (1TB - Total Disk Request)
-	/data/loki: 200-500 GB SSD, 7-14d
-	/data/prom: 50-150 GB SSD, 7-15d
-	/data/jaeger: 20-50 GB SSD, 3-7d
-	/data/grafana: 20-50 GB
-o	
-Network & Security
-	Same VNET or peered; dedicated subnet and NSG; private DNS.
-	TLS encryption for end to end communication
-	Grafana OIDC with Entra ID.
-	Hardened OS baseline() 
-Pros
-1.	Single, simple landing zone for ingestion and querying.
-2.	Minimal change to app/cluster agents (single OTLP target).
-3.	Easier to grant external teams read only Grafana access.
-Cons / Risks
-1. SPOF risk: If the VM stack fails, all ingestion and query can be impacted.
-2. Horizontal scale requires sharding and multiple VMs (more work).
-3. Higher cross network dependency and potential backpressure under spikes.
-4. Local TSDB/indices can be a bottleneck without careful I/O tuning and backups.
-5. Grafana downtime removes visibility and alert evaluation if run on same host.
+' Query paths
+Grafana --> ThanosQS : Prom/Thanos API
+Grafana --> LokiQuery : LogQL
+Grafana --> JaegerQuery : Trace search
+AppGW --> Nginx : TLS\\n/grafana, /jaeger
+Nginx --> Grafana
+Nginx --> JaegerQuery
 
-HA Enhancements (if you proceed with A)
-1. Active/Active VMs behind an Azure Load Balancer for OTLP 4317/4318.
-2. Split roles: Move Grafana off the data VM or run 2+ Grafana instances with PostgreSQL backend (not SQLite) for HA.
-3. Stateful backends:
-a)	Prometheus HA pair + federation; scheduled snapshots to Azure Files/Blob.
-b)	Loki with chunk store on Azure Blob + SSD for WAL; run 2+ injecters/queriers (containerized) and a simple distributor.
-c)	Jaeger: use Kafka (optional) or persistent storage for collectors; run query/UI separately.
-4. Back-pressure control: OTel Collector queue_retry + memory_limiter processors; rate limits per tenant.
-5. Backups: Daily snapshots of /data/* and Grafana DB; IaC for rebuild in < 2 hours.
+' Secrets
+Gateway --> KV : read server cert (at boot)
+Grafana --> PG : dashboards/users
+VMN --> KV : secrets via MI (at boot)
 
+' Notes
+note right of ILB
+  Probes:
+   - 4317 (OTLP gRPC)
+   - 4318 (OTLP HTTP)
+   - 3100 (Loki distributor)
+   - 14250 (Jaeger collector)
+  Idle timeout:
+   - 30m for 4317/4318
+end note
 
+note bottom of LokiComp
+  Exactly one compactor active
+  (or sharded compactor)
+end note
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Ideally this should be a visual diagram where you can see all that, with the protocols in use, direction of the data flow or request flow
-o	Visualize the network planes in those data flows to ensure things like firewalls nsg's etc. don't become hurdles during implementation
-o	How do we secure the flow (mTLS, authentication, etc.)
-
-
-http://demo-collector:4318 the demo-collector here would be the VM DNS for the VM otel collector
-
-
-https://opentelemetry.io/docs/platforms/kubernetes/operator/automatic/
+@enduml
