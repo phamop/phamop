@@ -1,91 +1,102 @@
-@startuml Azure_VMSS_Observability_Fixed
+@startuml Azure_VMSS_Observability_Enhanced
 
-title Azure VMSS OSS Observability (ILB-centric)
+title Azure VMSS OSS Observability (ILB-centric)\n<color:#939393><size:12>Enhanced with a clearer visual hierarchy</size></color>
 
 skinparam shadowing false
 skinparam componentStyle rectangle
 skinparam rectangle {
-  BorderColor #4E7DD1
   RoundCorner 12
 }
-skinparam ArrowColor #555555
 skinparam packageStyle rectangle
+skinparam packageBorderColor #000000
+skinparam packageBackgroundColor #F0F0F0
+skinparam noteBackgroundColor #FFF9E6
+skinparam noteBorderColor #E6C073
+
+' ===== COLOR PALETTE =====
+' Primary Azure Blue, Logs Green, Traces Orange, Metrics Purple, Storage Blue, Secrets Crimson
+'
 
 rectangle "Azure Subscription" as Azure {
-  package "AKS Cluster" as AKS {
-    component "Workloads" as Workloads
-    component "OTel Agents\\n(DaemonSet)" as OTelAgents
-    component "Optional OTel Sidecars" as OTelSidecars
+  package "AKS Cluster" as AKS #F5F9FF {
+    component "Workloads" as Workloads #4E7DD1
+    component "OTel Agents\\n(DaemonSet)" as OTelAgents #4E7DD1
+    component "Optional OTel Sidecars" as OTelSidecars #4E7DD1
   }
 
-  rectangle "Standard Internal Load Balancer\\n(VIP: otel-gw.internal.corp)" as ILB
+  rectangle "Standard Internal Load Balancer\\n(VIP: otel-gw.internal.corp)" as ILB {
+    backgroundColor #E3ECFA
+  }
 
-  package "VM Scale Set (3..10 VMs)" as VMSS {
+  package "VM Scale Set (3..10 VMs)" as VMSS #FFF4F4 {
     rectangle "VM #n" as VMN {
-      component "nginx\\n(443)" as Nginx
-      component "OTel Collector\\nGateway (4317/4318)\\nProm Exporter (9464)" as Gateway
-      component "Prometheus\\n(local TSDB on Premium SSD)" as Prom
-      component "Thanos Sidecar" as ThanosSidecar
-      component "Thanos Query / Store" as ThanosQS
-      component "Loki Distributor\\n(3100)" as LokiDist
-      component "Loki Ingester\\n(WAL on SSD)" as LokiIngest
-      component "Loki Querier / Query-Frontend" as LokiQuery
-      component "Loki Compactor\\n(ONE active)" as LokiComp
-      component "Jaeger Collector\\n(14250 / 14268)" as JaegerCol
-      component "Jaeger Query UI\\n(16686)" as JaegerQuery
-      component "Grafana\\n(3000)" as Grafana
+      component "nginx\\n(443)" as Nginx #D1D1D1
+      component "OTel Collector\\nGateway (4317/4318)\\nProm Exporter (9464)" as Gateway #4E7DD1
+      component "Prometheus\\n(local TSDB on Premium SSD)" as Prom #9C6ADE
+      component "Thanos Sidecar" as ThanosSidecar #9C6ADE
+      component "Thanos Query / Store" as ThanosQS #9C6ADE
+      component "Loki Distributor\\n(3100)" as LokiDist #4CAF50
+      component "Loki Ingester\\n(WAL on SSD)" as LokiIngest #4CAF50
+      component "Loki Querier / Query-Frontend" as LokiQuery #4CAF50
+      component "Loki Compactor\\n(ONE active)" as LokiComp #4CAF50
+      component "Jaeger Collector\\n(14250 / 14268)" as JaegerCol #FF9800
+      component "Jaeger Query UI\\n(16686)" as JaegerQuery #FF9800
+      component "Grafana\\n(3000)" as Grafana #FF5252
     }
   }
 
-  database "Azure Blob Storage\\n(thanos-bucket, loki-bucket)" as Blob
-  database "Elastic / OpenSearch\\n(Traces Storage)" as TraceStore
-  database "Azure Database for PostgreSQL\\n(Grafana DB)" as PG
-  component "Azure Key Vault\\n(Secrets & Certs)" as KV
-  rectangle "App Gateway (WAF v2)\\n443" as AppGW
+  database "Azure Blob Storage\\n(thanos-bucket, loki-bucket)" as Blob #42A5F5
+  database "Elastic / OpenSearch\\n(Traces Storage)" as TraceStore #FF9800
+  database "Azure Database for PostgreSQL\\n(Grafana DB)" as PG #FF5252
+  component "Azure Key Vault\\n(Secrets & Certs)" as KV #AB47BC
+  rectangle "App Gateway (WAF v2)\\n443" as AppGW #D1D1D1
 }
 
-' Flows
-Workloads --> OTelAgents : telemetry (metrics/logs/traces)
-OTelSidecars --> ILB : OTLP gRPC/HTTP 4317/4318
-OTelAgents --> ILB : OTLP gRPC/HTTP 4317/4318
+' ===== FLOWS =====
+' General Telemetry (Blue)
+Workloads -[#4E7DD1]-> OTelAgents : telemetry (metrics/logs/traces)
+OTelSidecars -[#4E7DD1]-> ILB : OTLP gRPC/HTTP 4317/4318
+OTelAgents -[#4E7DD1]-> ILB : OTLP gRPC/HTTP 4317/4318
+ILB -[#4E7DD1]-> Gateway : LB new connections
 
-ILB --> Gateway : LB new connections
+' Metrics (Purple)
+Gateway -[#9C6ADE]-> Prom : metrics via scrape 9464
+ThanosSidecar -[#9C6ADE]-> Blob : upload immutable blocks
 
-' In-VM flows
-Gateway --> Prom : metrics via scrape 9464
-Gateway --> LokiDist : logs push
-Gateway --> JaegerCol : traces (OTLP)
+' Logs (Green)
+Gateway -[#4CAF50]-> LokiDist : logs push
+LokiIngest -[#4CAF50]-> Blob : chunks + index (boltdb-shipper)
 
-' Storage flows
-ThanosSidecar --> Blob : upload immutable blocks
-LokiIngest --> Blob : chunks + index (boltdb-shipper)
-JaegerCol --> TraceStore : spans\\n(index + documents)
+' Traces (Orange)
+Gateway -[#FF9800]-> JaegerCol : traces (OTLP)
+JaegerCol -[#FF9800]-> TraceStore : spans\\n(index + documents)
 
-' Query paths
-Grafana --> ThanosQS : Prom/Thanos API
-Grafana --> LokiQuery : LogQL
-Grafana --> JaegerQuery : Trace search
-AppGW --> Nginx : TLS\\n/grafana, /jaeger
-Nginx --> Grafana
-Nginx --> JaegerQuery
+' Query Paths (Grey/Black for user-facing)
+Grafana -[#333333]-> ThanosQS : Prom/Thanos API
+Grafana -[#333333]-> LokiQuery : LogQL
+Grafana -[#333333]-> JaegerQuery : Trace search
+AppGW -[#333333]-> Nginx : TLS\\n/grafana, /jaeger
+Nginx -[#333333]-> Grafana
+Nginx -[#333333]-> JaegerQuery
 
-' Secrets
-Gateway --> KV : read server cert (at boot)
-Grafana --> PG : dashboards/users
-VMN --> KV : secrets via MI (at boot)
+' Secrets & Config (Magenta)
+Gateway -[#AB47BC]-> KV : read server cert (at boot)
+Grafana -[#AB47BC]-> PG : dashboards/users
+VMN -[#AB47BC]--> KV : secrets via MI (at boot)
 
-' Notes
+' ===== NOTES =====
 note right of ILB
-  Probes:
+  <b>ILB Health Probes:</b>
    - 4317 (OTLP gRPC)
    - 4318 (OTLP HTTP)
    - 3100 (Loki distributor)
    - 14250 (Jaeger collector)
-  Idle timeout:
+  <b>Idle timeout:</b>
    - 30m for 4317/4318
 end note
 
 note bottom of LokiComp
+  <b>Compaction Note:</b>
   Exactly one compactor active
   (or sharded compactor)
 end note
