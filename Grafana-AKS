@@ -1,94 +1,22 @@
+monitors and collects telemetry signals (metrics, logs, traces) from the following components, depending on how you configured the CRD (OpenTelemetryCollector) and receivers:
 
-@startuml Azure_VMSS_Observability_Fixed
+1. Kubernetes / Node-Level Components
 
-title Azure VMSS OSS Observability (ILB-centric)
+Kubelet & API Server metrics (via Prometheus receiver scraping endpoints like /metrics)
 
-skinparam shadowing false
-skinparam componentStyle rectangle
-skinparam rectangle {
-  BorderColor #4E7DD1
-  RoundCorner 12
-}
-skinparam ArrowColor #555555
-skinparam packageStyle rectangle
+cAdvisor / container runtime metrics (CPU, memory, disk, network usage per pod/container)
 
-rectangle "Azure Subscription" as Azure {
-  package "AKS Cluster" as AKS {
-    component "Workloads" as Workloads
-    component "OTel Agents\\n(DaemonSet)" as OTelAgents
-    component "Optional OTel Sidecars" as OTelSidecars
-  }
+Kube-state-metrics (cluster object state: deployments, pods, nodes, jobs, etc.)
 
-  rectangle "Standard Internal Load Balancer\\n(VIP: otel-gw.internal.corp)" as ILB
+2. Application Workloads
 
-  package "VM Scale Set (3..10 VMs)" as VMSS {
-    rectangle "VM #n" as VMN {
-      component "nginx\\n(443)" as Nginx
-      component "OTel Collector\\nGateway (4317/4318)\\nProm Exporter (9464)" as Gateway
-      component "Prometheus\\n(local TSDB on Premium SSD)" as Prom
-      component "Thanos Sidecar" as ThanosSidecar
-      component "Thanos Query / Store" as ThanosQS
-      component "Loki Distributor\\n(3100)" as LokiDist
-      component "Loki Ingester\\n(WAL on SSD)" as LokiIngest
-      component "Loki Querier / Query-Frontend" as LokiQuery
-      component "Loki Compactor\\n(ONE active)" as LokiComp
-      component "Jaeger Collector\\n(14250 / 14268)" as JaegerCol
-      component "Jaeger Query UI\\n(16686)" as JaegerQuery
-      component "Grafana\\n(3000)" as Grafana
-    }
-  }
+OTLP receiver collects traces, metrics, and logs directly from instrumented applications (using SDKs or auto-instrumentation).
 
-  database "Azure Blob Storage\\n(thanos-bucket, loki-bucket)" as Blob
-  database "Elastic / OpenSearch\\n(Traces Storage)" as TraceStore
-  database "Azure Database for PostgreSQL\\n(Grafana DB)" as PG
-  component "Azure Key Vault\\n(Secrets & Certs)" as KV
-  rectangle "App Gateway (WAF v2)\\n443" as AppGW
-}
+Jaeger receiver accepts spans if workloads are already exporting traces in Jaeger format.
 
-' Flows
-Workloads --> OTelAgents : telemetry (metrics/logs/traces)
-OTelSidecars --> ILB : OTLP gRPC/HTTP 4317/4318
-OTelAgents --> ILB : OTLP gRPC/HTTP 4317/4318
+Prometheus receiver scrapes metrics endpoints exposed by apps and services.
 
-ILB --> Gateway : LB new connections
+Loki / Fluentbit integration (if configured) collects logs from pods.
 
-' In-VM flows
-Gateway --> Prom : metrics via scrape 9464
-Gateway --> LokiDist : logs push
-Gateway --> JaegerCol : traces (OTLP)
 
-' Storage flows
-ThanosSidecar --> Blob : upload immutable blocks
-LokiIngest --> Blob : chunks + index (boltdb-shipper)
-JaegerCol --> TraceStore : spans\\n(index + documents)
-
-' Query paths
-Grafana --> ThanosQS : Prom/Thanos API
-Grafana --> LokiQuery : LogQL
-Grafana --> JaegerQuery : Trace search
-AppGW --> Nginx : TLS\\n/grafana, /jaeger
-Nginx --> Grafana
-Nginx --> JaegerQuery
-
-' Secrets
-Gateway --> KV : read server cert (at boot)
-Grafana --> PG : dashboards/users
-VMN --> KV : secrets via MI (at boot)
-
-' Notes
-note right of ILB
-  Probes:
-   - 4317 (OTLP gRPC)
-   - 4318 (OTLP HTTP)
-   - 3100 (Loki distributor)
-   - 14250 (Jaeger collector)
-  Idle timeout:
-   - 30m for 4317/4318
-end note
-
-note bottom of LokiComp
-  Exactly one compactor active
-  (or sharded compactor)
-end note
-
-@enduml
+Operator, the otel-collector usually monitors Kubernetes cluster state, node/pod/container metrics, application traces/logs, and service-specific metrics—all unified under one pipeline that you configure in the CRD.
