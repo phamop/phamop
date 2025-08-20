@@ -1,77 +1,142 @@
-Architecture
-=============
-Flow: AKS apps → OTEL SDK/exporters → AKS OTEL Collector (DaemonSet) → OTLP/mTLS → VM OTEL Collector (gateway) →
-Logs→Loki, Traces→Jaeger, Metrics→Prometheus → Grafana dashboards & alerts
+@startuml observability-stack-enhanced
+!includeurl https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
 
-Based on this design there are 2 approach to Otel collector Deployment
-1. Sidecar OTel Collector 
-2. OTel Collector as a DaemonSet
+' ==== THEME & STYLING ====
+UpdateElementStyle(Person, $bgColor="#4A90E2", $fontColor="white", $borderColor="#3A70B2")
+UpdateElementStyle(System, $bgColor="#1565C0", $fontColor="white")
+UpdateElementStyle(Container, $bgColor="#2196F3", $fontColor="white")
+UpdateElementStyle(System_Ext, $bgColor="#0078D4", $fontColor="white")
+UpdateElementStyle(Deployment, $bgColor="#64B5F6", $fontColor="white", $borderColor="#1976D2")
 
-VM Specifications
-----------------
-Recommended VM Size
-Tier	  vCPUs	 RAM	     Disk (SSD)	   Use Case
-Medium	  4-8	 16-32GB	1TB	     Dev/POC
-Large	  8-16	 32-64GB	1TB+	     Dev/POC
+skinparam backgroundColor #F8F9FA
+skinparam defaultFontColor #333333
+skinparam noteBackgroundColor #FFFFFF
+skinparam noteBorderColor #999999
+skinparam arrowColor #666666
+skinparam arrowFontColor #333333
+skinparam arrowFontSize 11
 
-Recommended Azure VM SKUs:
+LAYOUT_WITH_LEGEND()
 
-Medium: Standard_D8s_v3 (8 vCPUs, 32GB RAM)
-Large: Standard_D16s_v3 (16 vCPUs, 64GB RAM)
+title <color:#0078D4>Observability OSS Stack on Azure</color>\n<size:12>C4 Container Diagram with NSG Rules</size>
 
-Networking
-==========
-Same VNET as AKS (ensures low-latency communication)
+' ==== Persons ====
+Person(developer, "Developer", "Application Developer")
+Person(sre, "SRE/DevOps", "Site Reliability Engineer")
 
-Subnet: Dedicated subnet (Recommended)
+' ==== Azure Network ====
+System_Boundary(azure_network, "Azure Virtual Network") {
+    
+    ' ---- AKS Cluster ----
+    System_Boundary(aks_cluster, "Azure Kubernetes Service (AKS)") {
+        
+        Container_Boundary(otel_namespace, "OpenTelemetry Namespace") {
+            Container(otel_operator, "OTEL Operator", "Kubernetes Operator", "Manages OTEL Collector CRDs")
+            Container(otel_collector, "OTEL Collector", "Deployment", "Receives, processes, and exports telemetry data")
+        }
+        
+        Container_Boundary(monitoring_namespace, "Monitoring Namespace") {
+            Container(prometheus, "Prometheus", "Time Series DB", "Stores and queries metrics data")
+            Container(loki, "Loki", "Log Aggregation", "Stores and queries log data")
+            Container(jaeger, "Jaeger", "Distributed Tracing", "Stores and queries trace data")
+        }
+        
+        Container_Boundary(app_namespace, "Application Namespace") {
+            Container(app_pods, "Application Pods", "Microservices", "Business applications with OTEL instrumentation")
+        }
+    }
+    
+    ' ---- VM Subnet ----
+    System_Boundary(vm_subnet, "VM Subnet") {
+        Container(grafana_vm, "Grafana VM", "Virtual Machine", "Visualization and dashboarding platform")
+        Container(sso_provider, "SSO Provider", "Azure AD/OIDC", "Authentication service for Grafana")
+        
+        ' NSG for Grafana VM
+        Container(nsg_grafana, "NSG Rules", "Network Security Group", "Controls inbound/outbound traffic to Grafana VM")
+    }
+    
+    ' NSG for AKS to Grafana communication
+    Container(nsg_aks_to_grafana, "NSG: AKS to Grafana", "Network Security Group", "Allows traffic from AKS to Grafana backends")
+}
 
-NSG Rules (Inbound-nodepools):
+' ==== External System ====
+System_Ext(azure_ad, "Azure Active Directory", "Identity Provider for SSO")
 
-OTel Collector: 4317 (gRPC), 4318 (HTTP)
-Prometheus: 9090 (Scrape)
-Loki: 3100 (Log Ingestion)
-Jaeger: 14268 (Collector), 16686 (UI)
-Grafana: 3000 (Dashboard)
+' ==== Relationships ====
+' Users access Grafana directly
+Rel(developer, grafana_vm, "Access dashboards (HTTPS)", "Browser")
+Rel(sre, grafana_vm, "Access dashboards (HTTPS)", "Browser")
 
-Outbound: Allow all (for updates, external integrations)
+' App telemetry
+Rel(app_pods, otel_collector, "Sends telemetry (OTLP/gRPC, HTTP)")
 
+' Collector exports
+Rel(otel_collector, prometheus, "Exports metrics", "Prometheus Remote Write")
+Rel(otel_collector, loki, "Exports logs", "Loki HTTP API")
+Rel(otel_collector, jaeger, "Exports traces", "Jaeger gRPC")
 
-NSG (inbound):
+' Operator manages Collector
+Rel(otel_operator, otel_collector, "Manages configuration", "Kubernetes API")
 
-From aks-nodepools → 4317/tcp (OTLP gRPC), 4318/tcp (OTLP HTTP, optional)
-From admin/VPN subnets → 3000/tcp (Grafana), 16686/tcp (Jaeger UI), 9090/tcp (Prometheus UI optional)
-DNS: Private A record  → VM private IP (AKS targets this).
-Transport: mTLS end-to-end OTLP.
-Auth: Grafana OIDC with Azure Entra ID; least-privileged local admin.
+' Grafana queries backends through NSG
+Rel(grafana_vm, nsg_aks_to_grafana, "Outbound queries", "HTTP/HTTPS")
+Rel(nsg_aks_to_grafana, prometheus, "Allows metrics queries", "PromQL/HTTP (3100)")
+Rel(nsg_aks_to_grafana, loki, "Allows log queries", "LogQL/HTTP (3100)")
+Rel(nsg_aks_to_grafana, jaeger, "Allows trace queries", "Jaeger API/HTTP (16686)")
 
-Storage & Retention
-===================
-Separate managed data disks/mountpoint:
+' Grafana authentication
+Rel(grafana_vm, sso_provider, "SSO Authentication", "OIDC")
+Rel(sso_provider, azure_ad, "Validates tokens", "OIDC/SAML")
 
-/data/loki (Primary log volume): start 200–500 GB ; 7–14 days retention.
-/data/prom (metrics): 50–150 GB; 7–15 days retention.
-/data/grafana (SQLite/plugins): 20–50 GB.
-/data/jaeger (Traces if using all-in-one with local Badger): 20–50 GB; 3–7 days + 5–10% sampling
+' NSG for Grafana VM
+Rel(nsg_grafana, grafana_vm, "Filters traffic", "Network Rules")
 
-File structure
--------------
-/opt/obs/
-  docker-compose.yml
-  loki/config/config.yml
-  prom/prometheus.yml
-  jaeger/                      # (all-in-one)
-  otel/config/config.yaml
-  otel/config/certs/{ca.crt,server.crt,server.key}
-  grafana/provisioning/datasources/datasources.yml
-/data/
-  loki/        # chunks+index
-  prom/        # TSDB
-  grafana/     # grafana.db & plugins
-  jaeger/      # badger (if used)
+' Optional: SRE may still query Prometheus directly through NSG
+Rel(sre, nsg_aks_to_grafana, "Direct queries", "CLI/API")
+Rel(nsg_aks_to_grafana, prometheus, "Allows direct access", "PromQL/API (9090)")
 
+SHOW_LEGEND()
 
-Deployment via Docker Compose/ks3
-===============================
+' ==== Notes ====
+note right of nsg_aks_to_grafana
+<b>NSG Rules: AKS to Grafana</b>
+- Allow HTTPS from AKS subnet to Grafana VM
+- Allow HTTP from AKS subnet to Prometheus (port 9090)
+- Allow HTTP from AKS subnet to Loki (port 3100)
+- Allow HTTP from AKS subnet to Jaeger (port 16686)
+- Deny all other inbound traffic
+end note
 
+note right of otel_collector
+<b>OTEL Collector Configuration</b>
+- Receivers: OTLP, Jaeger, Zipkin
+- Processors: Batch, Memory Limiter
+- Exporters: Prometheus, Loki, Jaeger
+- Resource detection: K8s attributes
+end note
 
+note right of grafana_vm
+<b>Grafana Configuration</b>
+- Data Sources: Prometheus, Loki, Jaeger
+- Auth: SSO via Azure AD/OIDC
+- Dashboards: provisioned via config
+- Direct access enabled (no ingress)
+end note
 
+note left of aks_cluster
+<b>AKS Configuration</b>
+- Network Policy enabled
+- Azure CNI networking
+- Managed Identity
+- Private cluster option
+- Auto-scaling enabled
+end note
+
+note right of prometheus
+<b>Prometheus Config</b>
+- Remote write enabled
+- Retention: 15d local
+- Scraping: via OTEL & serviceMonitor
+end note
+
+@enduml
