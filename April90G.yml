@@ -1,6 +1,6 @@
-@startuml Azure_VMSS_Observability_Enhanced
+@startuml Azure_VMSS_Observability_GreyTheme
 
-title Azure VMSS OSS Observability (ILB-centric)\n<color:#939393><size:12>Enhanced with a clearer visual hierarchy</size></color>
+title Azure VMSS OSS Observability (ILB-centric)\n<color:#C0C0C0><size:12>Grey Theme</size></color>
 
 skinparam shadowing false
 skinparam componentStyle rectangle
@@ -8,29 +8,34 @@ skinparam rectangle {
   RoundCorner 12
 }
 skinparam packageStyle rectangle
-skinparam packageBorderColor #000000
-skinparam packageBackgroundColor #F0F0F0
+skinparam packageBorderColor #666666
+skinparam packageBackgroundColor #E5E5E5
 skinparam noteBackgroundColor #FFF9E6
 skinparam noteBorderColor #E6C073
+skinparam backgroundColor #404040
+skinparam defaultTextColor #F0F0F0
+skinparam ArrowColor #F0F0F0
+skinparam ArrowFontColor #F0F0F0
+skinparam defaultFontColor #F0F0F0
 
 ' ===== COLOR PALETTE =====
-' Primary Azure Blue, Logs Green, Traces Orange, Metrics Purple, Storage Blue, Secrets Crimson
+' Primary Azure Blue, Logs Green, Traces Orange, Metrics Purple, Storage Blue, Secrets Magenta
 '
 
-rectangle "Azure Subscription" as Azure {
-  package "AKS Cluster" as AKS #F5F9FF {
+rectangle "Azure Subscription" as Azure #5A5A5A {
+  package "AKS Cluster" as AKS #7A7A7A {
     component "Workloads" as Workloads #4E7DD1
     component "OTel Agents\\n(DaemonSet)" as OTelAgents #4E7DD1
     component "Optional OTel Sidecars" as OTelSidecars #4E7DD1
   }
 
-  rectangle "Standard Internal Load Balancer\\n(VIP: otel-gw.internal.corp)" as ILB {
-    backgroundColor #E3ECFA
+  rectangle "Standard Internal Load Balancer\\n(VIP: otel-gw.internal.corp)" as ILB #4E7DD1 {
+    backgroundColor #7A7A7A
   }
 
-  package "VM Scale Set (3..10 VMs)" as VMSS #FFF4F4 {
-    rectangle "VM #n" as VMN {
-      component "nginx\\n(443)" as Nginx #D1D1D1
+  package "VM Scale Set (3..10 VMs)" as VMSS #7A7A7A {
+    rectangle "VM #n" as VMN #5A5A5A {
+      component "nginx\\n(443)" as Nginx #A0A0A0
       component "OTel Collector\\nGateway (4317/4318)\\nProm Exporter (9464)" as Gateway #4E7DD1
       component "Prometheus\\n(local TSDB on Premium SSD)" as Prom #9C6ADE
       component "Thanos Sidecar" as ThanosSidecar #9C6ADE
@@ -49,7 +54,7 @@ rectangle "Azure Subscription" as Azure {
   database "Elastic / OpenSearch\\n(Traces Storage)" as TraceStore #FF9800
   database "Azure Database for PostgreSQL\\n(Grafana DB)" as PG #FF5252
   component "Azure Key Vault\\n(Secrets & Certs)" as KV #AB47BC
-  rectangle "App Gateway (WAF v2)\\n443" as AppGW #D1D1D1
+  rectangle "App Gateway (WAF v2)\\n443" as AppGW #A0A0A0
 }
 
 ' ===== FLOWS =====
@@ -72,12 +77,12 @@ Gateway -[#FF9800]-> JaegerCol : traces (OTLP)
 JaegerCol -[#FF9800]-> TraceStore : spans\\n(index + documents)
 
 ' Query Paths (Grey/Black for user-facing)
-Grafana -[#333333]-> ThanosQS : Prom/Thanos API
-Grafana -[#333333]-> LokiQuery : LogQL
-Grafana -[#333333]-> JaegerQuery : Trace search
-AppGW -[#333333]-> Nginx : TLS\\n/grafana, /jaeger
-Nginx -[#333333]-> Grafana
-Nginx -[#333333]-> JaegerQuery
+Grafana -[#CCCCCC]-> ThanosQS : Prom/Thanos API
+Grafana -[#CCCCCC]-> LokiQuery : LogQL
+Grafana -[#CCCCCC]-> JaegerQuery : Trace search
+AppGW -[#CCCCCC]-> Nginx : TLS\\n/grafana, /jaeger
+Nginx -[#CCCCCC]-> Grafana
+Nginx -[#CCCCCC]-> JaegerQuery
 
 ' Secrets & Config (Magenta)
 Gateway -[#AB47BC]-> KV : read server cert (at boot)
