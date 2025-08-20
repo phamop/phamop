@@ -1,3 +1,16 @@
+Receive all metrics, logs, traces from AKS via OTLP.
+
+Run Grafana, Prometheus+Thanos, Loki (distributed), Jaeger (collectors/query) and an OTel gateway on every VM (Docker).
+
+Use Premium SSD for fast local TSDB/WAL/caches; use Azure Blob for durable, scalable object storage.
+
+Scale from 3 → 10 VMs without client reconfiguration.
+
+Provide TLS/mTLS, SSO, least-privilege access, and safe concurrency (no data corruption).
+
+
+
+
 Access the Azure pricing estimate for this solution via the calculator link below:
 
 
