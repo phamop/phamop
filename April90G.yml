@@ -1,6 +1,6 @@
 @startuml Azure_VMSS_Observability_GreyTheme
 
-title Azure VMSS OSS Observability (ILB-centric)\n<color:#C0C0C0><size:12>Grey Theme</size></color>
+title Azure VMSS OSS Observability (HA)\n<color:#C0C0C0><size:12>Grey Theme</size></color>
 
 skinparam shadowing false
 skinparam componentStyle rectangle
@@ -18,78 +18,66 @@ skinparam ArrowColor #F0F0F0
 skinparam ArrowFontColor #F0F0F0
 skinparam defaultFontColor #F0F0F0
 
-' ===== COLOR PALETTE =====
-' Primary Azure Blue, Logs Green, Traces Orange, Metrics Purple, Storage Blue, Secrets Magenta
-'
-
 rectangle "Azure Subscription" as Azure #5A5A5A {
+  
   package "AKS Cluster" as AKS #7A7A7A {
     component "Workloads" as Workloads #4E7DD1
-    component "OTel Agents\\n(DaemonSet)" as OTelAgents #4E7DD1
+    component "OTel Agents\n(DaemonSet)" as OTelAgents #4E7DD1
     component "Optional OTel Sidecars" as OTelSidecars #4E7DD1
   }
 
-  rectangle "Standard Internal Load Balancer\\n(VIP: otel-gw.internal.corp)" as ILB #4E7DD1 {
-    backgroundColor #7A7A7A
-  }
+  rectangle "Standard Internal Load Balancer\n(VIP: otel-gw.internal.corp)" as ILB #7A7A7A
 
   package "VM Scale Set (3..10 VMs)" as VMSS #7A7A7A {
     rectangle "VM #n" as VMN #5A5A5A {
-      component "nginx\\n(443)" as Nginx #A0A0A0
-      component "OTel Collector\\nGateway (4317/4318)\\nProm Exporter (9464)" as Gateway #4E7DD1
-      component "Prometheus\\n(local TSDB on Premium SSD)" as Prom #9C6ADE
+      component "nginx\n(443)" as Nginx #A0A0A0
+      component "OTel Collector\nGateway (4317/4318)\nProm Exporter (9464)" as Gateway #4E7DD1
+      component "Prometheus\n(local TSDB on Premium SSD)" as Prom #9C6ADE
       component "Thanos Sidecar" as ThanosSidecar #9C6ADE
       component "Thanos Query / Store" as ThanosQS #9C6ADE
-      component "Loki Distributor\\n(3100)" as LokiDist #4CAF50
-      component "Loki Ingester\\n(WAL on SSD)" as LokiIngest #4CAF50
+      component "Loki Distributor\n(3100)" as LokiDist #4CAF50
+      component "Loki Ingester\n(WAL on SSD)" as LokiIngest #4CAF50
       component "Loki Querier / Query-Frontend" as LokiQuery #4CAF50
-      component "Loki Compactor\\n(ONE active)" as LokiComp #4CAF50
-      component "Jaeger Collector\\n(14250 / 14268)" as JaegerCol #FF9800
-      component "Jaeger Query UI\\n(16686)" as JaegerQuery #FF9800
-      component "Grafana\\n(3000)" as Grafana #FF5252
+      component "Loki Compactor\n(ONE active)" as LokiComp #4CAF50
+      component "Jaeger Collector\n(14250 / 14268)" as JaegerCol #FF9800
+      component "Jaeger Query UI\n(16686)" as JaegerQuery #FF9800
+      component "Grafana\n(3000)" as Grafana #FF5252
     }
   }
 
-  database "Azure Blob Storage\\n(thanos-bucket, loki-bucket)" as Blob #42A5F5
-  database "Elastic / OpenSearch\\n(Traces Storage)" as TraceStore #FF9800
-  database "Azure Database for PostgreSQL\\n(Grafana DB)" as PG #FF5252
-  component "Azure Key Vault\\n(Secrets & Certs)" as KV #AB47BC
-  rectangle "App Gateway (WAF v2)\\n443" as AppGW #A0A0A0
+  database "Azure Blob Storage\n(thanos-bucket, loki-bucket)" as Blob #42A5F5
+  database "Elastic / OpenSearch\n(Traces Storage)" as TraceStore #FF9800
+  database "Azure Database for PostgreSQL\n(Grafana DB)" as PG #FF5252
+  component "Azure Key Vault\n(Secrets & Certs)" as KV #AB47BC
+  rectangle "App Gateway (WAF v2)\n443" as AppGW #A0A0A0
 }
 
 ' ===== FLOWS =====
-' General Telemetry (Blue)
-Workloads -[#4E7DD1]-> OTelAgents : telemetry (metrics/logs/traces)
-OTelSidecars -[#4E7DD1]-> ILB : OTLP gRPC/HTTP 4317/4318
-OTelAgents -[#4E7DD1]-> ILB : OTLP gRPC/HTTP 4317/4318
-ILB -[#4E7DD1]-> Gateway : LB new connections
+Workloads -[#4E7DD1]-> OTelAgents : telemetry
+OTelSidecars -[#4E7DD1]-> ILB : OTLP 4317/4318
+OTelAgents -[#4E7DD1]-> ILB : OTLP 4317/4318
+ILB -[#4E7DD1]-> Gateway : LB traffic
 
-' Metrics (Purple)
-Gateway -[#9C6ADE]-> Prom : metrics via scrape 9464
-ThanosSidecar -[#9C6ADE]-> Blob : upload immutable blocks
+Gateway -[#9C6ADE]-> Prom : scrape 9464
+ThanosSidecar -[#9C6ADE]-> Blob : upload blocks
 
-' Logs (Green)
-Gateway -[#4CAF50]-> LokiDist : logs push
-LokiIngest -[#4CAF50]-> Blob : chunks + index (boltdb-shipper)
+Gateway -[#4CAF50]-> LokiDist : logs
+LokiIngest -[#4CAF50]-> Blob : chunks/index
 
-' Traces (Orange)
-Gateway -[#FF9800]-> JaegerCol : traces (OTLP)
-JaegerCol -[#FF9800]-> TraceStore : spans\\n(index + documents)
+Gateway -[#FF9800]-> JaegerCol : traces
+JaegerCol -[#FF9800]-> TraceStore : spans
 
-' Query Paths (Grey/Black for user-facing)
-Grafana -[#CCCCCC]-> ThanosQS : Prom/Thanos API
+Grafana -[#CCCCCC]-> ThanosQS : Prom/Thanos
 Grafana -[#CCCCCC]-> LokiQuery : LogQL
-Grafana -[#CCCCCC]-> JaegerQuery : Trace search
-AppGW -[#CCCCCC]-> Nginx : TLS\\n/grafana, /jaeger
+Grafana -[#CCCCCC]-> JaegerQuery : Traces
+Grafana -[#CCCCCC]-> PG : dashboards/users
+AppGW -[#CCCCCC]-> Nginx : TLS /grafana, /jaeger
 Nginx -[#CCCCCC]-> Grafana
 Nginx -[#CCCCCC]-> JaegerQuery
 
-' Secrets & Config (Magenta)
-Gateway -[#AB47BC]-> KV : read server cert (at boot)
-Grafana -[#AB47BC]-> PG : dashboards/users
-VMN -[#AB47BC]--> KV : secrets via MI (at boot)
+Gateway -[#AB47BC]-> KV : read certs
+Grafana -[#AB47BC]-> KV : secrets via MI
 
-' ===== NOTES =====
 note right of ILB
   <b>ILB Health Probes:</b>
    - 4317 (OTLP gRPC)
@@ -97,13 +85,12 @@ note right of ILB
    - 3100 (Loki distributor)
    - 14250 (Jaeger collector)
   <b>Idle timeout:</b>
-   - 30m for 4317/4318
+   - 30m
 end note
 
 note bottom of LokiComp
-  <b>Compaction Note:</b>
-  Exactly one compactor active
-  (or sharded compactor)
+  <b>Compaction:</b>
+  Exactly one active
 end note
 
 @enduml
