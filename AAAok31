@@ -1,3 +1,32 @@
+
+AKS (Workloads + OTel Agent/Sidecars)
+   │ OTLP:gRPC/HTTP (4317/4318)
+   ▼
+Azure Standard Internal Load Balancer (ILB, single VIP)
+   ├─ Health probe: 4317 (OTLP gRPC), 4318 (HTTP)
+   ▼
+Azure VMSS (min=3, max=10) – each VM runs Docker:
+   • nginx (TLS/route UI if not using AppGW)
+   • otel-collector (gateway)  ← scrapes to Prom exporter :9464
+   • prometheus  + thanos-sidecar (local TSDB on Premium SSD)
+   • thanos-store + thanos-query (across all shards)
+   • loki (distributor/ingester/querier/query-frontend/compactor)
+   • jaeger-collector + jaeger-query (UI)
+   • grafana (SSO via Entra ID; uses shared Postgres DB)
+Storage:
+   • Premium SSD (/data):
+       - /data/prometheus, /data/loki-cache, /data/thanos-cache
+   • Azure Blob:
+       - thanos-bucket (metrics, immutable blocks)
+       - loki-bucket (chunks + index via boltdb-shipper)
+   • Traces: Elastic Cloud on Azure (recommended) or OpenSearch VMSS
+UIs:
+   • App Gateway (WAF) → nginx (or direct) → Grafana/Jaeger
+Security:
+   • NSGs (strict), TLS/mTLS, Key Vault, Managed Identity
+
+
+
 Receive all metrics, logs, traces from AKS via OTLP.
 
 Run Grafana, Prometheus+Thanos, Loki (distributed), Jaeger (collectors/query) and an OTel gateway on every VM (Docker).
