@@ -1,3 +1,14 @@
+Wouldn't it be 99.9% for both, but if not, the same values but inversed? The data collection layer is infinitely more important than the visualization one. Consider this, with data but no visualization, we could still grok the JSONs, but without data but with visualization, we can't see anything.
+
+Not a big deal but I'm scratching my head at those numbers.
+
+
+
+
+
+
+
+
 
 AKS (Workloads + OTel Agent/Sidecars)
    │ OTLP:gRPC/HTTP (4317/4318)
