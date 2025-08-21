@@ -1,79 +1,98 @@
-Architecture at a glance
-========================
-Flow
 
-AKS apps → OTEL SDK/exporters → AKS OTEL Collector (DaemonSet) → OTLP/mTLS → VM OTEL Collector (gateway) →
-Logs→Loki, Traces→Jaeger, Metrics→Prometheus → Grafana dashboards & alerts
+@startuml Azure_VMSS_Observability_GreyTheme
 
-Based on this design there are 2 approach to Otel collector Deployment
-1. Sidecar OTel Collector 
-2. OTel Collector as a DaemonSet
+title Azure VMSS OSS Observability (HA)\n<color:#C0C0C0><size:12>Grey Theme</size></color>
 
-VM Specifications
-Recommended VM Size
-Tier	  vCPUs	 RAM	     Disk (SSD)	   Use Case
-Medium	4-8	   16-32GB	  1TB	          Dev/POC
-Large	  8-16	 32-64GB	  1TB+	        Dev/POC
+skinparam shadowing false
+skinparam componentStyle rectangle
+skinparam rectangle {
+  RoundCorner 12
+}
+skinparam packageStyle rectangle
+skinparam packageBorderColor #666666
+skinparam packageBackgroundColor #E5E5E5
+skinparam noteBackgroundColor #1d0310ff
+skinparam noteBorderColor #E6C073
+skinparam noteFontColor #080808ff
+skinparam backgroundColor #404040
+skinparam defaultTextColor #F0F0F0
+skinparam ArrowColor #F0F0F0
+skinparam ArrowFontColor #F0F0F0
+skinparam defaultFontColor #F0F0F0
 
-Recommended Azure VM SKUs:
+rectangle "Azure Subscription" as Azure #5A5A5A {
+  
+  package "AKS Cluster" as AKS #7A7A7A {
+    component "Workloads" as Workloads #4E7DD1
+    component "OTel Agents\n(DaemonSet)" as OTelAgents #4E7DD1
+    component "Optional OTel Sidecars" as OTelSidecars #4E7DD1
+  }
 
-Medium: Standard_D8s_v3 (8 vCPUs, 32GB RAM)
-Large: Standard_D16s_v3 (16 vCPUs, 64GB RAM)
+  rectangle "Standard Internal Load Balancer\n(VIP: otel-gw.internal.corp)" as ILB #7A7A7A
 
-Networking
-==========
-Same VNET as AKS (ensures low-latency communication)
+  package "VM Scale Set (3..10 VMs)" as VMSS #7A7A7A {
+    rectangle "VMs" as VMN #5A5A5A {
+      component "nginx\n(443)" as Nginx #A0A0A0
+      component "OTel Collector\nGateway (4317/4318)\nProm Exporter (9464)" as Gateway #4E7DD1
+      component "Prometheus\n(local TSDB on Premium SSD)" as Prom #9C6ADE
+      component "Thanos Sidecar" as ThanosSidecar #9C6ADE
+      component "Thanos Query / Store" as ThanosQS #9C6ADE
+      component "Loki Distributor\n(3100)" as LokiDist #4CAF50
+      component "Loki Ingester\n(WAL on SSD)" as LokiIngest #4CAF50
+      component "Loki Querier / Query-Frontend" as LokiQuery #4CAF50
+      component "Loki Compactor\n(ONE active)" as LokiComp #4CAF50
+      component "Jaeger Collector\n(14250 / 14268)" as JaegerCol #FF9800
+      component "Jaeger Query UI\n(16686)" as JaegerQuery #FF9800
+      component "Grafana\n(3000)" as Grafana #FF5252
+    }
+  }
 
-Subnet: Dedicated subnet (Recommended)
+  database "Azure Blob Storage\n(thanos-bucket, loki-bucket)" as Blob #42A5F5
+  database "Elastic / OpenSearch\n(Traces Storage)" as TraceStore #FF9800
+  database "Azure Database for PostgreSQL\n(Grafana DB)" as PG #FF5252
+  component "Azure Key Vault\n(Secrets & Certs)" as KV #AB47BC
+  rectangle "App Gateway (WAF v2)\n443" as AppGW #A0A0A0
+}
 
-NSG Rules (Inbound):
+' ===== FLOWS =====
+Workloads -[#4E7DD1]-> OTelAgents : telemetry
+OTelSidecars -[#4E7DD1]-> ILB : OTLP 4317/4318
+OTelAgents -[#4E7DD1]-> ILB : OTLP 4317/4318
+ILB -[#4E7DD1]-> Gateway : LB traffic
 
-OTel Collector: 4317 (gRPC), 4318 (HTTP)
-Prometheus: 9090 (Scrape)
-Loki: 3100 (Log Ingestion)
-Jaeger: 14268 (Collector), 16686 (UI)
-Grafana: 3000 (Dashboard)
+Gateway -[#9C6ADE]-> Prom : scrape 9464
+ThanosSidecar -[#9C6ADE]-> Blob : upload blocks
 
-Outbound: Allow all (for updates, external integrations)
+Gateway -[#4CAF50]-> LokiDist : logs
+LokiIngest -[#4CAF50]-> Blob : chunks/index
 
+Gateway -[#FF9800]-> JaegerCol : traces
+JaegerCol -[#FF9800]-> TraceStore : spans
 
-NSG (inbound):
+Grafana -[#CCCCCC]-> ThanosQS : Prom/Thanos
+Grafana -[#CCCCCC]-> LokiQuery : LogQL
+Grafana -[#CCCCCC]-> JaegerQuery : Traces
+Grafana -[#CCCCCC]-> PG : dashboards/users
+AppGW -[#CCCCCC]-> Nginx : TLS /grafana, /jaeger
+Nginx -[#CCCCCC]-> Grafana
+Nginx -[#CCCCCC]-> JaegerQuery
 
-From snet-aks-nodepools → 4317/tcp (OTLP gRPC), 4318/tcp (OTLP HTTP, optional)
-From admin/VPN subnets → 3000/tcp (Grafana), 16686/tcp (Jaeger UI), 9090/tcp (Prometheus UI optional)
-SSH only via Bastion; block everything else.
-DNS: Private A record obs-gw.internal → VM private IP (AKS targets this).
-Transport: mTLS end-to-end OTLP.
-Auth: Grafana OIDC with Azure Entra ID; least-privileged local admin.
+Gateway -[#AB47BC]-> KV : read certs
+Grafana -[#AB47BC]-> KV : secrets via MI
 
-Storage & Retention
-=======================
-Separate managed data disks/mountpoint:
+note right of ILB
+  <b>ILB Health Probes:</b>
+   - 4317 (OTLP gRPC)
+   - 4318 (OTLP HTTP)
+   - 3100 (Loki distributor)
+   - 14250 (Jaeger collector)
+  <b>Idle timeout:</b>
+   - 30m
+end note
 
-/data/loki (Primary log volume): start 200–500 GB (P20/P30); 7–14 days retention.
-/data/prom (metrics): 50–150 GB; 7–15 days retention.
-/data/grafana (SQLite/plugins): 20–50 GB.
-/data/jaeger (if using all-in-one with local Badger): 20–50 GB; 3–7 days + 5–10% sampling
+note bottom of LokiComp
+  <b>Compaction:</b>
+  Exactly one active
+end note
 
-File structure
-===============
-/opt/obs/
-  docker-compose.yml
-  loki/config/config.yml
-  prom/prometheus.yml
-  jaeger/                      # (all-in-one)
-  otel/config/config.yaml
-  otel/config/certs/{ca.crt,server.crt,server.key}
-  grafana/provisioning/datasources/datasources.yml
-/data/
-  loki/        # chunks+index
-  prom/        # TSDB
-  grafana/     # grafana.db & plugins
-  jaeger/      # badger (if used)
-
-
-Deployment via Docker Compose
-===============================
-
-Docker Compose Deployment
-
+@enduml
