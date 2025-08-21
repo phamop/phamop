@@ -1,3 +1,13 @@
+Summary of Retention Policies
+High-Resolution Metrics (Debugging): 30 days
+
+Downsampled Metrics (Trending): 2 years
+
+Application Logs (Auditing): 90 days
+
+Trace Data (Performance): 90 days
+
+
 Of course. This is an excellent and detailed architecture. Addressing data retention within this setup requires breaking it down by signal type (metrics, logs, traces) as they have different storage backends and retention mechanisms.
 
 Here is a comprehensive analysis of your integration flow with a focus on data retention policies and recommendations.
