@@ -3,6 +3,101 @@
 
 LAYOUT_WITH_LEGEND()
 
+' ==== THEME & COLORS ====
+' People
+UpdateElementStyle(Person, $bgColor="#4A90E2", $fontColor="white", $borderColor="#2C5AA0")
+
+' External Systems
+UpdateElementStyle(System_Ext, $bgColor="#1565C0", $fontColor="white", $borderColor="#0D47A1")
+
+' VM Boundary
+UpdateElementStyle(System_Boundary, $bgColor="#E3F2FD", $fontColor="black", $borderColor="#90CAF9")
+
+' Containers inside VM
+UpdateElementStyle(Container, $bgColor="#BBDEFB", $fontColor="black", $borderColor="#1976D2")
+UpdateElementStyle(Container, $shadowing="true")
+
+' Specific component overrides
+UpdateElementStyle(lb, $bgColor="#42A5F5", $fontColor="white", $borderColor="#1565C0")
+UpdateElementStyle(otel, $bgColor="#7E57C2", $fontColor="white", $borderColor="#5E35B1")
+UpdateElementStyle(prom, $bgColor="#388E3C", $fontColor="white", $borderColor="#1B5E20")
+UpdateElementStyle(loki, $bgColor="#00897B", $fontColor="white", $borderColor="#004D40")
+UpdateElementStyle(jaeger, $bgColor="#F57C00", $fontColor="white", $borderColor="#E65100")
+UpdateElementStyle(pg, $bgColor="#546E7A", $fontColor="white", $borderColor="#37474F")
+UpdateElementStyle(graf, $bgColor="#D81B60", $fontColor="white", $borderColor="#880E4F")
+UpdateElementStyle(nginx, $bgColor="#8E24AA", $fontColor="white", $borderColor="#4A148C")
+
+' External dependencies
+UpdateElementStyle(blob, $bgColor="#039BE5", $fontColor="white", $borderColor="#01579B")
+UpdateElementStyle(vault, $bgColor="#6D4C41", $fontColor="white", $borderColor="#3E2723")
+UpdateElementStyle(ad, $bgColor="#512DA8", $fontColor="white", $borderColor="#311B92")
+
+' ==== ELEMENTS ====
+Person(dev, "Developers/SREs", "Access dashboards and query telemetry")
+System_Ext(aks, "AKS Cluster", "Telemetry Producers (metrics, logs, traces)")
+
+System_Boundary(vmss, "VM Scale Set (3-10)") {
+  Container(lb, "Azure Load Balancer", "Distributes OTLP traffic (4317/4318)")
+  Container(vm, "Observability VM", "Dockerized telemetry stack") {
+    Container(otel, "OTel Gateway", "Receives OTLP (gRPC/HTTP)")
+    Container(prom, "Prometheus + Thanos", "Metrics collection & long-term storage")
+    Container(loki, "Loki (Distributed)", "Logs storage & queries")
+    Container(jaeger, "Jaeger + Elasticsearch", "Trace storage & queries")
+    Container(pg, "PostgreSQL", "Grafana backend DB")
+    Container(graf, "Grafana", "Dashboards, SSO via Azure AD")
+    Container(nginx, "Nginx + AppGW", "Ingress, TLS termination, port 443")
+  }
+}
+
+System_Ext(blob, "Azure Blob Storage", "Durable Object Storage")
+System_Ext(vault, "Azure Key Vault", "TLS/mTLS Certificates, Secrets")
+System_Ext(ad, "Azure AD", "SSO for Grafana")
+
+' ==== RELATIONSHIPS ====
+Rel(aks, lb, "Send OTLP telemetry (4317/4318 gRPC/HTTP)")
+Rel(lb, otel, "Forward telemetry", "OTLP gRPC/HTTP")
+Rel(otel, prom, "Push metrics")
+Rel(otel, loki, "Push logs")
+Rel(otel, jaeger, "Push traces")
+Rel(prom, blob, "Archive TSDB", "Thanos")
+Rel(loki, blob, "Archive logs")
+Rel(jaeger, blob, "Archive traces")
+Rel(graf, prom, "Query metrics")
+Rel(graf, loki, "Query logs")
+Rel(graf, jaeger, "Query traces")
+Rel(dev, graf, "Access dashboards (port 443, TLS, SSO)", "HTTPS")
+Rel(graf, pg, "Config & users")
+Rel(nginx, graf, "Reverse proxy / SSO enforcement")
+Rel(graf, ad, "SSO login")
+Rel(graf, vault, "Certs & keys retrieval")
+
+@enduml
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+@startuml VM_Observability
+!includeurl https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+LAYOUT_WITH_LEGEND()
+
 Person(dev, "Developers/SREs", "Access dashboards and query telemetry")
 System_Ext(aks, "AKS Cluster", "Telemetry Producers (metrics, logs, traces)")
 
