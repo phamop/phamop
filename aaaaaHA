@@ -1,6 +1,74 @@
 @startuml VM_Observability
 !includeurl https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
 
+LAYOUT_WITH_LEGEND()
+
+Person(dev, "Developers/SREs", "Access dashboards and query telemetry")
+System_Ext(aks, "AKS Cluster", "Telemetry Producers (metrics, logs, traces)")
+
+System_Boundary(vmss, "VM Scale Set (3-10)") {
+  Container(lb, "Azure Load Balancer", "Distributes OTLP traffic (4317/4318)")
+  Container(vm, "Observability VM", "Dockerized telemetry stack") {
+    Container(otel, "OTel Gateway", "Receives OTLP (gRPC/HTTP)")
+    Container(prom, "Prometheus + Thanos", "Metrics collection & long-term storage")
+    Container(loki, "Loki (Distributed)", "Logs storage & queries")
+    Container(jaeger, "Jaeger + Elasticsearch", "Trace storage & queries")
+    Container(pg, "PostgreSQL", "Grafana backend DB")
+    Container(graf, "Grafana", "Dashboards, SSO via Azure AD")
+    Container(nginx, "Nginx + AppGW", "Ingress, TLS termination, port 443")
+  }
+}
+
+System_Ext(blob, "Azure Blob Storage", "Durable Object Storage")
+System_Ext(vault, "Azure Key Vault", "TLS/mTLS Certificates, Secrets")
+System_Ext(ad, "Azure AD", "SSO for Grafana")
+
+Rel(aks, lb, "Send OTLP metrics/logs/traces (4317/4318 gRPC/HTTP)")
+Rel(lb, otel, "Forward telemetry", "gRPC/HTTP OTLP")
+Rel(otel, prom, "Push metrics")
+Rel(otel, loki, "Push logs")
+Rel(otel, jaeger, "Push traces")
+Rel(prom, blob, "Archive TSDB", "Thanos")
+Rel(loki, blob, "Archive logs")
+Rel(jaeger, blob, "Archive traces")
+Rel(graf, prom, "Query metrics")
+Rel(graf, loki, "Query logs")
+Rel(graf, jaeger, "Query traces")
+Rel(dev, graf, "Access dashboards (port 443, TLS, SSO)", "HTTPS")
+Rel(graf, pg, "Config & users")
+Rel(nginx, graf, "Reverse proxy / SSO enforcement")
+Rel(graf, ad, "SSO login")
+Rel(graf, vault, "Certs & keys retrieval")
+@enduml
+
+
+
+
+
+-----
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+@startuml VM_Observability
+!includeurl https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
 ' Define a color palette
 !define OBSERVABILITY_BLUE #1976D2
 !define AZURE_BLUE #0078D4
