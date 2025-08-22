@@ -43,14 +43,6 @@ Traces → Jaeger (gRPC push)
 Grafana queries all backends (Loki, Prometheus, Jaeger) for visualization.
 
 
-
-
-
- 
-
-
-
-
 Apps & PaaS → Opentelemetry AutoInstrumentation (optional)→ VM OTel Collector 
     → Prometheus (metrics) → Grafana
     → Loki (logs)          → Grafana
@@ -314,13 +306,6 @@ Rollout Plan
 5. Datasource as Code: Commit Grafana datasources.yml and folder/permissions; import curated dashboards.
 6. Cutover: Point users to Grafana VM URL; decommission APIM path to old Grafana; monitor SLOs.
 7. Hardening & Scale: Add rate limits, alert noise reduction, and perenv RBAC.
-
-
-
-
-
-
-
 
 
 Costs
