@@ -1,0 +1,19 @@
+@startuml VM_Observability
+!includeurl https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+System_Ext(aks, "AKS Cluster", "Sends telemetry via OTLP 4317/4318")
+System_Boundary(vmss, "VM Scale Set (3-10 VMs)") {
+  Container(lb, "Azure Load Balancer", "Routes OTLP traffic")
+  Container(vm, "VM (Docker Stack)", "Grafana, Prometheus, Loki, Jaeger, OTel Gateway")
+}
+
+System_Ext(blob, "Azure Blob Storage", "Durable object store, 30d retention")
+System_Ext(vault, "Azure Key Vault", "TLS/mTLS, secrets, certs")
+System_Ext(ad, "Azure AD", "SSO provider for Grafana")
+
+Rel(aks, lb, "OTLP traffic (4317/4318)")
+Rel(lb, vm, "Distributes OTLP")
+Rel(vm, blob, "Remote write / logs")
+Rel(vm, vault, "Fetch TLS certs / secrets")
+Rel(vm, ad, "OIDC SSO")
+@enduml
