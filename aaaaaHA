@@ -1,3 +1,19 @@
+provide detail design and implementation for "VMs behind an Azure Load Balancer for OTLP 4317/4318.
+ Receive all metrics, logs, traces from AKS via OTLP to the vm . Ensure the it push with gRPc
+Run Grafana +postgresql, Prometheus+thanos, Loki (distributed), Jaeger , jaegertracing (collectors/query) + elasticSearch and an OTel gateway on every VM (Docker).
+Ensure grafana is accessed via port 443 using nginx and app-gateway
+Use Premium SSD for fast local TSDB/WAL/caches; use Azure Blob for durable, scalable object storage.  
+30 days retention  for raw data, arhieve the data  and how is  databases retention manage, 
+certificate  store  azure vault  
+Scale from 3→ 10 VMs without client reconfiguration. Provide C4 diagram for this solution
+Provide TLS/mTLS, SSO, least-privilege access, and safe concurrency (no data corruption)."
+
+
+
+
+
+
+
 @startuml VM_Observability
 !includeurl https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
 
