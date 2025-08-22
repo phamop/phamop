@@ -1,6 +1,66 @@
 @startuml VM_Observability
 !includeurl https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
 
+' Define a color palette
+!define OBSERVABILITY_BLUE #1976D2
+!define AZURE_BLUE #0078D4
+!define STORAGE_YELLOW #FFC107
+!define SECURITY_RED #D32F2F
+!define AUTH_GREEN #388E3C
+
+' Apply styles
+skinparam {
+  Shadowing false
+  ArrowColor #444
+  BorderColor #666
+  ActorBorderColor #666
+  ComponentBorderColor #666
+  RectangleBorderColor #666
+  NoteBackgroundColor #FFFDE7
+  NoteBorderColor #F57F17
+}
+
+System_Ext(aks, "AKS Cluster", "Sends telemetry via OTLP 4317/4318", $sprite="kubernetes", $tags="azure")
+System_Boundary(vmss, "VM Scale Set (3-10 VMs)") {
+  Container(lb, "Azure Load Balancer", "Routes OTLP traffic", $tags="azure")
+  Container(vm, "VM (Docker Stack)", "Grafana, Prometheus, Loki, Jaeger, OTel Gateway", $tags="observability")
+}
+
+System_Ext(blob, "Azure Blob Storage", "Durable object store, 30d retention", $sprite="storage", $tags="storage")
+System_Ext(vault, "Azure Key Vault", "TLS/mTLS, secrets, certs", $sprite="lock", $tags="security")
+System_Ext(ad, "Azure AD", "SSO provider for Grafana", $sprite="users", $tags="auth")
+
+' Apply colors to elements
+AddElementTag("azure", $fontColor=AZURE_BLUE, $borderColor=AZURE_BLUE, $bgColor="#E3F2FD")
+AddElementTag("observability", $fontColor=OBSERVABILITY_BLUE, $borderColor=OBSERVABILITY_BLUE, $bgColor="#E8F5E9")
+AddElementTag("storage", $fontColor=STORAGE_YELLOW, $borderColor=STORAGE_YELLOW, $bgColor="#FFFDE7")
+AddElementTag("security", $fontColor=SECURITY_RED, $borderColor=SECURITY_RED, $bgColor="#FFEBEE")
+AddElementTag("auth", $fontColor=AUTH_GREEN, $borderColor=AUTH_GREEN, $bgColor="#E8F5E9")
+
+Rel(aks, lb, "OTLP traffic (4317/4318)", $tags="azure")
+Rel(lb, vm, "Distributes OTLP", $tags="azure")
+Rel(vm, blob, "Remote write / logs", $tags="storage")
+Rel(vm, vault, "Fetch TLS certs / secrets", $tags="security")
+Rel(vm, ad, "OIDC SSO", $tags="auth")
+
+' Add a legend
+legend right
+  | Color | Purpose |
+  | <color:AZURE_BLUE>█</color> | Azure Infrastructure |
+  | <color:OBSERVABILITY_BLUE>█</color> | Observability Tools |
+  | <color:STORAGE_YELLOW>█</color> | Storage |
+  | <color:SECURITY_RED>█</color> | Security |
+  | <color:AUTH_GREEN>█</color> | Authentication |
+endlegend
+
+title Observability Stack on Azure VM Scale Set - HA High Level
+@enduml
+
+
+---
+@startuml VM_Observability
+!includeurl https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
 System_Ext(aks, "AKS Cluster", "Sends telemetry via OTLP 4317/4318")
 System_Boundary(vmss, "VM Scale Set (3-10 VMs)") {
   Container(lb, "Azure Load Balancer", "Routes OTLP traffic")
