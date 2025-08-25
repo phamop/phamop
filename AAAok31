@@ -1,11 +1,6 @@
 When you have a moment, could we review this? I've noticed a few things that seem misaligned with the initial requirements
 
 
-
-
-
-
-
 High-Level Flow details
 ------------------------------
 AKS Applications generate telemetry (instrumented via OpenTelemetry SDKs, Opentelemetry annotations or sidecars).
@@ -21,12 +16,6 @@ Logs → Loki (HTTP push)
 Traces → Jaeger (gRPC push)
 
 Grafana queries all backends (Loki, Prometheus, Jaeger) for visualization.
-
-
-
-
-
-
 
 
 
