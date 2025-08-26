@@ -1,1 +1,138 @@
+Of course. Here is the technical architecture converted into a clear, wiki-style format using markdown.
 
+***
+
+## Integration Flow: High-Availability Observability Stack on Azure VMSS
+
+### Executive Summary
+This architecture outlines a centralized, highly available observability stack deployed on an Azure Virtual Machine Scale Set (VMSS). It ingests telemetry data (metrics, logs, traces) from AKS clusters and Azure PaaS services via an OpenTelemetry Collector gateway, processes it with Prometheus, Loki, and Jaeger, and provides visualization through Grafana. The design leverages Azure managed services for scalability, resilience, and security.
+
+### Architectural Diagram (Data Flow)
+
+```mermaid
+graph TD
+    subgraph AKS Cluster
+        AKSWorkloads[AKS Workloads + OTel Sidecars]
+    end
+
+    AKSWorkloads --"OTLP: gRPC/HTTP<br>(Ports 4317/4318)"--> AZILB
+
+    subgraph Azure Networking
+        AZILB[Azure Standard Internal<br>Load Balancer<br>Single VIP]
+    end
+
+    AZILB --"Distributes traffic<br>Health Probes: 4317, 4318"--> VMSS01
+    AZILB --"Distributes traffic<br>Health Probes: 4317, 4318"--> VMSS02
+    AZILB --"Distributes traffic<br>Health Probes: 4317, 4318"--> VMSS03
+
+    subgraph Azure VMSS [Azure VM Scale Set]
+        VMSS01[VM Instance 1]
+        VMSS02[VM Instance 2]
+        VMSS03[VM Instance 3]
+    end
+
+    subgraph Per-VM Services [Docker Containers on each VM]
+        OTel[otel-collector (gateway)]
+        Prom[prometheus + thanos-sidecar]
+        Loki[loki]
+        JaegerCol[jaeger-collector]
+    end
+
+    VMSS01 --> OTel
+    VMSS01 --> Prom
+    VMSS01 --> Loki
+    VMSS01 --> JaegerCol
+
+    subgraph Central Services [Shared/Stateful Services]
+        ThanosQ[thanos-query]
+        ThanosS[thanos-store]
+        JaegerQ[jaeger-query]
+        Grafana[grafana]
+        PGDB[Shared Postgres DB<br>for Grafana]
+    end
+
+    Prom -.-> ThanosQ
+    ThanosS -.-> ThanosQ
+    Grafana --> PGDB
+
+    subgraph Azure Storage
+        BlobM[Azure Blob: thanos-bucket]
+        BlobL[Azure Blob: loki-bucket]
+        PremiumSSD[Premium SSD<br>/data/prometheus, /data/loki-cache, /data/thanos-cache]
+    end
+
+    Prom --> PremiumSSD
+    Loki --> PremiumSSD
+    ThanosS --> BlobM
+    Loki --> BlobL
+
+    subgraph Trace Storage [Optional Backends]
+        ESA[Elastic Cloud on Azure<br>(Recommended)]
+        OSVM[OpenSearch VMSS]
+    end
+
+    JaegerCol --> ESA
+    JaegerCol --> OSVM
+
+    subgraph User Access
+        User[End User]
+        AGW[App Gateway (WAF)]
+        Nginx[nginx<br>TLS/Route UI]
+    end
+
+    User --> AGW --> Nginx
+    Nginx --> Grafana
+    Nginx --> JaegerQ
+```
+
+### Component Details
+
+#### 1. Data Sources & Ingestion
+*   **AKS Workloads:** Applications running on Azure Kubernetes Service, instrumented with OpenTelemetry (OTel) agents or sidecars.
+*   **Protocol:** Data is sent via the OTLP protocol over gRPC (port `4317`) or HTTP (port `4318`).
+
+#### 2. Load Balancing
+*   **Component:** Azure Standard Internal Load Balancer (ILB)
+*   **Purpose:** Provides a single Virtual IP (VIP) to receive all incoming telemetry traffic and distributes it across the healthy instances in the VMSS.
+*   **Health Probes:** Configured to check the health of the OTel Collector endpoints on ports `4317` (gRPC) and `4318` (HTTP).
+
+#### 3. VM Scale Set (VMSS) - Compute Layer
+*   **Configuration:** Min 3 instances, Max 10 instances (auto-scaling enabled).
+*   **Runtime Environment:** Each VM runs Docker containers for the following services:
+    *   **nginx:** Optional reverse proxy for TLS termination and routing UI traffic if not using an Application Gateway.
+    *   **otel-collector (gateway mode):** Receives, processes, and exports telemetry data. Scrapes Prometheus exporter endpoint on port `9464`.
+    *   **prometheus + thanos-sidecar:** Local time-series database (TSDB) scraping and short-term storage. Thanos sidecar uploads blocks to object storage.
+    *   **loki:** All-in-one deployment mode (distributor, ingester, querier, query-frontend, compactor) for log aggregation.
+    *   **jaeger-collector:** Receives and processes distributed tracing data.
+
+#### 4. Storage
+*   **Local (Premium SSD):** Mounted at `/data`
+    *   `/data/prometheus`: Local Prometheus TSDB blocks.
+    *   `/data/loki-cache`: Loki chunk cache.
+    *   `/data/thanos-cache`: Thanos store gateway cache.
+*   **Azure Blob Storage (Long-Term/Object Storage):**
+    *   **thanos-bucket:** For immutable Prometheus metrics blocks (via Thanos).
+    *   **loki-bucket:** For Loki log chunks and index (using `boltdb-shipper`).
+*   **Trace Storage (Recommended Options):**
+    *   **Elastic Cloud on Azure (Recommended):** Managed Elasticsearch service for Jaeger trace storage.
+    *   **OpenSearch VMSS:** Self-managed OpenSearch cluster on a VM Scale Set.
+
+#### 5. Query & Visualization
+*   **thanos-query:** Provides a unified query interface for global Prometheus metrics data across all VM instances and long-term storage.
+*   **thanos-store:** Gateway to query data in the `thanos-bucket` (Azure Blob).
+*   **jaeger-query:** Service and UI for querying traces.
+*   **grafana:** Visualization platform for metrics, logs, and traces.
+    *   **Authentication:** Single Sign-On (SSO) configured via Entra ID (Azure AD).
+    *   **Database:** Uses a shared PostgreSQL database for storing dashboards, users, and other configuration (not per-VM).
+
+#### 6. User Interface (UI) Access
+*   **Access Path:** User → Application Gateway (with WAF) → nginx (on VMSS) → Grafana or Jaeger UI.
+*   **Component Roles:**
+    *   **App Gateway:** Provides a secure, public endpoint, SSL termination, and web application firewall (WAF) protection.
+    *   **nginx:** Provides internal routing and additional TLS termination if required.
+
+### Security
+*   **Network Security Groups (NSGs):** Strictly configured to allow only necessary traffic.
+*   **TLS/mTLS:** Encryption in transit for all internal and external communication.
+*   **Azure Key Vault:** Used for managing certificates, secrets, and connection strings.
+*   **Managed Identity:** Used by Azure resources (e.g., VMs, AKS) to authenticate securely to other services like Key Vault and Blob Storage without storing credentials.
