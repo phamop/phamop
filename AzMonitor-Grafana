@@ -1,66 +1,76 @@
-@startuml Azure_VMSS_Observability_GreyTheme
+@startuml
+!define OBSERVABILITY #4E7DD1
+!define DATABASE #42A5F5
+!define STORAGE #9C6ADE
+!define LOGGING #4CAF50
+!define TRACING #FF9800
+!define VISUALIZATION #FF5252
+!define SECURITY #AB47BC
+!define NETWORK #A0A0A0
+!define AZURE_BLUE #0078D4
+!define AZURE_PURPLE #8661C5
 
-title Azure VMSS OSS Observability (HA)\n<color:#C0C0C0><size:12>Grey Theme</size></color>
-
+skinparam backgroundcolor #404040
+skinparam defaultfontcolor #F0F0F0
+skinparam arrowcolor #F0F0F0
+skinparam arrowfontcolor #F0F0F0
+skinparam NoteBackgroundColor #606060
 skinparam shadowing false
-skinparam componentStyle rectangle
+skinparam roundcorner 12
 skinparam rectangle {
-  RoundCorner 12
+    BackgroundColor #5A5A5A
+    BorderColor #666666
+    FontColor #F0F0F0
 }
-skinparam packageStyle rectangle
-skinparam packageBorderColor #666666
-skinparam packageBackgroundColor #E5E5E5
-skinparam noteBackgroundColor #1d0310ff
-skinparam noteBorderColor #E6C073
-skinparam noteFontColor #080808ff
-skinparam backgroundColor #404040
-skinparam defaultTextColor #F0F0F0
-skinparam ArrowColor #F0F0F0
-skinparam ArrowFontColor #F0F0F0
-skinparam defaultFontColor #F0F0F0
+skinparam package {
+    BackgroundColor #7A7A7A
+    BorderColor #666666
+    FontColor #F0F0F0
+}
 
-rectangle "Azure Subscription" as Azure #5A5A5A {
+title Azure VMSS OSS Observability (HA) \n<color:#C0C0C0><size:12>Enhanced Color Theme</size></color>
+
+rectangle "DEV OSS Stack Design" <<Cloud>> #2D2D2D {
   
-  package "AKS Cluster" as AKS #7A7A7A {
-    component "Workloads" as Workloads #4E7DD1
-    component "OTel Agents\n(DaemonSet)" as OTelAgents #4E7DD1
-    component "Optional OTel Sidecars" as OTelSidecars #4E7DD1
+  package "AKS Cluster" <<K8s>> {
+    component "Workloads" as Workloads <<OBSERVABILITY>> #4E7DD1
+    component "OTel Agents\n(DaemonSet)" as OTelAgents <<OBSERVABILITY>> #4E7DD1
+    component "Optional OTel Sidecars" as OTelSidecars <<OBSERVABILITY>> #4E7DD1
   }
 
-  rectangle "Standard Internal Load Balancer\n(VIP: otel-gw.internal.corp)" as ILB #7A7A7A
-
+  rectangle "Standard Load Balancer\n(Internal)" as SLB <<Network>> #5A5A5A
   package "VM Scale Set (1..3 VMs)" as VMSS #7A7A7A {
-    rectangle "VMs" as VMN #5A5A5A {
-      component "nginx\n(443)" as Nginx #A0A0A0
-      component "OTel Collector\nGateway (4317/4318)\nProm Exporter (9464)" as Gateway #4E7DD1
-      component "Prometheus\n(local TSDB on Premium SSD)" as Prom #9C6ADE
-      component "Thanos Sidecar" as ThanosSidecar #9C6ADE
-      component "Thanos Query / Store" as ThanosQS #9C6ADE
-      component "Loki Distributor\n(3100)" as LokiDist #4CAF50
-      component "Loki Ingester\n(WAL on SSD)" as LokiIngest #4CAF50
-      component "Loki Querier / Query-Frontend" as LokiQuery #4CAF50
-      component "Loki Compactor\n(ONE active)" as LokiComp #4CAF50
-      component "Jaeger Collector\n(14250 / 14268)" as JaegerCol #FF9800
-      component "Jaeger Query UI\n(16686)" as JaegerQuery #FF9800
-      component "Grafana\n(3000)" as Grafana #FF5252
+    rectangle "Virtual Machines" as VMs #5A5A5A {
+      component "nginx\n(443)" as Nginx <<Network>> #A0A0A0
+      component "OTel Collector\nGateway (4317/4318)\nProm Exporter (9464)" as Gateway <<OBSERVABILITY>> #4E7DD1
+      component "Prometheus\n(local TSDB on Premium SSD)" as Prom <<Storage>> #9C6ADE
+      component "Thanos Sidecar" as ThanosSidecar <<Storage>> #8661C5
+      component "Thanos Query / Store" as ThanosQS <<Storage>> #8661C5
+      component "Loki Distributor\n(3100)" as LokiDist <<Logging>> #4CAF50
+      component "Loki Ingester\n(WAL on SSD)" as LokiIngest <<Logging>> #4CAF50
+      component "Loki Querier / Query-Frontend" as LokiQuery <<Logging>> #4CAF50
+      component "Loki Compactor\n(ONE active)" as LokiComp <<Logging>> #4CAF50
+      component "Jaeger Collector\n(14250 / 14268)" as JaegerCol <<Tracing>> #FF9800
+      component "Jaeger Query\n(16686)" as JaegerQuery <<Tracing>> #FF9800
+      component "Grafana\n(3000)" as Grafana <<Visualization>> #FF5252
     }
   }
 
-  database "Azure Blob Storage\n(thanos-bucket, loki-bucket)" as Blob #42A5F5
-  database "Elastic / OpenSearch\n(Traces Storage)" as TraceStore #FF9800
-  database "Azure Database for PostgreSQL\n(Grafana DB)" as PG #FF5252
-  component "AzureKeyVaul\n(Secrets & Certs)" as KV #AB47BC
-  rectangle "App Gateway (WAF v2)\n443" as AppGW #A0A0A0
+  database "Azure Blob Storage\n(thanos-bucket, loki-bucket)" as Blob <<Storage>> #42A5F5
+  database "Elastic / OpenSearch\n(Traces Storage)" as TraceStore <<Tracing>> #FF9800
+  database "Azure Database for PostgreSQL\n(Grafana DB)" as PG <<Visualization>> #FF5252
+  component "Azure Key Vault\n(Secrets & Certs)" as KV <<Security>> #AB47BC
+  rectangle "Load Balancer\n443" as LB <<Network>> #A0A0A0
 }
 
-' ===== FLOWS =====
+' ===== CONNECTIONS =====
 Workloads -[#4E7DD1]-> OTelAgents : telemetry
-OTelSidecars -[#4E7DD1]-> ILB : OTLP 4317/4318
-OTelAgents -[#4E7DD1]-> ILB : OTLP 4317/4318
-ILB -[#4E7DD1]-> Gateway : LB traffic
+OTelSidecars -[#4E7DD1]-> SLB : OTLP 4317/4318
+OTelAgents -[#4E7DD1]-> SLB : OTLP 4317/4318
+SLB -[#4E7DD1]-> Gateway : LB traffic
 
 Gateway -[#9C6ADE]-> Prom : scrape 9464
-ThanosSidecar -[#9C6ADE]-> Blob : upload blocks
+ThanosSidecar -[#8661C5]-> Blob : upload blocks
 
 Gateway -[#4CAF50]-> LokiDist : logs
 LokiIngest -[#4CAF50]-> Blob : chunks/index
@@ -72,26 +82,41 @@ Grafana -[#CCCCCC]-> ThanosQS : Prom/Thanos
 Grafana -[#CCCCCC]-> LokiQuery : LogQL
 Grafana -[#CCCCCC]-> JaegerQuery : Traces
 Grafana -[#CCCCCC]-> PG : dashboards/users
-AppGW -[#CCCCCC]-> Nginx : TLS /grafana, /jaeger
+LB -[#CCCCCC]-> Nginx : TLS /grafana
 Nginx -[#CCCCCC]-> Grafana
-Nginx -[#CCCCCC]-> JaegerQuery
+
 
 Gateway -[#AB47BC]-> KV : read certs
 Grafana -[#AB47BC]-> KV : secrets via MI
 
-note right of ILB
-  <b>ILB Health Probes:</b>
+note right of SLB
+  <b>Load Balancer Health Probes:</b>
    - 4317 (OTLP gRPC)
    - 4318 (OTLP HTTP)
    - 3100 (Loki distributor)
    - 14250 (Jaeger collector)
   <b>Idle timeout:</b>
    - 30m
+  <b>Backend Pool:</b>
+   - VMSS instances
 end note
 
 note bottom of LokiComp
   <b>Compaction:</b>
   Exactly one active
 end note
+
+legend right
+  | Color | Component Type |
+  | <color:#4E7DD1>#4E7DD1</color> | Observability |
+  | <color:#9C6ADE>#9C6ADE</color> | Metrics Storage |
+  | <color:#8661C5>#8661C5</color> | Thanos Components |
+  | <color:#4CAF50>#4CAF50</color> | Logging |
+  | <color:#FF9800>#FF9800</color> | Tracing |
+  | <color:#FF5252>#FF5252</color> | Visualization |
+  | <color:#AB47BC>#AB47BC</color> | Security |
+  | <color:#A0A0A0>#A0A0A0</color> | Network |
+  | <color:#42A5F5>#42A5F5</color> | Azure Storage |
+end legend
 
 @enduml
