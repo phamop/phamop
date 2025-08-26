@@ -1,6 +1,12 @@
-I spoke to Saqib, he said  is ok with the design since we are using VMSS we can as well use dedicated AKS. He also look at the cost and he said since this is a dedicated AKS we will not face the issue we had in the DEV AKS
+Summary of discussion with John:
 
-ip-filter action="allow">
+Design Approval: The design is acceptable.
+
+Recommendation: To leverage our VMSS usage, we should adopt a dedicated AKS cluster.
+
+Rationale: A dedicated AKS will prevent the issues we faced in the DEV environment.
+
+Cost: The cost analysis supports this decision, as it is a factor in ensuring stability.
             <!-- Add your allowed IP addresses or ranges below -->
             <address>192.168.1.1</address>
             <address>203.0.113.0/24</address>
