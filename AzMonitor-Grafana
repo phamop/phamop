@@ -1,3 +1,21 @@
+Scope: Architectural and deployment context for Azure-based Observability Stack running on Virtual Machine Scale VMSS with integrated Load Balancer, Autoscaling, Azure Blob storage, Azure Key Vault and Azure Active Directory (AD). AKS workloads plus Azure PaaS (Logic Apps, Function Apps, App Services) using OSS tools: OpenTelemetry, OTel Collector, Prometheus, Loki, Jaeger, Grafana.
+
+Executive Summary
+We have three viable paths to centralize monitoring and visualization after path-rewrite issues through APIM impacted Grafana access:
+
+Option A — Centralized VM Stack (current draft): Move the full OSS stack (OTel Collector, Prometheus, Loki, Jaeger, Grafana) to an Azure VM gateway tier. All apps and clusters push to the VM’s collector and backends.
+
+Option HA: Move the full OSS stack (OTel Collector, Prometheus, Loki, Jaeger, Grafana)  to leveraging VMSS to address  the scalability and ensure there is no single point of failure – SPOF
+
+Option B — Distributed Data Planes + Central Grafana (recommended): Keep data-plane components (collectors and storage backends) in each cluster, securely expose them via TLS/mTLS Ingress and authenticate with Entra ID. Run Grafana on an external VM only as a query/alert control plane that connects to each datasource. _Improves resilience (no central SPOF), keeps data at source, and scales horizontally.
+
+Considered Option:
+The considered option is the HA, it’s an evolution of Option A (centralized VM Stack). It addresses the primary weakness of Single point of failure by leveraging VMSS technology. It creates a centralized, scalable, and highly available observability gateway, mitigating the risks of the initial single-VM design.
+
+Key Components:
+
+
+
 @startuml
 !define OBSERVABILITY #4E7DD1
 !define STORAGE #9C6ADE
