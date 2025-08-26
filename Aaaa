@@ -1,18 +1,24 @@
-Observability Architecture Proposals (AKS + Azure)
+Observability Architecture Proposals (AKS + Azure) 
 
-Scope: AKS workloads plus Azure PaaS (Logic Apps, Function Apps, App Services) using OSS tools: OpenTelemetry, OTel Collector, Prometheus, Loki, Jaeger, Grafana.
+Scope: Architectural and deployment context for Azure-based Observability Stack running on Virtual Machine Scale VMSS with integrated Load Balancer, Autoscaling, Azure Blob storage, Azure Key Vault and Azure Active Directory (AD). AKS workloads plus Azure PaaS (Logic Apps, Function Apps, App Services) using OSS tools: OpenTelemetry, OTel Collector, Prometheus, Loki, Jaeger, Grafana.
 
 Executive Summary
 We have two viable paths to centralize monitoring and visualization after path-rewrite issues through APIM impacted Grafana access:
 	Option A — Centralized VM Stack (current draft): Move the full OSS stack (OTel Collector, Prometheus, Loki, Jaeger, Grafana) to an Azure VM gateway tier. All apps and clusters push to the VM’s collector and backends. 
-NOTE: Simple topology but introduces a single point of failure - SPOF unless you build HA around the VM and storage.
+	Option HA: Move the full OSS stack (OTel Collector, Prometheus, Loki, Jaeger, Grafana)  to leveraging VMSS to address  the scalability and ensure there is no single point of failure – SPOF
 	Option B — Distributed Data Planes + Central Grafana (recommended): Keep data-plane components (collectors and storage backends) in each cluster, securely expose them via TLS/mTLS Ingress and authenticate with Entra ID. 
 	Run Grafana on an external VM only as a query/alert control plane that connects to each datasource. Improves resilience (no central SPOF), keeps data at source, and scales horizontally.
 Note: I recommend Option B. It minimizes blast radius, avoids data loss if the VM/Grafana is down, and reduces cross-tenant/network chokepoints.
 
-Non Functional Requirements (NFRs)
-	Availability: Target 99.9% for visualization plane, 99.5%+ for data-plane per cluster, no single regional SPOF.
-	Security: mTLS for telemetry ingestion, TLS 1.2+ everywhere; OIDC/OAuth2 (Azure Entra ID) SSO; least-privilege; private networking/peering; per-tenant tokens in Loki/Prometheus where applicable.
+
+
+Security NFR 
+
+
+
+Technical NonFunctional Requirements (NFRs)
+	Availability: Target 99.9% for visualization plane, 99.9%+ for data-plane per cluster, no single regional SPOF.
+	Security: TLS for telemetry ingestion, TLS 1.2+ everywhere; OIDC/OAuth2 (Azure Entra ID) SSO; least-privilege; private networking/peering; per-tenant tokens in Loki/Prometheus where applicable.
 	Performance: p50 < 200ms query latency intra VNet; p95 < 800ms cross cluster queries; ingestion up to N events/sec (size by environment below).
 	Retention: Metrics 7-15 days hot; Logs 7-14 days hot; Traces 3-7 days hot (sampling 5-10% default). Long-term is optional via archive/export.
 	Operability: configs (Helm/Kustomize), IaC for VM + networking; dashboards & alerts provisioned as code; health probes & SLOs.
@@ -30,7 +36,7 @@ High-Level Flow details
 ------------------------------
 AKS Applications generate telemetry (instrumented via OpenTelemetry SDKs, Opentelemetry annotations or sidecars).
 
- OpenTelemetry Auto instrumentation  push data VM’s OTel Collector  Endpoints
+ OpenTelemetry Auto instrumentation push data VM’s OTel Collector  Endpoints
 
 VM OTel Collector distributes data to the respective exporter in the vm:
 
@@ -43,6 +49,14 @@ Traces → Jaeger (gRPC push)
 Grafana queries all backends (Loki, Prometheus, Jaeger) for visualization.
 
 
+
+
+
+ 
+
+
+
+
 Apps & PaaS → Opentelemetry AutoInstrumentation (optional)→ VM OTel Collector 
     → Prometheus (metrics) → Grafana
     → Loki (logs)          → Grafana
@@ -52,7 +66,7 @@ Components
 	OTel Collector 
 	Prometheus (scrape & remote_write endpoints)
 	Loki (log ingestion)
-	Jaeger (collector + query + UI)
+	Jaeger (collector + query)
 	Grafana (dashboards/alerts)
 Installed Components on VM
 Implementation
@@ -66,7 +80,7 @@ Opentelemetry Collector	Central Telemetry 	Log/Metrics/Traces	4317, 4318
 
 
 Installed Components on Cluster
-Instrumentation: OpenTelemetry Operator ( OpenTelemetry instrumentation CRD, Opentelemetry Annotation and Sidecar)
+Instrumentation: OpenTelemetry Operator (OpenTelemetry instrumentation CRD, Opentelemetry Annotation and Sidecar)
 Sizing & Ports (initial)
 	VM sizes: Medium (D8s_v4) or Large (D16s_v4) depending on environment.
 	Ports (inbound): 4317/4318 (OTLP) – AKS to VM (Egress – AKS outbound)
@@ -82,7 +96,6 @@ Network & Security
 	TLS encryption for end to end communication
 	Grafana OIDC with Entra ID.
 	Hardened OS baseline
-
  
 Pros
 1.	Single, simple landing zone for ingestion and querying.
@@ -138,7 +151,14 @@ Access the Azure pricing estimate for this solution via the calculator link belo
 Estimatedfolder
  
 
+
+
+
+
+HA Option
 HA Enhancements (if you proceed with A)
+
+Scope:  Architectural and deployment context for Azure-based Observability Stack running on  Virtual Machine Scale - VMSS  with integrated Load Balancer, Autoscaling, Azure Blob storage, Azure Key Vault and Azure Active Directory (AD).
 1. VMs behind an Azure Load Balancer for OTLP 4317/4318.
  Receive all metrics, logs, traces from AKS via OTLP.
 
@@ -219,7 +239,27 @@ Azure Load Balancer	35.00	35.00
 Total
 	1455.67	2317.11
 
+
+
+
+
+
+
+
+High-level
+
+
  
+
+
+ 
+
+ 
+
+
+
+
+
 
 Option B — Distributed Data Planes + Central Grafana (Recommended) is 
 
@@ -260,13 +300,13 @@ Implementation Details
 	OTel→Jaeger collector; 3-7d hot storage with sampling 5-10%.
 	Query endpoint exposed via Ingress for Grafana plugin.
 5. OTel Collector:
-	In-cluster Deployment (preferred)  + app sidecars where necessary.
+	In-cluster Deployment (preferred) + app sidecars where necessary.
 	Processors: batch, memory_limiter, resource detection; exporters: prometheusremotewrite, loki, jaeger.
 Pros
 1. Resilience: Loss of Grafana does not impact ingestion or data retention.
 2. No central SPOF: Each cluster continues to collect and store locally.
 3. Scalability: Add clusters without re architecting the center; per cluster SLOs.
-4. Security: Minimal surface; mTLS and private endpoints; avoids APIM rewrite issues entirely.
+4. Security: Minimal surface; TLS and private endpoints; avoids APIM rewrite issues entirely by using App Gateway WAF for Grafana UI.
 5. Cost control: Limits cross network egress; right size per cluster.
 Cons / Trade offs
 1. Multiple datasources to manage in Grafana (solved by provisioning-as-code).
@@ -306,6 +346,13 @@ Rollout Plan
 5. Datasource as Code: Commit Grafana datasources.yml and folder/permissions; import curated dashboards.
 6. Cutover: Point users to Grafana VM URL; decommission APIM path to old Grafana; monitor SLOs.
 7. Hardening & Scale: Add rate limits, alert noise reduction, and perenv RBAC.
+
+
+
+
+
+
+
 
 
 Costs
