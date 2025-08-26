@@ -1,6 +1,5 @@
 @startuml
 !define OBSERVABILITY #4E7DD1
-!define DATABASE #42A5F5
 !define STORAGE #9C6ADE
 !define LOGGING #4CAF50
 !define TRACING #FF9800
@@ -58,7 +57,8 @@ rectangle "DEV OSS Stack Design" <<Cloud>> #2D2D2D {
     }
   }
 
-  database "Azure Blob Storage\n(thanos-bucket, loki-bucket)" as Blob #0078D4
+  ' ===== STORAGE LAYERS =====
+  database "Azure Blob Storage\n(thanos-bucket, loki-bucket)\n(Long-term retention)" as Blob #0078D4
   database "Elastic / OpenSearch\n(Traces Storage)" as TraceStore #FF9800
   database "Azure Database for PostgreSQL\n(Grafana DB)" as PG #0078D4
   component "Azure Key Vault\n(Secrets & Certs)" as KV #8661C5
@@ -72,10 +72,10 @@ OTelAgents -[#4E7DD1]-> SLB : OTLP 4317/4318
 SLB -[#4E7DD1]-> Gateway : LB traffic
 
 Gateway -[#9C6ADE]-> Prom : scrape 9464
-ThanosSidecar -[#8661C5]-> Blob : upload blocks
+ThanosSidecar -[#8661C5]-> Blob : metrics blocks (30d+)
 
 Gateway -[#4CAF50]-> LokiDist : logs
-LokiIngest -[#4CAF50]-> Blob : chunks/index
+LokiIngest -[#4CAF50]-> Blob : chunks/index (90d+)
 
 Gateway -[#FF9800]-> JaegerCol : traces
 JaegerCol -[#FF9800]-> TraceStore : spans
@@ -102,6 +102,12 @@ note right of SLB
    - 30m
   <b>Backend Pool:</b>
    - VMSS instances
+end note
+
+note bottom of Blob
+  <b>Retention Policy:</b>
+   - Metrics: 30–365 days via Thanos
+   - Logs: 90–365 days via Loki
 end note
 
 note bottom of LokiComp
