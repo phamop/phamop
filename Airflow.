@@ -1,12 +1,24 @@
-Summary of discussion with John:
+Key Components:
 
-Design Approval: The design is acceptable.
+VMSS (Virtual Machine Scale Set): Provides automated scaling (horizontal, based on load) and high availability by distributing VMs across Azure availability zones/fault domains, eliminating the single VM as a Single Point of Failure (SPOF).
 
-Recommendation: To leverage our VMSS usage, we should adopt a dedicated AKS cluster.
+Integrated Load Balancer: Automatically distributes incoming traffic (metrics, logs, traces) from all applications across the healthy instances in the VMSS.
 
-Rationale: A dedicated AKS will prevent the issues we faced in the DEV environment.
+Autoscaling: The VMSS can automatically add or remove VM instances based on predefined metrics (e.g., CPU or memory pressure), ensuring the stack can handle load spikes cost-effectively.
 
-Cost: The cost analysis supports this decision, as it is a factor in ensuring stability.
+Azure Blob Storage: Likely used for long-term storage of metrics (Prometheus) or logs (Loki).
+
+Azure Key Vault: Used for securely managing secrets, certificates, and keys for the components in the stack.
+
+Azure Active Directory (Entra ID): Used for authentication and identity management.
+
+How it works:
+All applications—including AKS workloads and PaaS services (Logic Apps, Function Apps, App Services)—would be configured to push their observability data (via OpenTelemetry, Prometheus, etc.) to the public endpoint of the Load Balancer in front of the VMSS. The traffic is then routed to the OSS stack (OTel Collector, Prometheus, Loki, Jaeger) running on the VMs. Grafana would also run within this VMSS for visualization.
+
+In summary, Option HA is chosen as the path forward to create a centralized, scalable, and highly available observability gateway, mitigating the risks of the initial single-VM design (Option A) while maintaining a centralized data collection model.
+
+
+
             <!-- Add your allowed IP addresses or ranges below -->
             <address>192.168.1.1</address>
             <address>203.0.113.0/24</address>
