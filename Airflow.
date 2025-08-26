@@ -1,3 +1,5 @@
+I spoke to Saqib, he said  is ok with the design since we are using VMSS we can as well use dedicated AKS. He also look at the cost and he said since this is a dedicated AKS we will not face the issue we had in the DEV AKS
+
 ip-filter action="allow">
             <!-- Add your allowed IP addresses or ranges below -->
             <address>192.168.1.1</address>
