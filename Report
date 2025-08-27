@@ -27,6 +27,7 @@ System_Boundary(lb, "Azure Load Balancer") {
   System(lb_grafana, "LB Grafana Endpoint", "Distributes HTTPS 443 traffic to Grafana via NGINX")
 }
 
+' === Traffic Flows ===
 Rel(aks, lb_otlp, "OTLP 4317/4318 (mTLS)", "Telemetry")
 Rel(lb_otlp, otel, "Distributes OTLP to VMs")
 
@@ -37,7 +38,7 @@ Rel(nginx, grafana, "HTTPS (proxy)", "Routes to Grafana service")
 ' --- Health checks / probes ---
 BiRel(lb_grafana, nginx, "Health probe 443", "LB heartbeat")
 BiRel(nginx, grafana, "Health check HTTP 200", "Internal probe")
-BiRel(lb_otlp, otel, "Health probe 4317/4318", "LB heartbeat")  ' <-- Added OTLP probe
+BiRel(lb_otlp, otel, "Health probe 4317/4318", "LB heartbeat")
 
 Rel(otel, prom, "Metrics via gRPC (mTLS)")
 Rel(otel, loki, "Logs via gRPC (mTLS)")
@@ -52,5 +53,8 @@ Rel(grafana, aad, "OIDC SSO")
 Rel(grafana, pg, "Metadata queries")
 Rel(otel, akv, "Fetch certs/keys")
 Rel(nginx, akv, "TLS certs")
-@enduml
 
+' --- Security Controls ---
+Rel(security, aks, "NSG rules\ncontrol outbound telemetry")
+Rel(security, vm, "NSG rules\ncontrol inbound LB traffic + RBAC")
+@enduml
