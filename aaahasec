@@ -1,0 +1,105 @@
+Of course. Here are the corresponding security components mapped to the provided architecture diagram, detailing how each principle is implemented.
+
+### 1. Data Protection - Data Encryption
+
+This principle ensures data is encrypted both **in transit** and **at rest**.
+
+| Component | Implementation for Encryption in Transit | Implementation for Encryption at Rest |
+| :--- | :--- | :--- |
+| **OTel Agents/Collector** | **mTLS (Mutual TLS)** is enforced on ports 4317/4318. The Load Balancer and Collector authenticate each other with certificates from Azure Key Vault. | N/A (Data is processed, not stored long-term here). |
+| **Prometheus (Local)** | Scrapes are local (localhost:9464) or within a trusted subnet. | **Azure Premium SSDs** use Azure Storage Service Encryption (SSE) with platform-managed keys (PMK) by default. Customer-managed keys (CMK) can be configured. |
+| **Loki (Ingester/WAL)** | Internal Loki component communication can be configured for TLS. Communication with Blob Storage is via **HTTPS**. | **Write-Ahead Log (WAL)** is on encrypted SSD. Long-term storage in **Azure Blob Storage** is encrypted by default (SSE). |
+| **Thanos (Sidecar/Blob)** | Communication between Sidecar and Blob Storage is via **HTTPS**. | Data blocks in **Azure Blob Storage** are encrypted by default (SSE). |
+| **Jaeger Collector** | Accepts traces over TLS (ports 14250, 14268). | Long-term storage in **Elastic/OpenSearch** leverages its encryption-at-rest capabilities. |
+| **Grafana** | All external access is via **HTTPS/443** through Nginx. Internal connections to data sources (Thanos, Loki) use **HTTPS/gRPC+TLS**. | Dashboard and user data in **Azure Database for PostgreSQL** is encrypted using transparent data encryption (TDE). |
+| **Azure Blob Storage** | All data access is via **HTTPS** REST API. | **Encrypted at rest** by default using 256-bit AES encryption. |
+
+### 2. Secure Infrastructure and Architecture
+
+This principle focuses on building a resilient system with minimized attack surface and network security.
+
+| Aspect | Implementation |
+| :--- | :--- |
+| **Network Segmentation** | The **Internal Standard Load Balancer (SLB)** creates a security boundary. The AKS cluster and backend VMSS are placed on a dedicated, isolated Azure Virtual Network (VNet) with subnets. Public access is only allowed to the **External Load Balancer (LB)** on port 443 for Grafana. |
+| **High Availability (HA)** | The **VM Scale Set (1..3 VMs)** ensures the observability stack is fault-tolerant and can survive individual node failures. Components like the Loki Compactor are configured for exactly one active instance to prevent conflicts. |
+| **Minimal Attack Surface** | Only necessary ports are exposed on the load balancers. The internal SLB has strict health probes. Public internet access is limited to a single endpoint (Grafana via LB:443). |
+| **Resource Isolation** | The entire "DEV OSS Stack" is a dedicated resource group, isolating it from other environments (e.g., production). AKS workloads are isolated via Kubernetes namespaces and network policies. |
+
+### 3. Log Management and Auditing
+
+This ensures all access and administrative actions are logged for security monitoring and forensics.
+
+| Component | Logging & Auditing Implementation |
+| :--- | :--- |
+| **Azure Platform** | **Azure Activity Logs** are enabled to track administrative actions on all Azure resources (VMSS, Blob Storage, Key Vault, etc.). |
+| **Azure Key Vault** | **Key Vault Audit Logs** are enabled by default, logging every access attempt (successful or failed) to secrets, keys, and certificates. These logs can be sent to a dedicated Log Analytics workspace for security analysis. |
+| **Grafana** | Grafana has its own **internal audit logging** which tracks user logins, dashboard changes, and data source queries. These logs can be ingested into the Loki instance itself for centralized analysis. |
+| **Virtual Machines (VMSS)** | **OS-level logs** (e.g., Linux syslog) from the VMs can be collected by the OTel agent and sent to Loki for monitoring unauthorized access attempts or system issues. |
+| **Authentication** | All authentication events (e.g., Grafana logins, Azure AD Managed Identity usage) are logged to their respective audit trails (Grafana logs, Azure AD Sign-in Logs). |
+
+### 4. Securing Workloads and Applications
+
+This focuses on the security of the software running within the infrastructure.
+
+| Component | Workload Security Implementation |
+| :--- | :--- |
+| **Container Images** | Images for OTel, Prometheus, Loki, etc., are sourced from official, trusted repositories. They are regularly scanned for vulnerabilities and kept updated. |
+| **Pod Security** | In the AKS cluster, **Pod Security Standards** (e.g., restricted profile) are applied to the OTel Agent DaemonSet to prevent privileged escalation and enforce security contexts. |
+| **VM Hardening** | VMSS instances use a hardened base image (e.g., CIS-hardened). SSH access is restricted, and OS vulnerabilities are patched automatically using **Azure Update Manager**. |
+| **Secrets Management** | Application secrets (e.g., Grafana admin password, data source credentials) are **not stored in environment variables or config files**. They are dynamically retrieved from **Azure Key Vault** using Managed Identities. |
+| **mTLS for Service-to-Service** | The strict **mTLS** requirement between the Load Balancer and OTel Collector Gateway ensures that only authenticated and authorized services can send telemetry data, preventing data injection attacks. |
+
+### 5. Identity and Access Management (IAM)
+
+This ensures the principle of least privilege is enforced for both humans and systems accessing resources.
+
+| Entity | IAM Implementation |
+| :--- | :--- |
+| **Developers / SREs (Human)** | Access to Grafana is integrated with **Azure Active Directory (Azure AD)** via OAuth 2.0. Users log in with their corporate credentials (SSO) and are assigned roles (Viewer, Editor, Admin) within Grafana itself. |
+| **Access to Azure Resources** | Developers/SREs are granted access to the Azure subscription/resource group via **Azure RBAC** roles (e.g., Reader, Contributor) assigned to their Azure AD user/group. |
+| **Managed Identities (System)** | The VM Scale Set and/or the individual applications (Grafana, Collector) are assigned an **Azure AD Managed Identity**. This identity is then granted specific permissions (e.g., `GET` secrets from Key Vault, `Write` to Blob Storage) via Azure RBAC. This eliminates the need for hard-coded credentials. |
+| **Azure Key Vault Access Policies** | Access policies in Key Vault are meticulously configured to grant the Managed Identities only the **minimum necessary permissions** (e.g., `Get` for secrets, `Get` for certificates). |
+| **Kubernetes Service Accounts** | In AKS, the OTel Agent DaemonSet uses a dedicated Kubernetes Service Account with minimal permissions, bound to a Role via a RoleBinding, following the principle of least privilege. |
+
+### Summary Visual (UML Addition)
+
+To represent these security concepts on your diagram, you could add a dedicated security package and relationships:
+
+```plantuml
+' ... (your existing definitions and setup)
+
+package "Security & Identity Foundation" <<Security>> #AB47BC {
+  component "Azure Active Directory" as AAD #AB47BC
+  component "Azure Key Vault\n(Secrets, Certs, Keys)" as KV #AB47BC
+  component "Managed Identities\n(for VMSS & Apps)" as MI #AB47BC
+  database "Azure Monitor\n(Activity & Key Vault Logs)" as Audit #AB47BC
+}
+
+' ... (your existing components)
+
+' --- NEW SECURITY CONNECTIONS ---
+Dev -> AAD : Authenticates via
+AAD -> LB : SSO / OAuth for Grafana
+
+KV <-[#AB47BC]-> Gateway : mTLS Certificates
+KV <-[#AB47BC]-> Grafana : Secrets (via MI)
+KV <-[#AB47BC]-> Nginx : TLS Certificates
+
+MI -[#AB47BC]-> KV : Authenticates to
+MI -[#AB47BC]-> Blob : Writes to (e.g., Loki)
+
+Audit <-[#AB47BC]- KV : Audit Logs
+Audit <-[#AB47BC]- VMSS : Activity Logs
+
+note right of MI
+  <b>Least Privilege Access:</b>
+  MI for Grafana has 'Get' secret permission.
+  MI for VMSS has 'Read' blob permission.
+end note
+
+legend right
+  ... (your existing legend)
+  | <color:#AB47BC>#AB47BC</color> | Security & IAM |
+end legend
+```
+This addition visually ties the critical security services (AAD, KV, MI) to the components that depend on them, completing the security story of the architecture.
