@@ -1,54 +1,45 @@
-@startuml C4_Level1_HA_Grafana
+@startuml
+' C4-PlantUML: Container-level diagram for Dev Observability Security Design for Temporary VM-hosted OSS Observability Stack
+!includeurl https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
 
-!includeurl https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
-
-title <color:#0078D4>HA-Grafana Observability - C4 Level 1 (System Context)</color>
-
-LAYOUT_WITH_LEGEND()
-
-' --- People ---
-Person(dev, "Developers / SRE", "Use Grafana dashboards for monitoring & troubleshooting")
-
-' --- Main System ---
-System_Boundary(grafana_stack, "HA-Grafana Observability Stack") {
-    System(grafana, "HA-Grafana", "Dashboards and visualization platform")
+' Define styles
+skinparam rectangle<<Observability>> {
+  BackgroundColor #DAE8FC
+  FontColor black
+}
+skinparam rectangle<<AKS>> {
+  BackgroundColor #D5E8D4
+  FontColor black
+}
+skinparam rectangle<<Security>> {
+  BackgroundColor #E1D5E7
+  FontColor black
 }
 
-' --- External Systems (Security & Identity Foundation) ---
-System_Ext(aad, "Azure Active Directory", "Authentication & SSO (OAuth)")
-System_Ext(kv, "Azure Key Vault", "Secrets, Certificates, Keys")
-System_Ext(mi, "Azure Managed Identities", "Identity for VMSS & Apps")
-System_Ext(audit, "Loki / Audit Logs", "System & Access logs storage")
-System_Ext(blob, "Azure Blob Storage", "Metrics & trace object storage (Thanos, Loki chunks)")
-System_Ext(gateway, "Gateway / Ingress (NGINX)", "Routes traffic securely to Grafana")
+' Observability Components
+rectangle "Observability" <<Observability>> {
+  Container(otel, "OTel Collector", "Go", "Receives telemetry via OTLP")
+}
 
-' --- Relationships ---
-Rel(dev, aad, "Authenticates via")
-Rel(aad, grafana, "SSO / OAuth for access")
+' AKS Cluster
+rectangle "AKS Cluster" <<AKS>> {
+  Container(aks_workloads, "Instrumented Workloads", "Containers", "Send telemetry via OTel SDK/sidecars")
+}
 
-Rel(kv, gateway, "mTLS Certificates")
-Rel(kv, grafana, "Secrets (via MI)")
-Rel(kv, gateway, "TLS Certificates")
+' Network Security
+rectangle "Network Security" <<Security>> {
+  System(nsg, "NSG", "Network Security Group", "Controls traffic between AKS and Observability")
+}
 
-Rel(mi, kv, "Authenticates to")
-Rel(mi, blob, "Writes to (Thanos, Loki chunks)")
+' Core telemetry flow with NSG
+Rel(aks_workloads, otel, "OTLP gRPC 4317/HTTP 4318", "Telemetry data")
+Rel(nsg, otel, "Allow inbound", "From AKS CIDR")
+Rel(nsg, aks_workloads, "Allow outbound", "To OTel Collector")
 
-Rel_Back(audit, kv, "Access Logs")
-Rel_Back(audit, grafana_stack, "Syslogs / Activity Logs (via Alloy)")
+' Optional security elements
+System(akv, "Azure Key Vault", "Manages TLS certificates")
+Rel(akv, otel, "Provision server cert")
+Rel(akv, aks_workloads, "Provision client certs")
 
-' --- Notes ---
-Note right of mi
-  <b>Least Privilege Access:</b>\n
-  - Grafana MI: Get Secret\n
-  - VMSS MI: Read Blob
-end note
-
-' --- Legend ---
-UpdateElementStyle(System_Ext, $bgColor="#AB47BC", $fontColor="white")
-AddElementTag("Security", $bgColor="#AB47BC", $fontColor="white")
-
-legend right
-  | <color:#AB47BC>#AB47BC</color> | Security & IAM |
-end legend
-
+SHOW_LEGEND()
 @enduml
