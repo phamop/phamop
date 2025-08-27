@@ -3,20 +3,19 @@
 
 LAYOUT_WITH_LEGEND()
 
-title <color:#0078D4>Observability VMs behind Azure Load Balancer (Grafana + OTLP + Azure Logging)</color>
+title <color:#0078D4>Observability VMs behind Azure Load Balancer (Grafana + OTLP + OSS Logging)</color>
 
 Person(dev, "Developers", "Access Grafana dashboards via HTTPS 443")
 System(aks, "AKS Cluster", "Runs workloads with OTel Collector")
 System_Ext(azblob, "Azure Blob Storage", "Durable object storage for metrics/logs/traces")
 System_Ext(akv, "Azure Key Vault", "Stores TLS/mTLS certificates & secrets")
 System_Ext(aad, "Azure Entra ID", "SSO for Grafana & RBAC")
-System_Ext(azmon, "Azure Monitor", "Default logging: VM metrics, NSG flow logs, Activity logs, Container logs")
 
 Container_Boundary(vm, "Azure VM (Dockerized Stack)") {
   Container(grafana, "Grafana", "Dashboards/Visuals")
   Container(pg, "PostgreSQL", "Grafana metadata store")
   Container(prom, "Prometheus + Thanos", "Metrics collection, TSDB + object store")
-  Container(loki, "Loki (distributed)", "Logs storage & query")
+  Container(loki, "Loki + Promtail", "Logs collection, storage & query")
   Container(jaeger, "Jaeger + Elasticsearch", "Traces collection & search")
   Container(otel, "OTel Gateway", "Receives OTLP (4317/4318) and routes telemetry")
   Container(nginx, "NGINX", "TLS termination & reverse proxy (443)")
@@ -37,15 +36,18 @@ Rel(lb_grafana, nginx, "443 HTTPS", "Load balanced Grafana access")
 Rel(otel, prom, "Metrics via gRPC (mTLS)")
 Rel(otel, loki, "Logs via gRPC (mTLS)")
 Rel(otel, jaeger, "Traces via gRPC (mTLS)")
-Rel(prom, azblob, "Thanos compaction + long-term store (Private Link)")
-Rel(loki, azblob, "Log chunks & indices (Private Link)")
+
+Rel(prom, azblob, "Thanos compaction + long-term store")
+Rel(loki, azblob, "Log chunks & indices archive")
 Rel(jaeger, azblob, "Archived traces (optional)")
+
 Rel(jaeger, grafana, "Trace queries")
 Rel(prom, grafana, "Metrics queries")
 Rel(loki, grafana, "Logs queries")
+
 Rel(grafana, aad, "OIDC SSO")
 Rel(grafana, pg, "Metadata queries")
+
 Rel(otel, akv, "Fetch certs/keys")
 Rel(nginx, akv, "TLS certs")
-Rel(security, azmon, "Export VM/container logs & metrics")
 @enduml
