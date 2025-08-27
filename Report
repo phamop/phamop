@@ -1,53 +1,35 @@
-@startuml
-!includeurl https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+' ... (HA-Grafana existing definitions and setup)
 
-LAYOUT_WITH_LEGEND()
-
-title <color:#0078D4>Observability VMs behind Azure Load Balancer (Grafana + OTLP + OSS Logging)</color>
-
-Person(dev, "Developers", "Access Grafana dashboards via HTTPS 443")
-System(aks, "AKS Cluster", "Runs workloads with OTel Collector")
-System_Ext(azblob, "Azure Blob Storage", "Durable object storage for metrics/logs/traces")
-System_Ext(akv, "Azure Key Vault", "Stores TLS/mTLS certificates & secrets")
-System_Ext(aad, "Azure Entra ID", "SSO for Grafana & RBAC")
-
-Container_Boundary(vm, "Azure VM (Dockerized Stack)") {
-  Container(grafana, "Grafana", "Dashboards/Visuals")
-  Container(pg, "PostgreSQL", "Grafana metadata store")
-  Container(prom, "Prometheus + Thanos", "Metrics collection, TSDB + object store")
-  Container(loki, "Loki + Promtail", "Logs collection, storage & query")
-  Container(jaeger, "Jaeger + Elasticsearch", "Traces collection & search")
-  Container(otel, "OTel Gateway", "Receives OTLP (4317/4318) and routes telemetry")
-  Container(nginx, "NGINX", "TLS termination & reverse proxy (443)")
-  Container(security, "Security Components", "NSGs, TLS/mTLS, RBAC, Managed Identity")
+package "Security & Identity Foundation" <<Security>> #AB47BC {
+  component "Azure Active Directory" as AAD #AB47BC
+  component "Azure Key Vault\n(Secrets, Certs, Keys)" as KV #AB47BC
+  component "Managed Identities\n(for VMSS & Apps)" as MI #AB47BC
+  database "Azure Monitor\n(Activity & Key Vault Logs)" as Audit #AB47BC
 }
 
-System_Boundary(lb, "Azure Load Balancer") {
-  System(lb_otlp, "LB OTLP Endpoint", "Distributes OTLP traffic (4317/4318) to VMs")
-  System(lb_grafana, "LB Grafana Endpoint", "Distributes HTTPS 443 traffic to Grafana via NGINX")
-}
+' ... (HA-Grafana existing definitions and setup)
 
-Rel(aks, lb_otlp, "OTLP 4317/4318 (mTLS)", "Telemetry")
-Rel(lb_otlp, otel, "Distributes OTLP to VMs")
+' --- NEW SECURITY CONNECTIONS ---
+Dev -> AAD : Authenticates via
+AAD -> LB : SSO / OAuth for Grafana
 
-Rel(dev, lb_grafana, "443 HTTPS (TLS)", "Grafana dashboards")
-Rel(lb_grafana, nginx, "443 HTTPS", "Load balanced Grafana access")
+KV <-[#AB47BC]-> Gateway : mTLS Certificates
+KV <-[#AB47BC]-> Grafana : Secrets (via MI)
+KV <-[#AB47BC]-> Nginx : TLS Certificates
 
-Rel(otel, prom, "Metrics via gRPC (mTLS)")
-Rel(otel, loki, "Logs via gRPC (mTLS)")
-Rel(otel, jaeger, "Traces via gRPC (mTLS)")
+MI -[#AB47BC]-> KV : Authenticates to
+MI -[#AB47BC]-> Blob : Writes to (e.g., Loki)
 
-Rel(prom, azblob, "Thanos compaction + long-term store")
-Rel(loki, azblob, "Log chunks & indices archive")
-Rel(jaeger, azblob, "Archived traces (optional)")
+Audit <-[#AB47BC]- KV : Audit Logs
+Audit <-[#AB47BC]- VMSS : Activity Logs
 
-Rel(jaeger, grafana, "Trace queries")
-Rel(prom, grafana, "Metrics queries")
-Rel(loki, grafana, "Logs queries")
+note right of MI
+  <b>Least Privilege Access:</b>
+  MI for Grafana has 'Get' secret permission.
+  MI for VMSS has 'Read' blob permission.
+end note
 
-Rel(grafana, aad, "OIDC SSO")
-Rel(grafana, pg, "Metadata queries")
-
-Rel(otel, akv, "Fetch certs/keys")
-Rel(nginx, akv, "TLS certs")
-@enduml
+legend right
+  ... (HA-Grafana existing definitions legend)
+  | <color:#AB47BC>#AB47BC</color> | Security & IAM |
+end legend
