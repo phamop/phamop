@@ -1,5 +1,4 @@
 @startuml
-' C4-PlantUML: Container-level diagram for Dev Observability Security Design for Temporary VM-hosted OSS Observability Stack
 !includeurl https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
 
 ' Define styles
@@ -16,18 +15,18 @@ skinparam rectangle<<Security>> {
   FontColor black
 }
 
-' Observability Components
-rectangle "Observability" <<Observability>> {
+title Container Diagram: Dev Observability Security Design
+
+' Boundaries with stereotypes
+Container_Boundary(observability_boundary, "Observability") <<Observability>> {
   Container(otel, "OTel Collector", "Go", "Receives telemetry via OTLP")
 }
 
-' AKS Cluster
-rectangle "AKS Cluster" <<AKS>> {
+Container_Boundary(aks_boundary, "AKS Cluster") <<AKS>> {
   Container(aks_workloads, "Instrumented Workloads", "Containers", "Send telemetry via OTel SDK/sidecars")
 }
 
-' Network Security
-rectangle "Network Security" <<Security>> {
+Container_Boundary(security_boundary, "Network Security") <<Security>> {
   System(nsg, "NSG", "Network Security Group", "Controls traffic between AKS and Observability")
 }
 
