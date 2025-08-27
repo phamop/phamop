@@ -1,35 +1,54 @@
-' ... (HA-Grafana existing definitions and setup)
+@startuml C4_Level1_HA_Grafana
 
-package "Security & Identity Foundation" <<Security>> #AB47BC {
-  component "Azure Active Directory" as AAD #AB47BC
-  component "Azure Key Vault\n(Secrets, Certs, Keys)" as KV #AB47BC
-  component "Managed Identities\n(for VMSS & Apps)" as MI #AB47BC
-  component "Loki\n(Audit & System Logs)" as Audit #AB47BC
+!includeurl https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+title <color:#0078D4>HA-Grafana Observability - C4 Level 1 (System Context)</color>
+
+LAYOUT_WITH_LEGEND()
+
+' --- People ---
+Person(dev, "Developers / SRE", "Use Grafana dashboards for monitoring & troubleshooting")
+
+' --- Main System ---
+System_Boundary(grafana_stack, "HA-Grafana Observability Stack") {
+    System(grafana, "HA-Grafana", "Dashboards and visualization platform")
 }
 
-' ... (HA-Grafana existing definitions and setup)
+' --- External Systems (Security & Identity Foundation) ---
+System_Ext(aad, "Azure Active Directory", "Authentication & SSO (OAuth)")
+System_Ext(kv, "Azure Key Vault", "Secrets, Certificates, Keys")
+System_Ext(mi, "Azure Managed Identities", "Identity for VMSS & Apps")
+System_Ext(audit, "Loki / Audit Logs", "System & Access logs storage")
+System_Ext(blob, "Azure Blob Storage", "Metrics & trace object storage (Thanos, Loki chunks)")
+System_Ext(gateway, "Gateway / Ingress (NGINX)", "Routes traffic securely to Grafana")
 
-' --- NEW SECURITY CONNECTIONS ---
-Dev -> AAD : Authenticates via
-AAD -> LB : SSO / OAuth for Grafana
+' --- Relationships ---
+Rel(dev, aad, "Authenticates via")
+Rel(aad, grafana, "SSO / OAuth for access")
 
-KV <-[#AB47BC]-> Gateway : mTLS Certificates
-KV <-[#AB47BC]-> Grafana : Secrets (via MI)
-KV <-[#AB47BC]-> Nginx : TLS Certificates
+Rel(kv, gateway, "mTLS Certificates")
+Rel(kv, grafana, "Secrets (via MI)")
+Rel(kv, gateway, "TLS Certificates")
 
-MI -[#AB47BC]-> KV : Authenticates to
-MI -[#AB47BC]-> Blob : Writes to (e.g., Thanos, Loki chunks)
+Rel(mi, kv, "Authenticates to")
+Rel(mi, blob, "Writes to (Thanos, Loki chunks)")
 
-Audit <-[#AB47BC]- KV : Access Logs
-Audit <-[#AB47BC]- VMSS : Syslogs / Activity Logs (via Promtail)
+Rel_Back(audit, kv, "Access Logs")
+Rel_Back(audit, grafana_stack, "Syslogs / Activity Logs (via Alloy)")
 
-note right of MI
-  <b>Least Privilege Access:</b>
-  MI for Grafana has 'Get' secret permission.
-  MI for VMSS has 'Read' blob permission.
+' --- Notes ---
+Note right of mi
+  <b>Least Privilege Access:</b>\n
+  - Grafana MI: Get Secret\n
+  - VMSS MI: Read Blob
 end note
 
+' --- Legend ---
+UpdateElementStyle(System_Ext, $bgColor="#AB47BC", $fontColor="white")
+AddElementTag("Security", $bgColor="#AB47BC", $fontColor="white")
+
 legend right
-  ... (HA-Grafana existing definitions legend)
   | <color:#AB47BC>#AB47BC</color> | Security & IAM |
 end legend
+
+@enduml
