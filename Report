@@ -1,37 +1,47 @@
 @startuml
 !includeurl https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
 
+' ==== COLOR SETTINGS ====
+skinparam backgroundColor #F8F9FA
+skinparam defaultFontColor #333333
+skinparam rectangle {
+  FontColor white
+  BorderColor black
+}
+skinparam noteBackgroundColor #FFFFFF
+skinparam noteBorderColor #999999
+skinparam arrowColor #666666
+skinparam arrowFontColor #333333
+
 LAYOUT_WITH_LEGEND()
 
-title <color:#0078D4>DEV Observability OSS Stack VMs (Grafana + OTLP + OSS Logging)</color>
+title <color:#0078D4>DEV Observability OSS Stack VMs (Grafana + OTLP + Alloy)</color>
 
-'Scontainer_Boundary(aks, "frontier ") {
-Person(dev, "Developers/SRE", "Access Grafana dashboards via HTTPS 443")
-System(aks, "AKS Cluster", "Runs workloads with OTel Collector")
+Person(dev, "Developers/SRE", "Access Grafana dashboards via HTTPS 443") #4A90E2
+System(aks, "AKS Cluster", "Runs workloads with OTel Collector") #1565C0
 
-System_Ext(azblob, "Azure Blob Storage", "Durable object storage for metrics/logs/traces")
-System_Ext(akv, "Azure Key Vault", "Stores TLS/mTLS certificates & secrets")
-System_Ext(aad, "Azure Entra ID", "SSO for Grafana & RBAC")
+System_Ext(azblob, "Azure Blob Storage", "Durable object storage for metrics/logs/traces") #0078D4
+System_Ext(akv, "Azure Key Vault", "Stores TLS/mTLS certificates & secrets") #0078D4
+System_Ext(aad, "Azure Entra ID", "SSO for Grafana & RBAC") #0078D4
 
 Container_Boundary(vm, "Azure VM (Dockerized Stack)") {
-  Container(grafana, "Grafana", "Dashboards/Visuals")
-  Container(pg, "PostgreSQL", "Grafana metadata store")
-  Container(prom, "Prometheus + Thanos", "Metrics collection, TSDB + object store")
-  Container(loki, "Loki + Promtail", "Logs collection, storage & query")
-  Container(jaeger, "Jaeger + Elasticsearch", "Traces collection & search")
-  Container(otel, "OTel Gateway", "Receives OTLP (4317/4318) and routes telemetry")
-  Container(nginx, "NGINX", "TLS termination & reverse proxy (443)")
-  Container(security, "Security Components", "NSGs, TLS/mTLS, RBAC, Managed Identity")
+  Container(grafana, "Grafana", "Dashboards/Visuals") #2196F3
+  Container(pg, "PostgreSQL", "Grafana metadata store") #2196F3
+  Container(prom, "Prometheus + Thanos", "Metrics collection, TSDB + object store") #2196F3
+  Container(loki, "Loki + Alloy", "Logs collection (Alloy agent), storage & query") #2196F3
+  Container(jaeger, "Jaeger + Elasticsearch", "Traces collection & search") #2196F3
+  Container(otel, "OTel Gateway", "Receives OTLP (4317/4318) and routes telemetry") #2196F3
+  Container(nginx, "NGINX", "TLS termination & reverse proxy (443)") #2196F3
+  Container(security, "Security Components", "NSGs, TLS/mTLS, RBAC, Managed Identity") #8E24AA
 }
 
 System_Boundary(lb, "Azure Load Balancer") {
-  System(lb_otlp, "LB OTLP Endpoint", "Distributes OTLP traffic (4317/4318) to VMs")
-  System(lb_grafana, "External LB Grafana Endpoint", "Distributes HTTPS 443 traffic to Grafana via NGINX")
+  System(lb_otlp, "LB OTLP Endpoint", "Distributes OTLP traffic (4317/4318) to VMs") #BA68C8
+  System(lb_grafana, "External LB Grafana Endpoint", "Distributes HTTPS 443 traffic to Grafana via NGINX") #BA68C8
 }
 
 Rel(aks, lb_otlp, "OTLP 4317/4318 (mTLS)", "Telemetry Signal")
 Rel(lb_otlp, otel, "Distributes OTLP to VMs")
-
 
 Rel(dev, lb_grafana, "443 HTTPS (TLS)", "Grafana dashboards")
 Rel(lb_grafana, nginx, "443 HTTPS", "Load balanced Grafana access")
@@ -43,12 +53,12 @@ BiRel(nginx, grafana, "Health check HTTP 200", "Internal probe")
 BiRel(lb_otlp, otel, "Health probe 4317/4318", "LB heartbeat") 
 
 Rel(otel, prom, "Metrics via gRPC (mTLS)")
-Rel(otel, loki, "Logs via gRPC (mTLS)")
+Rel(otel, loki, "Logs via gRPC (mTLS, Alloy)")
 Rel(otel, jaeger, "Traces via gRPC (mTLS)")
 
 Rel(prom, azblob, "Thanos compaction + long-term store")
 Rel(loki, azblob, "Log chunks & indices archive")
-Rel(jaeger, azblob, "Archived traces ")
+Rel(jaeger, azblob, "Archived traces")
 
 Rel(jaeger, grafana, "Trace queries")
 Rel(prom, grafana, "Metrics queries")
