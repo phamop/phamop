@@ -4,7 +4,7 @@ package "Security & Identity Foundation" <<Security>> #AB47BC {
   component "Azure Active Directory" as AAD #AB47BC
   component "Azure Key Vault\n(Secrets, Certs, Keys)" as KV #AB47BC
   component "Managed Identities\n(for VMSS & Apps)" as MI #AB47BC
-  database "Azure Monitor\n(Activity & Key Vault Logs)" as Audit #AB47BC
+  component "Loki\n(Audit & System Logs)" as Audit #AB47BC
 }
 
 ' ... (HA-Grafana existing definitions and setup)
@@ -18,10 +18,10 @@ KV <-[#AB47BC]-> Grafana : Secrets (via MI)
 KV <-[#AB47BC]-> Nginx : TLS Certificates
 
 MI -[#AB47BC]-> KV : Authenticates to
-MI -[#AB47BC]-> Blob : Writes to (e.g., Loki)
+MI -[#AB47BC]-> Blob : Writes to (e.g., Thanos, Loki chunks)
 
-Audit <-[#AB47BC]- KV : Audit Logs
-Audit <-[#AB47BC]- VMSS : Activity Logs
+Audit <-[#AB47BC]- KV : Access Logs
+Audit <-[#AB47BC]- VMSS : Syslogs / Activity Logs (via Promtail)
 
 note right of MI
   <b>Least Privilege Access:</b>
