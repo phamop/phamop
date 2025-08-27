@@ -5,7 +5,7 @@ LAYOUT_WITH_LEGEND()
 
 title <color:#0078D4>DEV Observability OSS Stack VMs (Grafana + OTLP + OSS Logging)</color>
 
-
+'Scontainer_Boundary(aks, "frontier ") {
 Person(dev, "Developers/SRE", "Access Grafana dashboards via HTTPS 443")
 System(aks, "AKS Cluster", "Runs workloads with OTel Collector")
 
