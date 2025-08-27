@@ -1,95 +1,241 @@
+      
 
+Observability Architecture Proposals (DEV AKS + Azure)  - Draft.1.2
+------------------------------------------------------
 
-#################################
+  
+**Scope:** Architectural and deployment context for Azure-based Observability Stack running on Virtual Machine Scale VMSS with integrated Load Balancer, Autoscaling, Azure Blob storage, Azure Key Vault and Azure Active Directory (AD). AKS workloads plus Azure PaaS (Logic Apps, Function Apps, App Services) using OSS tools: OpenTelemetry, OTel Collector, Prometheus, Loki, Jaeger, Grafana.
 
-Engaged with stakeholders on upgrade plans.
-Followed up with UNIX team for pending requirements.
-Qlik PostgreSQL 16 DB instance setup with DBAs in progress
-Completed requested GitLab tasks.
-Coordinated GitLab EOL (RHEL7 → RHEL9) and received approval for new server deployment.
-Submit new server request once project name is confirmed.
-Continue stakeholder syncs on GitLab RHEL9 migration.
-Ensured Artifactory and Xray were operational.
-Xray upgrade paused due to storage constraints 
-Revisit Xray upgrade after storage resolution.
-Assisted colleagues with application support tasks.
+Executive Summary
+-----------------
 
+We have three viable paths to centralize monitoring and visualization after path-rewrite issues through APIM impacted Grafana access:
 
+  **Option A — Centralized VM Stack (current draft):** Move the full OSS stack (OTel Collector, Prometheus, Loki, Jaeger, Grafana) to an Azure VM gateway tier. All apps and clusters push to the VM’s collector and backends.
 
+ **Option HA:** Move the full OSS stack (OTel Collector, Prometheus, Loki, Jaeger, Grafana)  to leveraging VMSS to address  the scalability and ensure there is no single point of failure – SPOF
 
-
-
-# Azure Monitor Insights Integration with Grafana on AKS: Implementation Guide
-
-
-https://learn.microsoft.com/en-us/azure/aks/use-azure-ad-pod-identity
-https://learn.microsoft.com/en-us/azure/aks/use-azure-ad-pod-identity#access-azure-key-vault-using-managed-identity
-https://learn.microsoft.com/en-us/azure/aks/workload-identity-overview?tabs=dotnet
+ **Option B — Distributed Data Planes + Central Grafana (recommended):** Keep data-plane components (collectors and storage backends) in each cluster, **securely expose them via TLS/mTLS Ingress** and **authenticate with Entra ID**.
+ Run **Grafana on an external VM** only as a query/alert control plane that connects to each datasource. _Improves resilience (no central SPOF), keeps data at source, and scales horizontally.
 
 
 
+Considered Option:
+-----------------
+Option HA is preferred because it strikes the optimal balance between **architectural simplicity**, **operational resilience**, and **strategic alignment** with Azure's cloud-native capabilities. It directly mitigates the critical flaw in Option A (the SPOF) while avoiding the significant operational overhead and complexity of Option B.
+It creates a robust, centralized platform that serves as a dedicated "Observability Gateway," simplifying security, management, and data correlation. It’s an evolution of Option A (centralized VM Stack). It addresses the primary weakness of Single point of failure by leveraging VMSS technology.
 
-Could you confirm if you are experiencing any performance impact on the server following the recent upgrade?
-Response: Yes, we are observing slowness.
+#### 1. High Availability (HA) and Fault Tolerance
 
-Could you provide additional details about the upgrade task performed?
-Please refer to the attached yum-note.txt file for details.
-Key Notes:
+*   **Option A (Centralized VM Stack):** **This is the weakest link.** A single VM is a definitive Single Point of Failure (SPOF). Any Azure host maintenance, VM failure, or networking issue on that single node brings down the entire observability stack, blinding all teams and systems during a critical incident.
+*   **Option HA (VM Scale Set):** **This is the core strength.** VMSS is designed explicitly for high availability and scalability.
+    *   **No SPOF:** Instances are distributed across multiple **Fault Domains** (separate racks/servers) in an Azure Availability Zone, ensuring hardware failures are isolated.
+    *   **Self-Healing:** The VMSS can be configured with health probes (via the integrated Load Balancer) to automatically detect a failed VM (e.g., if Grafana or the Collector crashes), terminate it, and provision a new, healthy instance.
+    *   **Seamless Updates:** Rolling upgrades and automatic OS patching can be applied to instances without overall service downtime.
+*   **Option B (Distributed Data Planes):** **Theoretically high but complex.** Resilience is pushed to the individual cluster level. While the failure of one AKS cluster's observability stack doesn't affect others, it adds complexity. You now have *multiple* potential points of failure to manage, monitor, and patch. The central Grafana VM becomes a new, different kind of SPOF for the visualization and alerting control plane.
 
-The upgrade started at 10:22 AM (EST) and completed by 2:11 PM (EST).
+* Option HA provides a simpler, more robust, and automated HA story than Option B and is decisively superior to Option A.
 
-At 11:09 AM (EST) (log line 33, timestamp 2025-04-21 15:09:26 UTC), the process was still ongoing.
+#### 2. Operational Complexity and Management
 
-The next recorded update was at 1:58 PM (EST) (2025-04-21T13:58:22-04:00).
+*   **Option A:** Simple to manage initially (one VM) but fragile and not scalable. All configuration, scaling, and patching is manual.
+*   **Option HA:** **Dramatically reduced operational overhead.**
+    *   **Unified Management:** You manage *one* VMSS resource, not many individual VMs. Scaling rules (based on CPU, memory, or even custom metrics from the observability stack itself) are defined once in an Autoscaling rule.
+    
+    *   **Centralized Configuration:** Secrets are centralized in **Azure Key Vault**, and configurations can be injected on boot using custom scripts or VM extensions. All instances point to the same centralized storage (**Azure Blob for Loki**, maybe for Prometheus TSDB blocks), simplifying data management.
+*   **Option B:** **Highest operational complexity.** You must manage, secure, patch, and monitor separate observability backends (Prometheus, Loki, Jaeger) *inside every AKS cluster*. This multiplies the operational burden by the number of clusters. Coordinating upgrades and consistent configurations across all clusters is challenging and error-prone.
 
-Based on the timestamps, the backup alone took approximately 2 hours and 40 minutes.
-Could you provide technical clarification on this duration?
+* Option HA offers "manage once, deploy everywhere" simplicity. Option B creates a multiplicative management nightmare.
 
-What is the current status of the server?
-The server is operational but continues to exhibit sluggish performance.
+#### 3. Security and Access Control
 
-Were any changes made to the server prior to this issue?
-No other modifications were made—the slowness began after the upgrade.
+*   **Option A & HA:** Benefit from a **consolidated security model**.
+    *   **Network Security:** A single, well-defined network perimeter (NSG rules on the VMSS subnet). Ingress traffic from APIM, AKS, and PaaS services can be tightly controlled.
+    *   **Identity & Secrets:** All authentication flows are centralized through **Azure AD (Entra ID)**. Applications and users authenticate once. All secrets (data source passwords, API keys) are stored in a single **Azure Key Vault** that the VMSS instances access via Managed Identity, which is a best practice and highly secure.
+*   **Option B:** Security is fragmented. Each cluster's data plane must be individually secured with Ingress, TLS/mTLS, and access policies. You must replicate Key Vault access and Azure AD app registrations across multiple clusters, increasing the attack surface and policy management overhead.
 
-Please let us know if further details are required.
+* Option HA provides a stronger, more auditable, and easier-to-manage security posture.
+#### 4. Data Correlation and Query Performance
 
-This guide provides a detailed implementation plan for integrating Azure Monitor Insights metrics with Grafana on an existing AKS cluster, using Azure Key Vault for secrets management and Azure DevOps pipelines for deployment.
+*   **Option A & HA:** **Superior for data correlation.** Since all telemetry data (metrics, logs, traces) from all sources (AKS, App Services, Logic Apps, etc.) flows into a single centralized backend, it is trivial to perform cross-cluster and cross-service queries. A user can trace a request from a Logic App through an API to a microservice in AKS seamlessly in Jaeger/Grafana because all data resides in the same place.
+*   **Option B:** **Challenging for data correlation.** Grafana must perform **federated queries** across all the distributed Prometheus and Loki instances. This is inherently slower, more complex to set up in Grafana data sources, and can fail if one of the remote data planes is unreachable or slow to respond.
 
-## Prerequisites
+* Option HA provides a significantly better user experience for engineers needing to troubleshoot complex, distributed transactions.
 
-- Existing AKS cluster
-- Existing Azure Monitor workspace
-- Existing Azure Key Vault (Goodvault)
-- Azure DevOps organization
-- Helm installed in your local environment
+#### 5. Cost Efficiency
 
-## Architecture Overview
+*   **Option A:** Initially cheap but carries high risk cost (cost of downtime).
+*   **Option HA:** Highly cost-effective. The VMSS autoscaling feature means you only pay for the compute capacity you need. During low-traffic periods, it can scale down to a minimal number of instances (e.g., 2 for HA). It scales out automatically during peak loads or ingestion spikes, preventing performance degradation.
+*   **Option B:** Can lead to higher overall costs. Each AKS cluster requires dedicated resources (CPU/Memory) for its observability data plane, which often must be over-provisioned to handle peak load in that cluster. This resource allocation is wasted during quiet periods and is duplicated per cluster.
 
-1. Grafana deployed via Helm to AKS
-2. Azure Monitor Metrics integration configured in Grafana
-3. Secrets managed via Azure Key Vault
-4. Separate Azure DevOps pipelines for:
-   - Grafana deployment
-   - Azure Monitor integration
-5. Environment-specific configuration via parameter files
+* Option HA provides better utilization of resources and cost-optimization through autoscaling.
 
-## Implementation Steps
+Key Components:
+--------------
+·       VMSS (Virtual Machine Scale Set): Provides automated scaling (horizontal, based on load) and high availability by distributing VMs across Azure availability zones/fault domains, eliminating the single VM as a Single Point of Failure (SPOF).
 
-### 1. Prepare Helm Charts
+·       Integrated Load Balancer: Automatically distributes incoming traffic (metrics, logs, traces) from all applications across the healthy instances in the VMSS.
 
-**Grafana Helm Chart Structure:**
-```
-grafana/
-├── Chart.yaml
-├── values.yaml
-├── values-dev.yaml
-├── values-prod.yaml
-├── templates/
-│   ├── deployment.yaml
-│   ├── service.yaml
-│   ├── configmap.yaml
-│   ├── secrets.yaml
-│   └── ingress.yaml
-└── crds/
-    └── grafana-dashboards.yaml
-```
+·       Autoscaling: The VMSS can automatically add or remove VM instances based on predefined metrics (e.g., CPU or memory pressure), ensuring the stack can handle load spikes cost-effectively.
+
+·       Azure Blob Storage: Likely used for long-term storage of metrics (Prometheus) or logs (Loki).
+
+·       Azure Key Vault: Used for securely managing secrets, certificates, and keys for the components in the stack.
+
+·       Azure Active Directory (Entra ID): Used for authentication and identity management.
+
+      
+**Observability Architecture Security Checklist Corresponding ITSG33**
+
+
+
+### 1. Data Protection - Data Encryption
+
+| Component | Implementation for Encryption in Transit | Implementation for Encryption at Rest |
+| :--- | :--- | :--- |
+| **OTel Agents/Collector** | **mTLS (Mutual TLS)** is enforced on ports 4317/4318. The Load Balancer and Collector authenticate each other with certificates from Azure Key Vault. | N/A (Data is processed, not stored long-term for this component). |
+| **Prometheus (Local)** | Scrapes are local (localhost:9464) or within a trusted subnet. | **Azure Premium SSDs** use Azure Storage Service Encryption (SSE) with platform-managed keys (PMK) by default.  |
+| **Loki (Ingester/WAL)** | Internal Loki component communication can be configured for TLS. Communication with Blob Storage is via **HTTPS**. | **Write-Ahead Log (WAL)** is on encrypted SSD. Long-term storage in **Azure Blob Storage** is encrypted by default (SSE). |
+| **Thanos (Sidecar/Blob)** | Communication between Sidecar and Blob Storage is via **HTTPS**. | Data blocks in **Azure Blob Storage** are encrypted by default (SSE). |
+| **Jaeger Collector** | Accepts traces over TLS (ports 14250, 14268). | Long-term storage in **ElasticSearch** leverages its encryption-at-rest capabilities. |
+| **Grafana** | All external access is via **HTTPS/443** through Nginx. Internal connections to data sources (Thanos, Loki) use **HTTPS/gRPC+TLS**. | Dashboard and user data in **Azure Database for PostgreSQL** is encrypted using transparent data encryption (TDE). |
+| **Azure Blob Storage** | All data access is via **HTTPS** REST API. | **Encrypted at rest** by default using 256-bit AES encryption. |
+
+### 2. Secure Infrastructure and Architecture
+
+| Aspect | Implementation |
+| :--- | :--- |
+| **Network Segmentation** | The **Internal Standard Load Balancer (SLB)** creates a security boundary. The AKS cluster and backend VMSS are placed on a dedicated subnets share  Azure Virtual Network (VNet) with AKS. Public access is not allowed **External Load Balancer (LB)** on port 443 for Grafana. |
+| **High Availability (HA)** | The **VM Scale Set (1..2 VMs)** ensures the observability stack is fault-tolerant and can survive individual node failures. Components like the Loki Compactor are configured for exactly one active instance (Active/Passive) to prevent conflicts. |
+| **Minimal Attack Surface** | Only necessary ports are exposed on the load balancers. The internal SLB has strict health probes. Public internet access is limited to a single endpoint (Grafana via LB:443). |
+| **Resource Isolation** | The entire "DEV OSS Stack" is a dedicated resource group, isolating it from other environments. AKS workloads are isolated via Kubernetes namespaces and network policies. |
+
+### 3. Log Management and Auditing
+
+| Component | Logging & Auditing Implementation |
+| :--- | :--- |
+| **Azure Platform** | **Azure Activity Logs** are enabled to track administrative actions on all Azure resources (VMSS, Blob Storage, Key Vault, etc.). |
+| **Azure Key Vault** | **Key Vault Audit Logs** are enabled by default, logging every access attempt (successful or failed) to secrets, keys, and certificates. |
+| **Grafana** | Grafana has its own **internal audit logging** which tracks user logins, dashboard changes, and data source queries. These logs can be ingested into the Loki instance itself for centralized analysis. |
+| **Virtual Machines (VMSS)** | **OS-level logs** (e.g., Linux syslog) from the VMs can be collected by the OTel agent and sent to Loki for monitoring unauthorized access attempts or system issues. |
+| **Authentication** | All authentication events (e.g., Grafana logins, Azure AD Managed Identity usage) are logged to their respective audit trails (Grafana logs, Azure AD Sign-in Logs). |
+
+### 4. Securing Workloads and Applications
+
+| Component | Workload Security Implementation |
+| :--- | :--- |
+| **Container Images** | Images for OTel, Prometheus, Loki, etc., are sourced from official, trusted repositories. They are regularly scanned for vulnerabilities and kept updated. |
+| **Pod Security** | In the AKS cluster, **Pod Security Standards** (e.g., restricted profile) are applied to the OTel Agent to prevent privileged escalation and enforce security contexts. |
+| **VM Hardening** | VMSS instances use a hardened base image. SSH access is restricted, and OS vulnerabilities are patched automatically.  |
+| **Secrets Management** | Application secrets (e.g., Grafana admin password, data source credentials) are **not stored in environment variables or config files**. They are dynamically retrieved from **Azure Key Vault** using Managed Identities. |
+| **TLS for Service-to-Service** | The strict **TLS** requirement between the Load Balancer and OTel Collector Gateway ensures that only authenticated and authorized services can send telemetry data, preventing data injection attacks. |
+
+### 5. Identity and Access Management (IAM)
+
+| Entity | IAM Implementation |
+| :--- | :--- |
+| **Developers / SREs (Human)** | Access to Grafana is integrated with **Azure Active Directory (Azure AD)** via OAuth 2.0. Users log in with their corporate credentials (SSO) and are assigned roles (Viewer, Editor, Admin) within Grafana itself. |
+| **Access to Azure Resources** | Developers/SREs are granted access to the Azure subscription/resource group via **Azure RBAC** roles (e.g., Reader, Contributor) assigned to their Azure AD user/group. |
+| **Managed Identities (System)** | The VM Scale Set and/or the individual applications (Grafana, Collector) are assigned an **Azure AD Managed Identity**. This identity is then granted specific permissions (e.g., `GET` secrets from Key Vault, `Write` to Blob Storage) via Azure RBAC. This eliminates the need for hard-coded credentials. |
+| **Azure Key Vault Access Policies** | Access policies in Key Vault are meticulously configured to grant the Managed Identities only the **minimum necessary permissions** (e.g., `Get` for secrets, `Get` for certificates). |
+| **Kubernetes Service Accounts** | In AKS, the OTel Agent  uses a dedicated Kubernetes Service Account with minimal permissions, bound to a Role via a RoleBinding, following the principle of least privilege. |
+
+
+**Security High-Level**
+
+![C4_Level1_HA_Grafana_Sec.png](/.attachments/C4_Level1_HA_Grafana_Sec-7b9c82f6-16b6-456a-9325-bb06c7b59cff.png)
+
+
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Technical NonFunctional Requirements (NFRs)
+-------------------------------------------
+
+ **Availability:** Target 99.9% for visualization plane, 99.9%+ for data-plane per cluster, no single regional SPOF.
+
+ **Security:** TLS for telemetry ingestion, TLS 1.2+ everywhere; OIDC/OAuth2 (Azure Entra ID) SSO; least-privilege; private networking/peering; per-tenant tokens in Loki/Prometheus where applicable.
+
+**Performance:** p50 < 200ms query latency intra‑VNet; p95 < 800ms cross‑cluster queries; ingestion up to N events/sec (size by environment below).
+
+**Retention:** Metrics 7-30 days hot; Logs 7-30 days hot; Traces 3-15 days hot (sampling 5-10% default). Long-term is optional via archive/export.
+
+**Operability:** configs (Helm/Kustomize/Ansible), IaC for VM + networking; dashboards & alerts provisioned as code; health probes & SLOs.
+
+**Cost:** Optimize egress by local writes; use SSD for WAL/TSDB and blob for chunks/indices where feasible.
+
+Current Constraints & Context
+-----------------------------
+
+APIM path rewrite and layering broke Grafana UI and some plugin endpoints.
+
+Need to visualize multi-source data: AKS clusters, Logic Apps, Function Apps, App Services, etc.
+
+Initial all-in-one cluster approach worked functionally but suffered from upstream routing transformations.
+
+**VMs** behind an **Azure Load Balancer** for OTLP 4317/4318. 
+
+Receive all metrics, logs, traces from AKS via OTLP.
+
+Run Grafana, Prometheus+Thanos, Loki (distributed), Jaeger (collectors/query) and an OTel gateway on every VM (Docker).
+
+Use Premium SSD for fast local TSDB/WAL/caches; use Azure Blob for durable, scalable object storage.
+
+Scale from 3 → 10 VMs without client reconfiguration.
+
+Provide TLS, SSO, least-privilege access, and safe concurrency (no data corruption).
+
+
+### Component Details
+
+#### 1. Data Sources & Ingestion
+*   **AKS Workloads:** Applications running on Azure Kubernetes Service, instrumented with OpenTelemetry (OTel) agents or sidecars.
+*   **Protocol:** Data is sent via the OTLP protocol over gRPC (port `4317`) or HTTP (port `4318`).
+
+#### 2. Load Balancing
+*   **Component:** Azure Standard Internal Load Balancer (ILB)
+*   **Purpose:** Provides a single Virtual IP (VIP) to receive all incoming telemetry traffic and distributes it across the healthy instances in the VMSS.
+*   **Health Probes:** Configured to check the health of the OTel Collector endpoints on ports `4317` (gRPC) and `4318` (HTTP).
+
+#### 3. VM Scale Set (VMSS) - Compute Layer
+*   **Configuration:** Min 3 instances, Max 10 instances (auto-scaling enabled).
+*   **Runtime Environment:** Each VM runs Docker containers for the following services:
+    *   **nginx:** Optional reverse proxy for TLS termination and routing UI traffic if not using an Application Gateway.
+    *   **otel-collector (gateway mode):** Receives, processes, and exports telemetry data. Scrapes Prometheus exporter endpoint on port `9464`.
+    *   **prometheus + thanos-sidecar:** Local time-series database (TSDB) scraping and short-term storage. Thanos sidecar uploads blocks to object storage.
+    *   **loki:** All-in-one deployment mode (distributor, ingester, querier, query-frontend, compactor) for log aggregation.
+    *   **jaeger-collector:** Receives and processes distributed tracing data.
+
+#### 4. Storage
+*   **Local (Premium SSD):** Mounted at `/data`
+    *   `/data/prometheus`: Local Prometheus TSDB blocks.
+    *   `/data/loki-cache`: Loki chunk cache.
+    *   `/data/thanos-cache`: Thanos store gateway cache.
+*   **Azure Blob Storage (Long-Term/Object Storage):**
+    *   **thanos-bucket:** For immutable Prometheus metrics blocks (via Thanos).
+    *   **loki-bucket:** For Loki log chunks and index (using `boltdb-shipper`).
+*   **Trace Storage (Recommended Options):**
+    *   **Elastic Cloud on Azure (Recommended):** Managed Elasticsearch service for Jaeger trace storage.
+
+#### 5. Query & Visualization
+*   **thanos-query:** Provides a unified query interface for global Prometheus metrics data across all VM instances and long-term storage.
+*   **thanos-store:** Gateway to query data in the `thanos-bucket` (Azure Blob).
+*   **jaeger-query:** Service and UI for querying traces.
+*   **grafana:** Visualization platform for metrics, logs, and traces.
+    *   **Authentication:** Single Sign-On (SSO) configured via Entra ID (Azure AD).
+    *   **Database:** Uses a shared PostgreSQL database for storing dashboards, users, and other configuration (not per-VM).
+
+#### 6. User Interface (UI) Access
+*   **Access Path:** User → Load Balancer → nginx (on VMSS) → Grafana.
+*   **Component Roles:**
+    *   **App Gateway:** Provides a secure, public endpoint, SSL termination, and web application firewall (WAF) protection.
+    *   **nginx:** Provides internal routing and additional TLS termination if required.
+
+### Security
+*   **Network Security Groups (NSGs):** Strictly configured to allow only necessary traffic.
+*   **TLS/mTLS:** Encryption in transit for all internal and external communication.
+*   **Azure Key Vault:** Used for managing certificates, secrets, and connection strings.
+*   **Managed Identity:** Used by Azure resources (e.g., VMs, AKS) to authenticate securely to other services like Key Vault and Blob Storage without storing credentials.
+
+
+
+
