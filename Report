@@ -1,6 +1,5 @@
 @startuml
 !includeurl https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
-
 ' ==== COLOR SETTINGS ====
 skinparam backgroundColor #F8F9FA
 skinparam defaultFontColor #333333
@@ -12,22 +11,17 @@ skinparam noteBackgroundColor #FFFFFF
 skinparam noteBorderColor #999999
 skinparam arrowColor #666666
 skinparam arrowFontColor #333333
-
 ' ==== LAYOUT ====
 LAYOUT_TOP_DOWN()
 LAYOUT_WITH_LEGEND()
-
 title <color:#0078D4>DEV Observability OSS Stack VMs (Grafana + OTLP + Alloy)</color>
-
 ' --- ALWAYS ON TOP (declared first) ---
 Person(dev, "Developers/SRE", "Access Grafana dashboards via HTTPS 443") #4A90E2
 System(aks, "AKS Cluster", "Runs workloads with OTel Collector") #1565C0
-
 ' --- EXTERNAL SYSTEMS ---
 System_Ext(azblob, "Azure Blob Storage", "Durable object storage for metrics/logs/traces") #0078D4
 System_Ext(akv, "Azure Key Vault", "Stores TLS/mTLS certificates & secrets") #0078D4
 System_Ext(aad, "Azure Entra ID", "SSO for Grafana & RBAC") #0078D4
-
 ' --- VM STACK ---
 Container_Boundary(vm, "Azure VM (Dockerized Stack)") {
   Container(grafana, "Grafana", "Dashboards/Visuals") #2196F3
@@ -39,45 +33,34 @@ Container_Boundary(vm, "Azure VM (Dockerized Stack)") {
   Container(nginx, "NGINX", "TLS termination & reverse proxy (443)") #2196F3
   Container(security, "Security Components", "NSGs, TLS/mTLS, RBAC, Managed Identity") #8E24AA
 }
-
 ' --- LOAD BALANCER ---
 System_Boundary(lb, "Azure Load Balancer") {
   System(lb_otlp, "LB OTLP Endpoint", "Distributes OTLP traffic (4317/4318) to VMs") #BA68C8
   System(lb_grafana, "External LB Grafana Endpoint", "Distributes HTTPS 443 traffic to Grafana via NGINX") #BA68C8
 }
-
 ' --- RELATIONSHIPS ---
 Rel(aks, lb_otlp, "OTLP 4317/4318 (mTLS)", "Telemetry Signal")
 Rel(lb_otlp, otel, "Distributes OTLP to VMs")
-
 Rel(dev, lb_grafana, "443 HTTPS (TLS)", "Grafana dashboards")
 Rel(lb_grafana, nginx, "443 HTTPS", "Load balanced Grafana access")
 Rel(nginx, grafana,"HTTPS (proxy)", "Routes to Grafana Service")
-
 BiRel(lb_grafana, nginx, "Health probe 443", "LB heartbeat")
 BiRel(nginx, grafana, "Health check HTTP 200", "Internal probe")
 BiRel(lb_otlp, otel, "Health probe 4317/4318", "LB heartbeat") 
-
 Rel(otel, prom, "Metrics via gRPC (mTLS)")
 Rel(otel, loki, "Logs via gRPC (mTLS, Alloy)")
 Rel(otel, jaeger, "Traces via gRPC (mTLS)")
-
 Rel(prom, azblob, "Thanos compaction + long-term store")
 Rel(loki, azblob, "Log chunks & indices archive")
 Rel(jaeger, azblob, "Archived traces")
-
 Rel(jaeger, grafana, "Trace queries")
 Rel(prom, grafana, "Metrics queries")
 Rel(loki, grafana, "Logs queries")
-
 Rel(grafana, aad, "OIDC SSO")
 Rel(grafana, pg, "Metadata queries")
-
 Rel(otel, akv, "Fetch certs/keys")
 Rel(nginx, akv, "TLS certs")
-
 Rel(security, aks, "NSG rules\ncontrol outbound telemetry")
 Rel(security, vm, "NSG rules\ncontrol inbound LB traffic + RBAC")
 Rel(security, akv, "Access Policies for secret and certs")
-
 @enduml
