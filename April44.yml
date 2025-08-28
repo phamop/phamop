@@ -1,10 +1,12 @@
-@startuml Observability_AKS_C4_L3_BlackText
+@startuml Observability_AKS_C4_L3_Dedicated
 !includeurl https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
 LAYOUT_TOP_DOWN()
 
-title <color:#0078D4>DEV & FT AKS Observability Platform – Component View (L3)</color>\n<size:12>All text in black, color-coded boundaries</size>
+title <color:#0078D4>Observability AKS Platform – Component View (L3)</color>\n<size:12>Dedicated Observability AKS Cluster managing FT & DEV telemetry</size>
 
-' Global text style
+' =========================
+' GLOBAL STYLE
+' =========================
 skinparam defaultFontColor #000000
 skinparam rectangleFontColor #000000
 skinparam arrowFontColor #000000
@@ -15,95 +17,94 @@ skinparam arrowColor #444444
 skinparam backgroundColor #FFFFFF
 
 ' =========================
-' CLUSTERS AT TOP
-' =========================
-Container_Boundary(aks_dev, "AKS DEV Cluster") #E8F5E9 {
-  Component(dev_apps, "DEV Applications", "Microservices, APIs") #C8E6C9
-  Component(dev_kube, "Kubernetes Components", "kubelet, kube-proxy, API server") #C8E6C9
-  Component(dev_nodes, "Node Metrics", "CPU, Memory, Disk, Network") #C8E6C9
-  Component(dev_otel_agent, "OTel Agent", "DaemonSet collector") #A5D6A7
-}
-
-Container_Boundary(aks_ft, "AKS FT Cluster") #E3F2FD {
-  Component(ft_apps, "FT Applications", "Test Services, Load Tests") #BBDEFB
-  Component(ft_kube, "Kubernetes Components", "kubelet, kube-proxy, API server") #BBDEFB
-  Component(ft_nodes, "Node Metrics", "CPU, Memory, Disk, Network") #BBDEFB
-  Component(ft_otel_agent, "OTel Agent", "DaemonSet collector") #90CAF9
-}
-
-' =========================
-' EXTERNAL USER
+' EXTERNAL ACTORS
 ' =========================
 Person(dev, "Developer/SRE", "Monitors both DEV & FT") #B3E5FC/Black
-
-
-'System_Ext(ingress, "Ingress/Load Balancer", "External traffic entry") #EEEEEE
-System_Ext(ingress, "Azure Load Balancer / Ingress", "External traffic entry point") #FFE0B2
 System_Ext(ingress, "Azure Load Balancer / Ingress", "External traffic entry point") #FFE0B2/Black
+System_Ext(blob, "Azure Blob Storage", "Long-term storage") #DDDDDD/Black
+
 ' =========================
-' OTEL COLLECTOR CENTER
+' DEV + FT CLUSTERS (Telemetry Sources)
 ' =========================
-Container_Boundary(otel_collector, "OTel Collector Pod") #FFF9C4 {
-  Component(otel_rcv, "Receivers", "OTLP, Prometheus, Jaeger, K8s") #FFF59D
-  Component(otel_proc, "Processors", "Batch, Resource, Transform, Enrich") #FFF59D
-  Component(otel_exp, "Exporters", "Prometheus, Loki, Jaeger, Azure Monitor") #FFEB3B
+Container_Boundary(aks_sources, "FT & DEV AKS Clusters (Telemetry Sources)") #F1F8E9 {
+
+  Container_Boundary(aks_dev, "AKS DEV Cluster") #E8F5E9 {
+    Component(dev_apps, "DEV Applications", "Microservices, APIs") #C8E6C9
+    Component(dev_kube, "Kubernetes Components", "kubelet, kube-proxy, API server") #C8E6C9
+    Component(dev_nodes, "Node Metrics", "CPU, Memory, Disk, Network") #C8E6C9
+    Component(dev_otel_agent, "OTel Agent", "DaemonSet collector") #A5D6A7
+  }
+
+  Container_Boundary(aks_ft, "AKS FT Cluster") #E3F2FD {
+    Component(ft_apps, "FT Applications", "Test Services, Load Tests") #BBDEFB
+    Component(ft_kube, "Kubernetes Components", "kubelet, kube-proxy, API server") #BBDEFB
+    Component(ft_nodes, "Node Metrics", "CPU, Memory, Disk, Network") #BBDEFB
+    Component(ft_otel_agent, "OTel Agent", "DaemonSet collector") #90CAF9
+  }
 }
 
 ' =========================
-' STORAGE BACKENDS (BOTTOM)
+' DEDICATED OBSERVABILITY AKS CLUSTER
 ' =========================
-Container_Boundary(prometheus_stack, "Prometheus + Thanos") #FBE9E7 {
-  Component(prom_srv, "Prometheus Server", "Scrapes Metrics") #FFCCBC
-  Component(thanos_side, "Thanos Sidecar", "Upload to Blob") #FFAB91
-  Component(thanos_query, "Thanos Query", "Long-term Queries") #FF8A65
+Container_Boundary(obs_aks, "Dedicated Observability AKS Cluster") #FFF3E0 {
+
+  ' ---- OTel Collector ----
+  Container_Boundary(otel_collector, "OTel Collector Pod") #FFF9C4 {
+    Component(otel_rcv, "Receivers", "OTLP, Prometheus, Jaeger, K8s") #FFF59D
+    Component(otel_proc, "Processors", "Batch, Resource, Transform, Enrich") #FFF59D
+    Component(otel_exp, "Exporters", "Prometheus, Loki, Jaeger, Azure Monitor") #FFEB3B
+  }
+
+  ' ---- Prometheus + Thanos ----
+  Container_Boundary(prometheus_stack, "Prometheus + Thanos") #FBE9E7 {
+    Component(prom_srv, "Prometheus Server", "Scrapes Metrics") #FFCCBC
+    Component(thanos_side, "Thanos Sidecar", "Upload to Blob") #FFAB91
+    Component(thanos_query, "Thanos Query", "Long-term Queries") #FF8A65
+  }
+
+  ' ---- Loki ----
+  Container_Boundary(loki_stack, "Loki") #E0F7FA {
+    Component(loki_dist, "Distributor", "Receives Logs") #B2EBF2
+    Component(loki_ing, "Ingester", "Stores Chunks") #80DEEA
+    Component(loki_q, "Querier", "Executes LogQL") #4DD0E1
+  }
+
+  ' ---- Jaeger ----
+  Container_Boundary(jaeger_stack, "Jaeger") #F3E5F5 {
+    Component(jaeger_col, "Collector", "Receives Spans") #E1BEE7
+    Component(jaeger_ing, "Ingester", "Stores Spans") #CE93D8
+    Component(jaeger_q, "Query Service", "Trace Query API") #BA68C8
+  }
+
+  ' ---- Grafana ----
+  Container_Boundary(grafana_pod, "Grafana Pod") #E8EAF6 {
+    Component(gf_core, "Grafana Core", "Dashboards, Alerts") #C5CAE9
+    Component(gf_ds, "Data Sources", "Prometheus, Loki, Jaeger") #9FA8DA
+    Component(gf_alert, "Alerting Engine", "Rules & Notifications") #7986CB
+    Component(gf_auth, "OAuth2 Proxy", "Azure AD SSO") #5C6BC0
+  }
 }
 
-Container_Boundary(loki_stack, "Loki") #E0F7FA {
-  Component(loki_dist, "Distributor", "Receives Logs") #B2EBF2
-  Component(loki_ing, "Ingester", "Stores Chunks") #80DEEA
-  Component(loki_q, "Querier", "Executes LogQL") #4DD0E1
-}
-
-Container_Boundary(jaeger_stack, "Jaeger") #F3E5F5 {
-  Component(jaeger_col, "Collector", "Receives Spans") #E1BEE7
-  Component(jaeger_ing, "Ingester", "Stores Spans") #CE93D8
-  Component(jaeger_q, "Query Service", "Trace Query API") #BA68C8
-}
-
-System_Ext(blob, "Azure Blob Storage", "Long-term storage") #DDDDDD
-
 ' =========================
-' GRAFANA TO THE RIGHT
-' =========================
-Container_Boundary(grafana_pod, "Grafana Pod") #E8EAF6 {
-  Component(gf_core, "Grafana Core", "Dashboards, Alerts") #C5CAE9
-  Component(gf_ds, "Data Sources", "Prometheus, Loki, Jaeger") #9FA8DA
-  Component(gf_alert, "Alerting Engine", "Rules & Notifications") #7986CB
-  Component(gf_auth, "OAuth2 Proxy", "Azure AD SSO") #5C6BC0
-}
-
-Person(dev, "Developer/SRE", "Monitors both DEV & FT") #B3E5FC
-
-' =========================
-' TELEMETRY SIGNAL FLOWS
+' TELEMETRY FLOWS
 ' =========================
 
 ' DEV cluster signals (green arrows)
 Rel(dev_apps, dev_otel_agent, "📊📜🔍 Telemetry", "OTLP") #388E3C
 Rel(dev_kube, dev_otel_agent, "📊 API Metrics", "HTTP") #388E3C
 Rel(dev_nodes, dev_otel_agent, "📊 Node Metrics", "HTTP") #388E3C
-Rel(dev_otel_agent, otel_rcv, "All Telemetry", "OTLP gRPC") #388E3C
+Rel(dev_otel_agent, otel_rcv, "DEV → Telemetry", "OTLP gRPC") #388E3C
 
 ' FT cluster signals (blue arrows)
 Rel(ft_apps, ft_otel_agent, "📊📜🔍 Telemetry", "OTLP") #1565C0
 Rel(ft_kube, ft_otel_agent, "📊 API Metrics", "HTTP") #1565C0
 Rel(ft_nodes, ft_otel_agent, "📊 Node Metrics", "HTTP") #1565C0
-Rel(ft_otel_agent, otel_rcv, "All Telemetry", "OTLP gRPC") #1565C0
+Rel(ft_otel_agent, otel_rcv, "FT → Telemetry", "OTLP gRPC") #1565C0
 
 ' Ingress telemetry (grey arrows)
 Rel(ingress, otel_rcv, "📜 Ingress Logs", "HTTP") #666666
 
-' Collector to backends
+' Collector → processing → exporters
 Rel(otel_rcv, otel_proc, "Raw telemetry", "Internal") #F57F17
 Rel(otel_proc, otel_exp, "Processed telemetry", "Internal") #F57F17
 Rel(otel_exp, prom_srv, "📊 Metrics", "Remote Write") #E64A19
@@ -127,3 +128,4 @@ Rel(gf_core, gf_alert, "Execute Alerts")
 
 SHOW_LEGEND()
 @enduml
+
