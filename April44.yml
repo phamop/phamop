@@ -1,112 +1,119 @@
-@startuml Observability_AKS_C4_L3_Enhanced
+@startuml Observability_AKS_C4_L3_Appealing
 !includeurl https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
-LAYOUT_WITH_LEGEND()
+LAYOUT_TOP_DOWN()
 
-title <color:#0078D4>DEV Observability Platform – Component View (L3)</color>\n<size:12></size>
+title <color:#0078D4>Dedicated AKS Observability Platform – Component View (L3)</color>\n<size:12></size>
 
 skinparam backgroundColor #F8F9FA
 skinparam shadowing true
 skinparam rectangleFontColor white
-skinparam arrowColor #444444
-skinparam arrowFontColor #222222
 skinparam arrowThickness 2
 skinparam arrowFontSize 11
 
 ' =========================
-' OTEL COLLECTOR (DECLARE FIRST)
+' CLUSTERS AT TOP
 ' =========================
-package "OTel Collector Pod" #2E7D32 {
-  Component(otel_rcv, "Receivers", "OTLP, Prometheus, Jaeger")
-  Component(otel_proc, "Processors", "Batch, Resource, Transform")
+Container_Boundary(aks_dev, "AKS DEV Cluster") #D5E8D4 {
+  Component(dev_apps, "DEV Applications", "Microservices, APIs")
+  Component(dev_kube, "Kubernetes Components", "kubelet, kube-proxy, API server")
+  Component(dev_nodes, "Node Metrics", "CPU, Memory, Disk, Network")
+  Component(dev_otel_agent, "OTel Agent", "DaemonSet collector")
+}
+
+Container_Boundary(aks_ft, "AKS FT Cluster") #DAE8FC {
+  Component(ft_apps, "FT Applications", "Test Services, Load Tests")
+  Component(ft_kube, "Kubernetes Components", "kubelet, kube-proxy, API server")
+  Component(ft_nodes, "Node Metrics", "CPU, Memory, Disk, Network")
+  Component(ft_otel_agent, "OTel Agent", "DaemonSet collector")
+}
+
+System_Ext(ingress, "Ingress/Load Balancer", "External traffic entry") #EEEEEE
+
+' =========================
+' OTEL COLLECTOR CENTER
+' =========================
+Container_Boundary(otel_collector, "OTel Collector Pod") #F5F5F5 {
+  Component(otel_rcv, "Receivers", "OTLP, Prometheus, Jaeger, K8s")
+  Component(otel_proc, "Processors", "Batch, Resource, Transform, Enrich (DEV/FT labels)")
   Component(otel_exp, "Exporters", "Prometheus, Loki, Jaeger, Azure Monitor")
 }
 
-Rel(ingress, otel_rcv, "OTLP gRPC/HTTP")
-Rel(otel_rcv, otel_proc, "Forward Telemetry")
-Rel(otel_proc, otel_exp, "Processed Export")
-
 ' =========================
-' TELEMETRY SOURCES (AKS DEV + FT)
+' STORAGE BACKENDS (BOTTOM)
 ' =========================
-package "AKS DEV Cluster" #4A90E2 {
-  Component(dev_apps, "Instrumented Workloads (DEV)", "Pods & Services")
-  Component(dev_nodes, "K8s Infra (DEV)", "Node/Control Plane Metrics")
-}
-
-package "AKS FT Cluster" #00BCD4 {
-  Component(ft_apps, "Instrumented Workloads (FT)", "Pods & Services")
-  Component(ft_nodes, "K8s Infra (FT)", "Node/Control Plane Metrics")
-}
-
-Rel(dev_apps, otel_rcv, "OTLP gRPC/HTTP\n(Metrics, Logs, Traces)")
-Rel(dev_nodes, otel_rcv, "Prometheus Scrape\n(Kubelet, cAdvisor, API Server)")
-Rel(ft_apps, otel_rcv, "OTLP gRPC/HTTP\n(Metrics, Logs, Traces)")
-Rel(ft_nodes, otel_rcv, "Prometheus Scrape\n(Kubelet, cAdvisor, API Server)")
-
-' =========================
-' GRAFANA POD
-' =========================
-package "Grafana Pod" #1565C0 {
-  Component(gf_core, "Grafana Core", "Dashboards, Alerts")
-  Component(gf_ds, "Data Sources", "Prometheus, Loki, Jaeger")
-  Component(gf_alert, "Alerting Engine", "Rules & Notifications")
-  Component(gf_auth, "OAuth2 Proxy", "Azure AD SSO")
-  Component(gf_cfg, "Config Provider", "Dashboards via GitOps")
-}
-
-Rel(dev, gf_auth, "HTTPS / SSO")
-Rel(gf_auth, gf_core, "Auth Tokens")
-Rel(gf_core, gf_ds, "Queries")
-Rel(gf_core, gf_alert, "Executes Alerts")
-Rel(gf_cfg, gf_core, "Provision Config")
-
-' =========================
-' PROMETHEUS + THANOS
-' =========================
-package "Prometheus + Thanos" #F57C00 {
+Container_Boundary(prometheus_stack, "Prometheus + Thanos") #FFF3E0 {
   Component(prom_srv, "Prometheus Server", "Scrapes Metrics")
-  Component(prom_sd, "Service Discovery", "K8s Targets")
   Component(thanos_side, "Thanos Sidecar", "Upload to Blob")
   Component(thanos_query, "Thanos Query", "Long-term Queries")
 }
 
-Rel(otel_exp, prom_srv, "Remote Write")
-Rel(prom_srv, thanos_side, "Upload Blocks")
-Rel(thanos_side, blob, "Store Metrics")
-Rel(thanos_query, prom_srv, "Federated Queries")
-
-' =========================
-' LOKI
-' =========================
-package "Loki" #00838F {
+Container_Boundary(loki_stack, "Loki") #E0F7FA {
   Component(loki_dist, "Distributor", "Receives Logs")
   Component(loki_ing, "Ingester", "Stores Chunks")
   Component(loki_q, "Querier", "Executes LogQL")
-  Component(loki_idx, "Index Gateway", "Metadata Index")
 }
 
-Rel(otel_exp, loki_dist, "Push Logs")
-Rel(loki_dist, loki_ing, "Forward Logs")
-Rel(loki_ing, blob, "Store Chunks")
-Rel(loki_q, loki_idx, "Index Lookups")
-Rel(gf_ds, loki_q, "Log Queries")
-
-' =========================
-' JAEGER
-' =========================
-package "Jaeger" #6A1B9A {
+Container_Boundary(jaeger_stack, "Jaeger") #F3E5F5 {
   Component(jaeger_col, "Collector", "Receives Spans")
   Component(jaeger_ing, "Ingester", "Stores Spans")
   Component(jaeger_q, "Query Service", "Trace Query API")
-  Component(jaeger_ui, "Jaeger UI", "Optional UI Access")
 }
 
-Rel(otel_exp, jaeger_col, "Push Spans")
-Rel(jaeger_col, jaeger_ing, "Process Spans")
-Rel(jaeger_ing, blob, "Persist Spans")
-Rel(jaeger_q, jaeger_ing, "Trace Lookup")
-Rel(gf_ds, jaeger_q, "Trace Queries")
-Rel(dev, jaeger_ui, "Optional Access")
+System_Ext(blob, "Azure Blob Storage", "Long-term storage") #DDDDDD
+
+' =========================
+' GRAFANA TO THE RIGHT
+' =========================
+Container_Boundary(grafana_pod, "Grafana Pod") #1565C0 {
+  Component(gf_core, "Grafana Core", "Dashboards, Alerts")
+  Component(gf_ds, "Data Sources", "Prometheus, Loki, Jaeger")
+  Component(gf_alert, "Alerting Engine", "Rules & Notifications")
+  Component(gf_auth, "OAuth2 Proxy", "Azure AD SSO")
+}
+
+Person(dev, "Developer/SRE", "Monitors both DEV & FT")
+
+' =========================
+' TELEMETRY SIGNAL FLOWS
+' =========================
+
+' DEV cluster signals (green arrows)
+Rel(dev_apps, dev_otel_agent, "📊📜🔍 Telemetry", "OTLP") #008000
+Rel(dev_kube, dev_otel_agent, "📊 API Metrics", "HTTP") #008000
+Rel(dev_nodes, dev_otel_agent, "📊 Node Metrics", "HTTP") #008000
+Rel(dev_otel_agent, otel_rcv, "All Telemetry", "OTLP gRPC") #008000
+
+' FT cluster signals (blue arrows)
+Rel(ft_apps, ft_otel_agent, "📊📜🔍 Telemetry", "OTLP") #1565C0
+Rel(ft_kube, ft_otel_agent, "📊 API Metrics", "HTTP") #1565C0
+Rel(ft_nodes, ft_otel_agent, "📊 Node Metrics", "HTTP") #1565C0
+Rel(ft_otel_agent, otel_rcv, "All Telemetry", "OTLP gRPC") #1565C0
+
+' Ingress telemetry (grey arrows)
+Rel(ingress, otel_rcv, "📜 Ingress Logs", "HTTP") #666666
+
+' Collector to backends
+Rel(otel_rcv, otel_proc, "Raw telemetry")
+Rel(otel_proc, otel_exp, "Processed telemetry")
+Rel(otel_exp, prom_srv, "📊 Metrics", "Remote Write")
+Rel(otel_exp, loki_dist, "📜 Logs", "HTTP Push")
+Rel(otel_exp, jaeger_col, "🔍 Traces", "OTLP gRPC")
+
+' Backends → Blob
+Rel(thanos_side, blob, "📊 Metrics Store", "HTTPS")
+Rel(loki_ing, blob, "📜 Log Chunks", "HTTPS")
+Rel(jaeger_ing, blob, "🔍 Spans", "HTTPS")
+
+' Grafana queries
+Rel(dev, gf_auth, "HTTPS/SSO")
+Rel(gf_auth, gf_core, "Auth")
+Rel(gf_core, gf_ds, "Data queries")
+Rel(gf_ds, prom_srv, "📊 PromQL")
+Rel(gf_ds, thanos_query, "📊 Long-term metrics")
+Rel(gf_ds, loki_q, "📜 LogQL")
+Rel(gf_ds, jaeger_q, "🔍 Traces")
+Rel(gf_core, gf_alert, "Alert Rules")
 
 SHOW_LEGEND()
 @enduml
+
