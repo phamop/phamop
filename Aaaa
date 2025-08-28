@@ -1,25 +1,35 @@
-Of course. Here is the data flow for your OSS observability stack, formatted for a wiki page.
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
 
----
+title System Context Diagram for Observability Platform
 
-### **Data Flow: OSS Observability Stack on Dedicated AKS**
+Person(user, "End User", "Corporate user accessing observability dashboards via Azure AD SSO")
 
-#### **Overview**
-This document outlines the end-to-end data flow for the Open-Source observability platform, hosted on a dedicated Azure Kubernetes Service (AKS) cluster. The platform ingests, processes, stores, and visualizes telemetry data (metrics, logs, traces) from applications. Access is restricted to users on the corporate network.
+System_Boundary(aks_cluster, "Dedicated AKS Cluster") {
+    System(grafana, "Grafana Service", "Unified dashboard for observability data visualization")
+    System(ingress, "Internal NGINX Ingress Controller", "Routes incoming telemetry data")
+    System(otel, "OTel Collector Service", "Collects, processes, and routes telemetry data")
+    System(prometheus, "Prometheus", "Time-series database for metrics storage")
+    System(loki, "Loki", "Log aggregation system")
+    System(jaeger, "Jaeger", "Distributed tracing system")
+}
 
-#### **Detailed Step-by-Step Flow**
+System(app_pods, "Application Pods", "Source applications generating telemetry data", $sprite="kubernetes")
+System(vm_agents, "VM/Node Agents", "Infrastructure components generating telemetry data", $sprite="server")
+System(blob_storage, "Azure Blob Storage", "Cloud storage for long-term data retention", $sprite="azure")
 
-| Step | Component(s) | Protocol/Port | Description | Security Context |
-| :--- | :--- | :--- | :--- | :--- |
-| **1. Data Ingestion** | Applications / Agents → Internal Ingress | OTLP/gRPC (typically port 4317) or HTTP (4318) | Applications across various environments (other AKS clusters, VMs, PaaS services) send telemetry data (metrics, logs, traces) to the **internal ingress endpoint** of the dedicated observability AKS cluster. | Network Security Groups (NSGs) and Azure Firewall restrict ingress traffic to the internal load balancer's IP, allowing connections only from trusted corporate IP ranges. |
-| **2. Request Routing** | Internal NGINX Ingress Controller → OTel Collector Service | HTTP/gRPC (internal cluster networking) | The NGINX Ingress Controller, configured with a rule for the OTLP endpoint, receives the traffic and routes it to the **OTel Collector Service** inside the cluster. | Kubernetes Network Policies restrict ingress traffic to only allow the ingress controller to communicate with the OTel Collector service pods. |
-| **3. Data Processing** | OTel Collector | - | The OTel Collector receives, processes (e.g., filtering, batching, tagging), and fans out the data to the appropriate backend storage services. | Pods are configured to run with minimal required privileges via Pod Security Standards. |
-| **4. Data Storage** | OTel Collector → Prometheus, Loki, Jaeger | HTTP/gRPC (internal cluster networking) | Processed **metrics** are written to Prometheus, **logs** to Loki, and **traces** to Jaeger. All communication occurs securely within the cluster's private network. | Network Policies are critical here, locking down so only the OTel Collector can write to these backends. |
-| **5. Long-Term Retention** | Prometheus / Loki → Azure Blob Storage | Azure API | Prometheus may use a remote write adapter and Loki is configured with an **Azure Blob Storage** account as its backend for durable, long-term storage (90 days). | Uses Azure Managed Identity for AKS to authenticate to Blob Storage with fine-grained Azure RBAC permissions (e.g., Storage Blob Data Contributor). Data is encrypted at rest. |
-| **6. Data Query & Visualization** | User → Grafana → Backends | HTTPS (443) / HTTP (internal) | 1. A user on the **corporate network** accesses the Grafana URL.<br/>2. They are redirected to **Azure AD** for Single Sign-On (SSO) authentication.<br/>3. Upon success, Grafana's UI loads.<br/>4. When a dashboard is rendered, Grafana **internally** queries the data sources (Prometheus, Loki, Jaeger) via their cluster-internal service URLs. | • Grafana's ingress is restricted by NSGs to the corporate network's public IPs.<br/> • Grafana is configured to use Azure AD OAuth.<br/> • All communication between Grafana and the data sources stays inside the secure cluster network. |
+' Define relationships
+Rel(app_pods, ingress, "Sends OTLP/gRPC (metrics, logs, traces)")
+Rel(vm_agents, ingress, "Sends OTLP/gRPC (metrics, logs, traces)")
+Rel(ingress, otel, "Routes traffic")
+Rel(otel, prometheus, "Sends metrics")
+Rel(otel, loki, "Sends logs")
+Rel(otel, jaeger, "Sends traces")
+Rel(prometheus, grafana, "Queried for metrics")
+Rel(loki, grafana, "Queried for logs")
+Rel(jaeger, grafana, "Queried for traces")
+Rel(prometheus, blob_storage, "Exports metrics snapshot for retention")
+Rel(loki, blob_storage, "Exports log data for retention")
+Rel(user, grafana, "Accesses via browser\n(Azure AD SSO)", "HTTPS")
 
-#### **Key Security & Design Notes**
-*   **No Public Facing Endpoints (Except Grafana UI):** The internal ingress controller and all backend services (Prometheus, Loki, Jaeger API) have no public endpoints. They are only accessible from within the Azure Virtual Network or the cluster itself.
-*   **Network Segmentation:** Kubernetes Network Policies are essential for micro-segmentation, ensuring only authorized components can talk to each other (e.g., only Grafana can query Jaeger).
-*   **Identity for Storage:** Using Azure Managed Identity for accessing Blob Storage is more secure than using stored access keys.
-*   **Cost-Effective Retention:** Using Azure Blob Storage (especially cool tier) for long-term retention is significantly more cost-effective than keeping all data on high-performance cluster storage.
+@enduml
