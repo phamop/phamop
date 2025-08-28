@@ -1,33 +1,6 @@
-Of course. Here is the updated security framework table, specifically tailored for your defined OSS stack (Prometheus, Loki, Jaeger, Grafana, Otel Collector) on a dedicated AKS cluster.
-
-### **Security Framework for Defined OSS Observability Stack on AKS**
-
-This table maps security components to their implementation using your chosen Open-Source tools and Azure's underlying security features.
-
-| Security Component | Implementation for Your OSS Stack on AKS |
-| :--- | :--- |
-| **Data Protection - Data Encryption** | • **In Transit:** **Istio** or **Linkerd** service mesh provides mutual TLS (mTLS) for all traffic between Otel Collectors, Prometheus, and other components. **cert-manager** automates TLS certificates for Grafana's HTTPS ingress.<br>• **At Rest:** Relies on **Azure Disk Encryption** for PersisentVolumes holding Prometheus metrics, Loki logs, and Jaeger traces. |
-| **Secure Infrastructure and Architecture** | • **Network Policies:** **Calico** or **Cilium** policies are critical to restrict traffic. Example: Only allow Otel Collectors to talk to Prometheus' remote write endpoint, and only allow Grafana to query Prometheus/Loki.<br>• **Policy Enforcement:** Use **OPA/Gatekeeper** to enforce policies like "all Prometheus pods must have a 'readonly' root filesystem" or "Grafana must only use specific image registries."<br>• **Isolation:** Deploy the observability stack to a dedicated namespace (e.g., `monitoring`) with strict RBAC limits. |
-| **Log Management and Auditing** | • **Collection:** **Fluent Bit** DaemonSet collects node/container logs and forwards them to **Grafana Loki**.<br>• **Audit Trail:** Kubernetes API server audit logs are a critical source, also ingested by Fluent Bit and sent to Loki for secure storage and querying. This provides a record of who accessed the observability stack itself.<br>• **Platform Logs:** Azure platform logs (e.g., AKS cluster operations) can be exported to the OSS stack via Azure Monitor Managed Service for Prometheus. |
-| **Securing Workloads and Applications** | • **Image Security:** Scan all images (Grafana, Prometheus, Loki, etc.) in CI/CD using **Trivy** before deployment to AKS.<br>• **Runtime Security:** **Falco** rules can detect suspicious activity within the observability namespace, such as a shell spawned in a Prometheus pod.<br>• **Secrets Management:** Use **HashiCorp Vault** with the CSI Driver to securely provide credentials to Grafana for data sources, or to application pods needing to export metrics. |
-| **Identity and Access Management (IAM)** | • **Cluster Access:** **Azure AD Integration** is used for engineers to authenticate with `kubectl` to view observability pods.<br>• **Application Access:** **Grafana Authentication** is configured to use OAuth2 (e.g., with Azure AD, GitHub) to control user access to dashboards and data. Loki and Prometheus are configured with Grafana for data source access, not directly by users.<br>• **Component Authentication:** Prometheus and scrape targets can be secured using mutual TLS or basic auth configured via the Otel Collector and Prometheus configuration. |
-
----
-
-### **Key Security Configurations for Your Stack:**
-
-*   **Grafana:**
-    *   Secure the `/admin` endpoints.
-    *   Use strong external authentication (OAuth2/OIDC with Azure AD).
-    *   Configure data source permissions carefully to avoid privilege escalation.
-*   **Prometheus:**
-    *   Enable the `web.enable-admin-api` flag only if necessary and secure it.
-    *   Use `scrape_configs` with `tls_config` and `authorization` headers for secure scraping.
-    *   Configure Prometheus' remote write authentication for Otel Collector.
-*   **Loki:**
-    *   Configure `auth_enabled: true` in multi-tenant mode.
-    *   Use the Grafana Auth Proxy pattern to manage access, avoiding direct user access to the Loki API.
-*   **Jaeger:**
-    *   As a headless service (no UI), its API must be protected by network policies, only allowing queries from Grafana or other authorized services.
-*   **Otel Collector:**
-    *   Secure its metrics and traces endpoints using the `basicauth` extension or by receiving data only over a mTLS-secured connection from the service mesh.
+Applications across various sources send telemetry to the internal ingress endpoint of the dedicated AKS cluster
+The NGINX Ingress Controller routes OTLP traffic to the OTel Collector service.
+The OTel Collector processes and writes data to the backend services (Prometheus, Loki, Jaeger) running in the same cluster.
+Users access the Grafana UI via its public ingress endpoint, authenticating with Azure AD SSO.
+Grafana queries the backend services (e.g., Prometheus Query, Loki) internally within the cluster network.
+blob storage for retention for over 30days to 90days 
