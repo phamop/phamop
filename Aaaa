@@ -9,7 +9,7 @@ System_Boundary(aks_cluster, "Dedicated AKS Cluster - Security Hardened") {
     ' === Security Layer ===
     Container(oauth2_proxy, "OAuth2 Proxy", "OAuth2 Proxy", "Security Proxy", "Handles authentication and authorization with OIDC")
     Container(ingress, "NGINX Ingress", "NGINX + ModSecurity", "Web Server", "Routes traffic with WAF protection")
-    Container(cert_manager, "Cert Manager", "cert-manager", "Certificate Controller", "Automated TLS certificate management")
+    Container(cert_manager, "Cert Manager", "cert-manager", "Certificate Controller", "Automated TLS certificate management with AKV integration")
     
     ' === Processing Layer ===
     Container(otel, "OTel Collector", "OpenTelemetry Collector", "Backend Service", "Collects, processes, and routes telemetry data with TLS")
@@ -28,7 +28,7 @@ System_Boundary(aks_cluster, "Dedicated AKS Cluster - Security Hardened") {
     ContainerDb(jaeger_db, "Jaeger Backend", "Elasticsearch/Cassandra", "Trace storage (encrypted at rest)")
     
     ' === Security Components ===
-    Container(vault, "Vault Injector", "Hashicorp Vault", "Secrets Management", "Manages secrets and certificates injection")
+    Container(akv, "Azure Key Vault", "Secrets Management", "Manages secrets, certificates, and keys for workloads")
     Container(opa, "OPA Gatekeeper", "Open Policy Agent", "Policy Controller", "Enforces security policies and compliance")
 }
 
@@ -37,13 +37,12 @@ Container(app_pods, "Application Pods", "Various", "Kubernetes Pods", "Source ap
 Container(vm_agents, "VM/Node Agents", "Various", "Monitoring Agent", "Infrastructure agents with mTLS")
 ContainerDb(blob_storage, "Azure Blob Storage", "Azure Blob Storage", "Cloud Object Storage", "Long-term encrypted data retention")
 System_Ext(aad, "Azure AD", "Microsoft Entra ID", "Identity Provider", "OIDC provider for SSO authentication")
-System_Ext(letsencrypt, "Let's Encrypt", "Let's Encrypt", "Certificate Authority", "Free TLS certificate authority")
 
 ' === Security Relationships ===
 Rel(ingress, oauth2_proxy, "Validates auth tokens", "JWT validation")
 Rel(oauth2_proxy, aad, "OIDC authentication", "OAuth2/OIDC")
-Rel(cert_manager, letsencrypt, "Requests certificates", "ACME protocol")
-Rel(vault, aad, "Azure AD authentication", "OIDC")
+Rel(cert_manager, akv, "Retrieves certificates", "mTLS/TLS integration")
+Rel(akv, aad, "Authenticates access", "OIDC + RBAC")
 Rel(opa, aks_cluster, "Enforces policies", "Admission control")
 
 ' === Data Flow with Security ===
@@ -72,10 +71,10 @@ Rel(user, aad, "Authenticates", "OIDC redirect")
 Rel(aad, oauth2_proxy, "Issues tokens", "OIDC callback")
 
 ' === Secrets Management ===
-Rel(vault, prometheus, "Injects credentials", "Sidecar injection")
-Rel(vault, loki, "Injects credentials", "Sidecar injection")
-Rel(vault, jaeger, "Injects credentials", "Sidecar injection")
-Rel(vault, grafana, "Injects secrets", "Init container")
+Rel(akv, prometheus, "Provides credentials", "API/CSI driver")
+Rel(akv, loki, "Provides credentials", "API/CSI driver")
+Rel(akv, jaeger, "Provides credentials", "API/CSI driver")
+Rel(akv, grafana, "Provides secrets", "API/CSI driver")
 
 ' === Layout ===
 Lay_D(ingress, oauth2_proxy)
