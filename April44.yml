@@ -13,6 +13,37 @@ skinparam arrowThickness 2
 skinparam arrowFontSize 11
 
 ' =========================
+' OTEL COLLECTOR (DECLARE FIRST)
+' =========================
+package "OTel Collector Pod" #2E7D32 {
+  Component(otel_rcv, "Receivers", "OTLP, Prometheus, Jaeger")
+  Component(otel_proc, "Processors", "Batch, Resource, Transform")
+  Component(otel_exp, "Exporters", "Prometheus, Loki, Jaeger, Azure Monitor")
+}
+
+Rel(ingress, otel_rcv, "OTLP gRPC/HTTP")
+Rel(otel_rcv, otel_proc, "Forward Telemetry")
+Rel(otel_proc, otel_exp, "Processed Export")
+
+' =========================
+' TELEMETRY SOURCES (AKS DEV + FT)
+' =========================
+package "AKS DEV Cluster" #4A90E2 {
+  Component(dev_apps, "Instrumented Workloads (DEV)", "Pods & Services")
+  Component(dev_nodes, "K8s Infra (DEV)", "Node/Control Plane Metrics")
+}
+
+package "AKS FT Cluster" #00BCD4 {
+  Component(ft_apps, "Instrumented Workloads (FT)", "Pods & Services")
+  Component(ft_nodes, "K8s Infra (FT)", "Node/Control Plane Metrics")
+}
+
+Rel(dev_apps, otel_rcv, "OTLP gRPC/HTTP\n(Metrics, Logs, Traces)")
+Rel(dev_nodes, otel_rcv, "Prometheus Scrape\n(Kubelet, cAdvisor, API Server)")
+Rel(ft_apps, otel_rcv, "OTLP gRPC/HTTP\n(Metrics, Logs, Traces)")
+Rel(ft_nodes, otel_rcv, "Prometheus Scrape\n(Kubelet, cAdvisor, API Server)")
+
+' =========================
 ' GRAFANA POD
 ' =========================
 package "Grafana Pod" #1565C0 {
@@ -28,19 +59,6 @@ Rel(gf_auth, gf_core, "Auth Tokens")
 Rel(gf_core, gf_ds, "Queries")
 Rel(gf_core, gf_alert, "Executes Alerts")
 Rel(gf_cfg, gf_core, "Provision Config")
-
-' =========================
-' OTEL COLLECTOR
-' =========================
-package "OTel Collector Pod" #2E7D32 {
-  Component(otel_rcv, "Receivers", "OTLP, Prometheus, Jaeger")
-  Component(otel_proc, "Processors", "Batch, Resource, Transform")
-  Component(otel_exp, "Exporters", "Prometheus, Loki, Jaeger, Azure Monitor")
-}
-
-Rel(ingress, otel_rcv, "OTLP gRPC/HTTP")
-Rel(otel_rcv, otel_proc, "Forward Telemetry")
-Rel(otel_proc, otel_exp, "Processed Export")
 
 ' =========================
 ' PROMETHEUS + THANOS
