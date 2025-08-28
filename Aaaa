@@ -1,20 +1,94 @@
-Based on the provided text, here is the information presented in a wiki format.
+@startuml Observability_AKS_C4_L3_Enhanced
+!includeurl https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+LAYOUT_WITH_LEGEND()
 
----
+title <color:#0078D4>Observability Platform – Component View (L3)</color>\n<size:12>Detailed Components with Color & Grouping</size>
 
-### Non-Functional Requirements (NFRs) for the Observability Platform
+skinparam backgroundColor #F8F9FA
+skinparam shadowing true
+skinparam rectangleFontColor white
+skinparam arrowColor #444444
+skinparam arrowFontColor #222222
+skinparam arrowThickness 2
+skinparam arrowFontSize 11
 
-This document outlines the non-functional requirements (NFRs) for the Observability Platform. NFRs define *how* the system should operate, focusing on constraints and quality attributes rather than specific functions. They are crucial for ensuring the system is effective, secure, reliable, and maintainable.
+' =========================
+' GRAFANA POD
+' =========================
+package "Grafana Pod" #1565C0 {
+  Component(gf_core, "Grafana Core", "Dashboards, Alerts")
+  Component(gf_ds, "Data Sources", "Prometheus, Loki, Jaeger")
+  Component(gf_alert, "Alerting Engine", "Rules & Notifications")
+  Component(gf_auth, "OAuth2 Proxy", "Azure AD SSO")
+  Component(gf_cfg, "Config Provider", "Dashboards via GitOps")
+}
 
-#### NFR Categories
+Rel(dev, gf_auth, "HTTPS / SSO")
+Rel(gf_auth, gf_core, "Auth Tokens")
+Rel(gf_core, gf_ds, "Queries")
+Rel(gf_core, gf_alert, "Executes Alerts")
+Rel(gf_cfg, gf_core, "Provision Config")
 
-| Category | Description | Target / Goal | Technical Implementation |
-| :--- | :--- | :--- | :--- |
-| **Availability** | Ensures the platform is operational and accessible when needed. | 99.9% uptime for ingestion and Grafana UI. | • AKS cluster deployed across Availability Zones (AZs).<br>• Use of PodDisruptionBudgets for resilience. |
-| **Security** | Protects the system and its data from unauthorized access and threats. | Secure access and data protection. | • Dedicated VNet deployment.<br>• Azure AD SSO for identity management.<br>• TLS 1.3 for encryption in transit.<br>• Blob storage Server-Side Encryption (SSE) with Customer-Managed Keys (CMK) for encryption at rest. |
-| **Performance** | Addresses the speed and responsiveness of the system. | <5s query latency on "hot data" (<30 days old). | • Dedicated memory-optimized node pool for Prometheus.<br>• Fine-tuned data retention policies for Prometheus and Loki. |
-| **Retention** | Defines the data lifecycle and storage policies. | • **Hot data:** 30 days.<br>• **Total data (hot + archive):** 90 days. | • Retention policies in Prometheus, Loki, and Jaeger.<br>• Blob Lifecycle Policy to manage storage and expiration. |
-| **Operability** | Refers to the ease of operating and maintaining the system. | Proactive system management. | • **Self-monitoring** with Prometheus for metrics.<br>• **Centralized logging** with Loki.<br>• Alertmanager for notifications.<br>• **Future:** GitOps (ArgoCD/FluxCD) for automated deployment. |
-| **Cost** | Optimizes the financial spend associated with the platform. | Cost-effective operations. | • Spot Node Pools for non-critical workloads.<br>• Cluster Autoscaler to right-size resources.<br>• Blob storage tiering.<br>• Azure Budgets and Cost Alerts for governance. |
-| **Scalability** | The system's ability to handle increasing workload or users. | Scale resources based on demand. | • **Horizontal Pod Autoscaler (HPA)** for Grafana and OTel.<br>• **Vertical Pod Autoscaler (VPA)** in recommendation mode.<br>• Cluster Autoscaler for AKS nodes.<br>• **Future:** Multi-cluster federation via Azure Arc. |
-| **Compliance & Auditability** | Ensures the platform adheres to industry standards and regulations. | Standardized, secure, and auditable configuration. | • Enforcement of CIS AKS baseline policies.<br>• Use of OPA Gatekeeper and Azure Policy.<br>• Blob Write Once, Read Many (WORM) storage for immutable audit logs. |
+' =========================
+' OTEL COLLECTOR
+' =========================
+package "OTel Collector Pod" #2E7D32 {
+  Component(otel_rcv, "Receivers", "OTLP, Prometheus, Jaeger")
+  Component(otel_proc, "Processors", "Batch, Resource, Transform")
+  Component(otel_exp, "Exporters", "Prometheus, Loki, Jaeger, Azure Monitor")
+}
+
+Rel(ingress, otel_rcv, "OTLP gRPC/HTTP")
+Rel(otel_rcv, otel_proc, "Forward Telemetry")
+Rel(otel_proc, otel_exp, "Processed Export")
+
+' =========================
+' PROMETHEUS + THANOS
+' =========================
+package "Prometheus + Thanos" #F57C00 {
+  Component(prom_srv, "Prometheus Server", "Scrapes Metrics")
+  Component(prom_sd, "Service Discovery", "K8s Targets")
+  Component(thanos_side, "Thanos Sidecar", "Upload to Blob")
+  Component(thanos_query, "Thanos Query", "Long-term Queries")
+}
+
+Rel(otel_exp, prom_srv, "Remote Write")
+Rel(prom_srv, thanos_side, "Upload Blocks")
+Rel(thanos_side, blob, "Store Metrics")
+Rel(thanos_query, prom_srv, "Federated Queries")
+
+' =========================
+' LOKI
+' =========================
+package "Loki" #00838F {
+  Component(loki_dist, "Distributor", "Receives Logs")
+  Component(loki_ing, "Ingester", "Stores Chunks")
+  Component(loki_q, "Querier", "Executes LogQL")
+  Component(loki_idx, "Index Gateway", "Metadata Index")
+}
+
+Rel(otel_exp, loki_dist, "Push Logs")
+Rel(loki_dist, loki_ing, "Forward Logs")
+Rel(loki_ing, blob, "Store Chunks")
+Rel(loki_q, loki_idx, "Index Lookups")
+Rel(gf_ds, loki_q, "Log Queries")
+
+' =========================
+' JAEGER
+' =========================
+package "Jaeger" #6A1B9A {
+  Component(jaeger_col, "Collector", "Receives Spans")
+  Component(jaeger_ing, "Ingester", "Stores Spans")
+  Component(jaeger_q, "Query Service", "Trace Query API")
+  Component(jaeger_ui, "Jaeger UI", "Optional UI Access")
+}
+
+Rel(otel_exp, jaeger_col, "Push Spans")
+Rel(jaeger_col, jaeger_ing, "Process Spans")
+Rel(jaeger_ing, blob, "Persist Spans")
+Rel(jaeger_q, jaeger_ing, "Trace Lookup")
+Rel(gf_ds, jaeger_q, "Trace Queries")
+Rel(dev, jaeger_ui, "Optional Access")
+
+SHOW_LEGEND()
+@enduml
