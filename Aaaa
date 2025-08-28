@@ -1,94 +1,97 @@
-@startuml Observability_AKS_C4_L3_Enhanced
-!includeurl https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
-LAYOUT_WITH_LEGEND()
+# Infrastructure as Code (IAC) - Observability Stack Components
 
-title <color:#0078D4>Observability Platform – Component View (L3)</color>\n<size:12>Detailed Components with Color & Grouping</size>
+This document outlines the detailed components of an observability stack deployed using **Helm** and **Kustomize** for Infrastructure as Code management.
 
-skinparam backgroundColor #F8F9FA
-skinparam shadowing true
-skinparam rectangleFontColor white
-skinparam arrowColor #444444
-skinparam arrowFontColor #222222
-skinparam arrowThickness 2
-skinparam arrowFontSize 11
+## 🔹 Grafana Pod
 
-' =========================
-' GRAFANA POD
-' =========================
-package "Grafana Pod" #1565C0 {
-  Component(gf_core, "Grafana Core", "Dashboards, Alerts")
-  Component(gf_ds, "Data Sources", "Prometheus, Loki, Jaeger")
-  Component(gf_alert, "Alerting Engine", "Rules & Notifications")
-  Component(gf_auth, "OAuth2 Proxy", "Azure AD SSO")
-  Component(gf_cfg, "Config Provider", "Dashboards via GitOps")
-}
+The Grafana pod serves as the primary visualization and alerting interface for the observability stack.
 
-Rel(dev, gf_auth, "HTTPS / SSO")
-Rel(gf_auth, gf_core, "Auth Tokens")
-Rel(gf_core, gf_ds, "Queries")
-Rel(gf_core, gf_alert, "Executes Alerts")
-Rel(gf_cfg, gf_core, "Provision Config")
+### Core Components
+- **Grafana Core** – Handles dashboard rendering and serves as the alert manager interface
+- **Data Source Plugins** – Provides integrations with:
+  - Prometheus (metrics)
+  - Loki (logs) 
+  - Jaeger (distributed tracing)
+- **Alerting Engine** – Sends notifications to external channels:
+  - Slack
+  - Microsoft Teams
+  - PagerDuty
+- **OAuth2 Proxy Sidecar** – Manages Single Sign-On (SSO) authentication via Azure Active Directory
+- **Config Provider** – Dynamically loads dashboards and data sources from GitOps repositories using Helm charts and ConfigMaps
 
-' =========================
-' OTEL COLLECTOR
-' =========================
-package "OTel Collector Pod" #2E7D32 {
-  Component(otel_rcv, "Receivers", "OTLP, Prometheus, Jaeger")
-  Component(otel_proc, "Processors", "Batch, Resource, Transform")
-  Component(otel_exp, "Exporters", "Prometheus, Loki, Jaeger, Azure Monitor")
-}
+## 🔹 OpenTelemetry (OTel) Collector Pod
 
-Rel(ingress, otel_rcv, "OTLP gRPC/HTTP")
-Rel(otel_rcv, otel_proc, "Forward Telemetry")
-Rel(otel_proc, otel_exp, "Processed Export")
+The OTel Collector acts as a central hub for telemetry data processing and routing.
 
-' =========================
-' PROMETHEUS + THANOS
-' =========================
-package "Prometheus + Thanos" #F57C00 {
-  Component(prom_srv, "Prometheus Server", "Scrapes Metrics")
-  Component(prom_sd, "Service Discovery", "K8s Targets")
-  Component(thanos_side, "Thanos Sidecar", "Upload to Blob")
-  Component(thanos_query, "Thanos Query", "Long-term Queries")
-}
+### Receivers
+- **OTLP (OpenTelemetry Protocol)** – Accepts telemetry data via gRPC and HTTP protocols
+- **Prometheus Receiver** – Scrapes metrics from Prometheus-compatible endpoints
+- **Jaeger Receiver** – Ingests distributed tracing data in Jaeger format
 
-Rel(otel_exp, prom_srv, "Remote Write")
-Rel(prom_srv, thanos_side, "Upload Blocks")
-Rel(thanos_side, blob, "Store Metrics")
-Rel(thanos_query, prom_srv, "Federated Queries")
+### Processors
+- **Batch Processor** – Optimizes export throughput by batching telemetry data
+- **Resource Processor** – Enriches telemetry data with Kubernetes metadata (pod names, namespaces, labels)
+- **Transform Processor** – Performs data manipulation:
+  - Renames metric labels
+  - Redacts sensitive fields
+  - Applies data normalization rules
 
-' =========================
-' LOKI
-' =========================
-package "Loki" #00838F {
-  Component(loki_dist, "Distributor", "Receives Logs")
-  Component(loki_ing, "Ingester", "Stores Chunks")
-  Component(loki_q, "Querier", "Executes LogQL")
-  Component(loki_idx, "Index Gateway", "Metadata Index")
-}
+### Exporters
+- **Prometheus Remote Write** – Exports metrics to Prometheus storage
+- **Loki Push API** – Sends log data to Loki for storage and querying
+- **Jaeger gRPC** – Forwards trace data to Jaeger backend
+- **Azure Monitor** (optional) – Integrates with Azure's native monitoring service
 
-Rel(otel_exp, loki_dist, "Push Logs")
-Rel(loki_dist, loki_ing, "Forward Logs")
-Rel(loki_ing, blob, "Store Chunks")
-Rel(loki_q, loki_idx, "Index Lookups")
-Rel(gf_ds, loki_q, "Log Queries")
+## 🔹 Prometheus + Thanos
 
-' =========================
-' JAEGER
-' =========================
-package "Jaeger" #6A1B9A {
-  Component(jaeger_col, "Collector", "Receives Spans")
-  Component(jaeger_ing, "Ingester", "Stores Spans")
-  Component(jaeger_q, "Query Service", "Trace Query API")
-  Component(jaeger_ui, "Jaeger UI", "Optional UI Access")
-}
+Prometheus provides metrics collection and storage, enhanced with Thanos for long-term retention and querying.
 
-Rel(otel_exp, jaeger_col, "Push Spans")
-Rel(jaeger_col, jaeger_ing, "Process Spans")
-Rel(jaeger_ing, blob, "Persist Spans")
-Rel(jaeger_q, jaeger_ing, "Trace Lookup")
-Rel(gf_ds, jaeger_q, "Trace Queries")
-Rel(dev, jaeger_ui, "Optional Access")
+### Components
+- **Prometheus Server** – Scrapes metrics from OTel Collector and application endpoints
+- **Service Discovery** – Automatically discovers targets via Kubernetes API integration
+- **Thanos Sidecar** – Uploads Prometheus data blocks to Azure Blob Storage for long-term retention
+- **Query Layer** – Enables efficient querying across short-term (Prometheus) and long-term (Thanos) data stores
 
-SHOW_LEGEND()
-@enduml
+## 🔹 Loki
+
+Loki provides centralized log aggregation and querying capabilities.
+
+### Architecture Components
+- **Distributor** – Receives incoming log streams and distributes them across ingestors
+- **Ingester** – Processes and writes log chunks to Azure Blob Storage
+- **Querier** – Handles log query requests and retrieves data from storage
+- **Index Gateway** – Manages log metadata and indexing for efficient querying
+
+## 🔹 Jaeger
+
+Jaeger handles distributed tracing for microservices observability.
+
+### Core Services
+- **Collector** – Receives trace spans from OpenTelemetry Collector
+- **Ingester** – Processes and writes span data to Blob Storage or database backend
+- **Query Service** – Provides trace lookup capabilities for Grafana integration
+- **UI (optional)** – Native Jaeger interface (can be embedded or hidden behind Grafana)
+
+## 🔹 Ingress Controller
+
+The ingress controller manages external access and routing to observability services.
+
+### Configuration
+- **Ingress Rules** – Defines routing for:
+  - OTLP endpoint: `otlp.monitoring.internal` (internal telemetry ingestion)
+  - Grafana endpoint: `grafana.monitoring.company.com` (external dashboard access)
+- **TLS/mTLS Termination** – Handles SSL certificate management integrated with Azure Key Vault CSI driver for secure certificate storage and rotation
+
+## IAC Deployment Strategy
+
+### Helm Charts
+- **Package Management** – Uses Helm for templating and versioning of Kubernetes manifests
+- **Value Overrides** – Environment-specific configurations managed through values files
+- **Dependency Management** – Coordinates deployment order and dependencies between services
+
+### Kustomize
+- **Configuration Management** – Handles environment-specific customizations without duplicating base manifests
+- **Patch Management** – Applies targeted modifications for different deployment environments
+- **Resource Composition** – Combines base configurations with overlays for staging, production, and development environments
+
+This architecture provides a comprehensive, cloud-native observability solution with proper separation of concerns and scalable data processing capabilities.
