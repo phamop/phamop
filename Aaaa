@@ -1,87 +1,79 @@
-@startuml
-!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+= Non-Functional Requirements (NFRs) =
+This section outlines the non-functional requirements for the Observability Platform, implemented using **Kustomize** and **Helm**.
 
-title Container Diagram for Observability Platform with OSS Security Stack
+== Summary Table ==
+{| class="wikitable" style="width:100%; text-align:left;"
+! Requirement Category !! Key Target / Policy
+|-
+| Availability || 99.9% uptime for ingestion + Grafana UI across AZs
+|-
+| Security || Azure AD SSO, RBAC, TLS everywhere, SSE/CMK at rest
+|-
+| Performance || < 5s query response on dashboards with <30 days data
+|-
+| Retention || 30 days hot storage; 90 days total with Azure Blob archive
+|-
+| Operability || Self-monitoring, proactive alerting, centralized logging (GitOps adoption considered in future)
+|-
+| Cost || Spot node pools, autoscaling, tiered Blob storage, Azure Budgets
+|-
+| Scalability || HPA, VPA, Cluster Autoscaler, multi-cluster federation (future)
+|-
+| Compliance & Auditability || CIS benchmarks, immutable audit logs, OPA/Azure Policy enforcement
+|}
 
-Person(user, "End User", "Corporate user accessing observability dashboards")
+== Availability ==
+* **Target:** 99.9% uptime for data ingestion and Grafana UI.  
+* **Implementation:**
+** AKS cluster with multiple nodes across Availability Zones.  
+** Pod Disruption Budgets and pod anti-affinity rules for critical components (Grafana, OTel Collector).  
+** Configured resource requests/limits and horizontal pod autoscaling.  
 
-System_Boundary(aks_cluster, "Dedicated AKS Cluster - Security Hardened") {
-    ' === Security Layer ===
-    Container(oauth2_proxy, "OAuth2 Proxy", "OAuth2 Proxy", "Security Proxy", "Handles authentication and authorization with OIDC")
-    Container(ingress, "NGINX Ingress", "NGINX + ModSecurity", "Web Server", "Routes traffic with WAF protection")
-    Container(cert_manager, "Cert Manager", "cert-manager", "Certificate Controller", "Automated TLS certificate management with AKV integration")
-    
-    ' === Processing Layer ===
-    Container(otel, "OTel Collector", "OpenTelemetry Collector", "Backend Service", "Collects, processes, and routes telemetry data with TLS")
-    
-    ' === Storage Layer ===
-    Container(prometheus, "Prometheus", "Prometheus", "Time-series Database", "Metrics storage with file-based authentication")
-    Container(loki, "Loki", "Loki", "Log Database", "Log aggregation with multi-tenant authentication")
-    Container(jaeger, "Jaeger", "Jaeger", "Tracing System", "Distributed tracing with storage plugins")
-    
-    ' === Visualization Layer ===
-    Container(grafana, "Grafana", "Grafana", "Web Application", "Unified dashboard with RBAC and Azure AD integration")
-    
-    ' === Internal Storage ===
-    ContainerDb(prometheus_db, "Prometheus TSDB", "TSDB", "Local metrics storage (encrypted volumes)")
-    ContainerDb(loki_db, "Loki Object Storage", "Object Storage", "Local log storage (encrypted)")
-    ContainerDb(jaeger_db, "Jaeger Backend", "Elasticsearch/Cassandra", "Trace storage (encrypted at rest)")
-    
-    ' === Security Components ===
-    Container(akv, "Azure Key Vault", "Secrets Management", "Manages secrets, certificates, and keys for workloads")
-    Container(opa, "OPA Gatekeeper", "Open Policy Agent", "Policy Controller", "Enforces security policies and compliance")
-}
+== Security ==
+* **Implementation:**
+** '''Network Security:''' AKS cluster deployed in a dedicated VNet. Application Security Groups and Network Policies (Calico) restrict pod-to-pod traffic. Grafana ingress limited to corporate network IP ranges.  
+** '''Authentication:''' Azure AD integration for AKS access. Grafana configured for Azure AD OAuth SSO.  
+** '''Authorization:''' Kubernetes RBAC for service accounts. Grafana dashboard and data source permissions managed via Azure AD groups.  
+** '''Encryption:''' TLS for all ingress traffic and service-to-service communication (via service mesh or ingress). Data encrypted at rest in Azure Blob Storage using SSE/CMK.  
 
-' === External Systems ===
-Container(app_pods, "Application Pods", "Various", "Kubernetes Pods", "Source applications with OTLP instrumentation")
-Container(vm_agents, "VM/Node Agents", "Various", "Monitoring Agent", "Infrastructure agents with mTLS")
-ContainerDb(blob_storage, "Azure Blob Storage", "Azure Blob Storage", "Cloud Object Storage", "Long-term encrypted data retention")
-System_Ext(aad, "Azure AD", "Microsoft Entra ID", "Identity Provider", "OIDC provider for SSO authentication")
+== Performance ==
+* **Target:** < 5-second query response time for Grafana dashboards on hot data (<30 days).  
+* **Implementation:**
+** Dedicated node pools for memory-intensive workloads (e.g., Prometheus).  
+** Performance tuning for Prometheus (chunk size, retention) and Loki (chunk_target_size, retention).  
+** OTel Collector configured for batching and processing optimization.  
 
-' === Security Relationships ===
-Rel(ingress, oauth2_proxy, "Validates auth tokens", "JWT validation")
-Rel(oauth2_proxy, aad, "OIDC authentication", "OAuth2/OIDC")
-Rel(cert_manager, akv, "Retrieves certificates", "mTLS/TLS integration")
-Rel(akv, aad, "Authenticates access", "OIDC + RBAC")
-Rel(opa, aks_cluster, "Enforces policies", "Admission control")
+== Retention ==
+* **Policy:**
+** Hot Storage (Cluster): 30 days of data retained within Prometheus/Loki/Jaeger.  
+** Cold Storage (Azure Blob): 90 days total retention, with data archived to blob storage after 30 days.  
+* **Implementation:** Configured via Helm chart values for each component (e.g., `prometheus.server.retention`, `loki.config.chunk_store_config`).  
 
-' === Data Flow with Security ===
-Rel(app_pods, ingress, "Sends OTLP/gRPC", "mTLS encrypted")
-Rel(vm_agents, ingress, "Sends OTLP/gRPC", "mTLS encrypted")
-Rel(ingress, otel, "Routes traffic", "HTTPS with WAF")
-Rel(otel, prometheus, "Sends metrics", "HTTPS with auth")
-Rel(otel, loki, "Sends logs", "HTTPS with auth")
-Rel(otel, jaeger, "Sends traces", "HTTPS with auth")
+== Operability ==
+* **Implementation:**
+** Monitoring: The stack monitors itself (Prometheus scrapes its own metrics).  
+** Alerting: Prometheus alerts routed to Slack/Teams channels for proactive incident management.  
+** Logging: Cluster and application logs aggregated in Loki for troubleshooting.  
+** GitOps (Future): GitOps workflows using ArgoCD/FluxCD may be adopted later for version-controlled, declarative deployments.  
 
-' === Query Relationships ===
-Rel(grafana, prometheus, "Queries metrics", "HTTPS with bearer token")
-Rel(grafana, loki, "Queries logs", "HTTPS with bearer token")
-Rel(grafana, jaeger, "Queries traces", "HTTPS with bearer token")
+== Cost ==
+* **Management Strategy:**
+** Utilize Azure Spot Node Pools for non-critical, scalable workloads.  
+** Right-size node pools and implement cluster and pod autoscaling.  
+** Tiered storage: Cheaper Blob Storage for long-term retention.  
+** Azure Budgets and Cost Alerts configured for the resource group.  
 
-' === Storage Relationships ===
-Rel(prometheus, prometheus_db, "Stores metrics", "Encrypted volume")
-Rel(loki, loki_db, "Stores logs", "Encrypted storage")
-Rel(jaeger, jaeger_db, "Stores traces", "Encrypted connection")
-Rel(prometheus, blob_storage, "Exports metrics", "Azure SAS token")
-Rel(loki, blob_storage, "Exports logs", "Azure SAS token")
+== Scalability ==
+* **Implementation:**
+** '''Horizontal Pod Autoscaling (HPA):''' Enabled for OTel Collector, Grafana, and Prometheus to scale based on CPU/memory and custom metrics.  
+** '''Vertical Pod Autoscaling (VPA):''' Configured for stateful workloads (e.g., Prometheus, Loki) to auto-tune resource requests/limits.  
+** '''Cluster Autoscaler:''' Enabled for AKS to add/remove nodes dynamically based on workload demand.  
+** '''Multi-Cluster Federation (Future):''' Support planned for cross-cluster observability and scaling across multiple AKS regions using federation or Azure Arc.  
 
-' === User Access ===
-Rel(user, ingress, "Accesses Grafana", "HTTPS with TLS 1.3")
-Rel(user, aad, "Authenticates", "OIDC redirect")
-Rel(aad, oauth2_proxy, "Issues tokens", "OIDC callback")
-
-' === Secrets Management ===
-Rel(akv, prometheus, "Provides credentials", "API/CSI driver")
-Rel(akv, loki, "Provides credentials", "API/CSI driver")
-Rel(akv, jaeger, "Provides credentials", "API/CSI driver")
-Rel(akv, grafana, "Provides secrets", "API/CSI driver")
-
-' === Layout ===
-Lay_D(ingress, oauth2_proxy)
-Lay_R(oauth2_proxy, otel)
-Lay_D(otel, prometheus)
-Lay_R(prometheus, loki)
-Lay_R(loki, jaeger)
-Lay_D(prometheus, grafana)
-
-@enduml
+== Compliance & Auditability ==
+* **Implementation:**
+** '''CIS Benchmark Hardening:''' AKS cluster and node pools configured to meet CIS Kubernetes and Azure security benchmarks.  
+** '''Audit Logs:''' AKS control plane logs, Key Vault access logs, and Azure AD sign-in logs integrated into the observability stack.  
+** '''Immutable Logs:''' Long-term storage of security and audit logs in Azure Blob with Write-Once-Read-Many (WORM) policies enabled.  
+** '''Policy Enforcement:''' OPA Gatekeeper and Azure Policy enforce compliance on resources, namespaces, and deployments.  
+** '''Access Reviews:''' Azure AD Conditional Access, periodic RBAC audits, and Just-In-Time (JIT) privileged access via PIM.  
