@@ -14,17 +14,14 @@
 
 
 
-
-
-| **Cost Component**                 | **Specifications**                                  | **Monthly Cost (CAD)** | **Annual Cost (CAD)** |
-| ---------------------------------- | --------------------------------------------------- | ---------------------- | --------------------- |
-| **Compute Resources**              | 2 × D8s\_v3 VMs (730 hours/month)                   | **\$347.48**           | **\$4,169.76**        |
-| **Control Plane**                  | Standard Tier SLA                                   | **\$97.09**            | **\$1,165.08**        |
-| **OS & Storage**                   | 2 × 128 GB Premium SSD OS Disks (P10)               | **\$41.60**            | **\$499.20**          |
-| **Networking**                     | Standard Load Balancer + Public IP + minimal egress | **\$35.44**            | **\$425.28**          |
-| **Retention Storage**              | 1 TB LRS Hot Blob Storage                           | **\$106.13**           | **\$1,273.56**        |
-| **Observability**                  | Existing Log Analytics / Workspace                  | \$0.00                 | \$0.00                |
-| **Azure Key Vault**                | Existing Shared Resource                            | \$0.00                 | \$0.00                |
-| **Azure Container Registry (ACR)** | Existing Shared Resource                            | \$0.00                 | \$0.00                |
-| **Total Estimated Cost**           | —                                                   | **\$627.74**           | **\$7,532.88**        |
-
+| **Cost Component**                 | **Specifications**                                | **Monthly Cost (CAD)** | **Annual Cost (CAD)** |
+| ---------------------------------- | ------------------------------------------------- | ---------------------- | --------------------- |
+| **Compute Resources**              | 2 × D8s\_v3 VMs (730 hours/month)                 | \$694.96               | \$8,339.52            |
+| **Control Plane**                  | Standard Tier (SLA)                               | \$97.09                | \$1,165.08            |
+| **OS & Storage**                   | 2 × 128 GB Premium SSD OS Disks (P10)             | \$41.60                | \$499.20              |
+| **Networking**                     | Standard Load Balancer, Public IP, minimal egress | \$35.44                | \$425.28              |
+| **Retention Storage**              | 1 TB Hot LRS Blob Storage                         | \$106.13               | \$1,273.56            |
+| **Observability**                  | Existing resource (Log Analytics / shared stack)  | \$0.00                 | \$0.00                |
+| **Azure Key Vault**                | Existing resource                                 | \$0.00                 | \$0.00                |
+| **Azure Container Registry (ACR)** | Existing resource                                 | \$0.00                 | \$0.00                |
+| **Total Estimated Cost**           | —                                                 | **\$975.22**           | **\$11,702.64**       |
