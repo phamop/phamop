@@ -1,38 +1,33 @@
-@startuml
-!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+@startuml testdiag
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+LAYOUT_WITH_LEGEND()
 
-title DEV Observability Platform Diagram 
+title DEV Observability Platform – C4 L2 (Container View)
 
-Person(user, "Developer\nSRE", "Corporate user accessing observability dashboards via Azure AD SSO")
+Person(user, "Developer / SRE", "Uses dashboards via Azure AD SSO")
 
-System_Boundary(aks_cluster, "Dedicated AKS Cluster") {
-    System(grafana, "Grafana Service", "Unified dashboard for observability data visualization")
-    System(otel, "OTel Collector Service", "Collects, processes, and routes telemetry data")
-    System(prometheus, "Prometheus", "Time-series database for metrics storage")
-    System(loki, "Loki", "Log aggregation system")
-    System(jaeger, "Jaeger", "Distributed tracing system")
-    System(ingress, "Internal NGINX Ingress Controller", "Routes incoming telemetry data")
+System_Boundary(obs, "Dedicated AKS Cluster") {
+    Container(grafana, "Grafana", "Web UI", "Dashboards & visualization")
+    Container(otel, "OTel Collector", "Go Service", "Collects & routes telemetry")
+    Container(prometheus, "Prometheus", "TSDB", "Stores metrics")
+    Container(loki, "Loki", "Log DB", "Stores logs")
+    Container(jaeger, "Jaeger", "Tracing Backend", "Stores traces")
+    Container(ingress, "NGINX Ingress", "K8s Ingress", "Routes incoming traffic")
 }
 
-System(app_pods, "Application Pods", "Source applications generating telemetry data")
-System(vm_agents, "Non-Prod AKS Clusters (DEV + FT)", "workloads emitting telemetry signal")
-System(blob_storage, "Azure Blob Storage", "Cloud storage for long-term data retention")
-System_Ext(aad, "Azure AD", "Provides SSO authentication")
+System_Ext(nonprod, "Non-Prod AKS (DEV + FT)", "Kubernetes", "Telemetry sources")
+System_Ext(blob, "Azure Blob Storage", "Object Storage", "Long-term retention")
+System_Ext(aad, "Azure AD", "Identity Provider", "SSO authentication")
 
-' Define relationships
-Rel(app_pods, ingress, "Sends OTLP/gRPC (metrics, logs, traces)")
-Rel(vm_agents, ingress, "Sends OTLP/gRPC (metrics, logs, traces)")
-Rel(ingress, otel, "Routes traffic")
-Rel(otel, prometheus, "Sends metrics")
-Rel(otel, loki, "Sends logs")
-Rel(otel, jaeger, "Sends traces")
-Rel(prometheus, grafana, "Queried for metrics")
-Rel(loki, grafana, "Queried for logs")
-Rel(jaeger, grafana, "Queried for traces")
-Rel(prometheus, blob_storage, "Exports metrics snapshot for retention")
-Rel(loki, blob_storage, "Exports log data for retention")
-Rel(user, grafana, "Accesses via browser", "HTTPS")
-Rel(user, aad, "Authenticates with")
-Rel(aad, grafana, "Validates token for", "OAuth/OIDC")
+Rel(nonprod, ingress, "Send telemetry", "OTLP/gRPC")
+Rel(ingress, otel, "Forward traffic")
+Rel(otel, prometheus, "Send metrics")
+Rel(otel, loki, "Send logs")
+Rel(otel, jaeger, "Send traces")
+Rel(prometheus, blob, "Export snapshots")
+Rel(loki, blob, "Export logs")
+Rel(user, grafana, "Access dashboards", "HTTPS")
+Rel(grafana, aad, "Authenticate", "OAuth2/OIDC")
 
+SHOW_LEGEND()
 @enduml
