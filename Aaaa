@@ -1,2 +1,11 @@
-It's not because the VMs will auto scale that the apps (which will be running using docker) will seamlessly auto scale as well. Have we considered an azure container app or web app if scaling is a requirement? Since everything we're deploying is via container images, we can skip the VM altogether and manage the apps via a PaaS instead of IaaS. Apps inside a VM will scale assuming configuration with LB/networking and they must be stateless, and also the fact that apps run in docker also adds an extra complexity because docker containers runs in a docker network which is not bridged to the host by default, so when the VM will scales, based on what I see here, this will not be trivial. This is probably why azure web apps and container apps exists, simplify container orchestration with scale in mind
-no info on certificate manager or certificate authority for everything mTLS
+2. Operational Complexity and Management
+
+Significant Reduction in Management Overhead: Operational focus shifts from infrastructure maintenance (managing VMs, OS patching) to application deployment and lifecycle management.
+
+Declarative and Version-Controlled Configuration: The entire stack is defined as code using Kustomize or Helm charts. This enables atomic, predictable deployments and rollbacks, ensuring consistency across environments.
+
+Unified Management Plane: All observability components are managed through the unified Kubernetes API (kubectl) and can be integrated into GitOps workflows (e.g., FluxCD, ArgoCD), providing a single, consistent control plane.
+
+Automated Infrastructure Management: The underlying node OS security patching, scaling, and cluster upgrades are managed automatically by Azure Kubernetes Service (AKS), reducing the team's operational burden.
+
+Simplified Architecture: This approach presents a single, consolidated observability data plane to manage, which is operationally simpler than managing a separate observability sidecar per application cluster (as in Option B).
