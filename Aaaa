@@ -1,25 +1,33 @@
-Of course. Here is the updated security framework table, specifically integrating the mentioned OSS observability tools and highlighting their security considerations within a dedicated AKS cluster.
+Of course. Here is the updated security framework table, specifically tailored for your defined OSS stack (Prometheus, Loki, Jaeger, Grafana, Otel Collector) on a dedicated AKS cluster.
 
-### **Security Framework for OSS Observability on Dedicated AKS**
+### **Security Framework for Defined OSS Observability Stack on AKS**
 
-This table maps security components to their implementation for a stack comprising **OpenTelemetry Collector, Prometheus, Loki, Jaeger, and Grafana** on AKS.
+This table maps security components to their implementation using your chosen Open-Source tools and Azure's underlying security features.
 
-| Security Component | Implementation with the OSS Observability Stack on AKS |
+| Security Component | Implementation for Your OSS Stack on AKS |
 | :--- | :--- |
-| **Data Protection - Data Encryption** | • **In Transit:** **Service Mesh (Istio/Linkerd)** for mTLS between collectors, agents, and storage backends. **cert-manager** automates TLS certs for Grafana and Jaeger ingresses.<br>• **At Rest:** Relies on **Azure Disk Encryption** for persistent volumes holding Prometheus, Loki, and Jaeger data. Application-level encryption is managed by the respective tools' configuration. |
-| **Secure Infrastructure and Architecture** | • **Network Policies:** Use **Calico** to restrict traffic. Example: Only allow the `otel-collector` namespace to talk to Prometheus, Loki, and Jaeger ports. Isolate Grafana's ingress.<br>• **Policy Enforcement:** Use **OPA/Gatekeeper** to enforce policies like "all Prometheus pods must have a `readonly` root filesystem" or "Grafana must only use specific data sources."<br>• **IaC:** The entire stack—AKS, networking, and Helm charts for Prometheus, Loki, etc.—is deployed via **Terraform** or **Pulumi**. |
-| **Log Management and Auditing** | • **Log Collection:** **Fluent Bit** DaemonSet collects cluster/container logs and forwards them to **Grafana Loki**.<br>• **Audit Trail:** Kubernetes API audit logs are a critical data source sent to **Loki**. **Grafana** dashboards visualize access patterns to the observability stack itself.<br>• **Tool Logs:** The logs of Prometheus, Jaeger, Grafana, and the Otel Collector are also stored in **Loki** for self-monitoring. |
-| **Securing Workloads and Applications** | • **Image Security:** Scan Helm charts for **Prometheus**, **Grafana**, `loki-distributed`, etc., in CI/CD using **Trivy** before deployment.<br>• **Runtime Security:** Configure **Falco** rules to alert on suspicious activity within observability pods (e.g., shell execution in a Prometheus container).<br>• **Secrets Management:** Use **HashiCorp Vault** (via CSI Driver) to manage secrets for Grafana data sources, Loki/Prometheus external labels, and Jaeger storage configurations. |
-| **Identity and Access Management (IAM)** | • **Cluster Access:** **Azure AD Integration** authenticates users. **Kubernetes RBAC** controls who can access namespaces for the observability tools (e.g., `get pods -n monitoring`).<br>• **Application Access:** **Grafana Authentication** is configured to use Azure AD OAuth or another provider to control user access to dashboards and data.<br>• **Tool-to-Tool Auth:** Prometheus, Loki, and Jaeger are configured with basic auth or TLS for components like the Otel Collector to write data, managed via **Vault** or Kubernetes secrets. |
+| **Data Protection - Data Encryption** | • **In Transit:** **Istio** or **Linkerd** service mesh provides mutual TLS (mTLS) for all traffic between Otel Collectors, Prometheus, and other components. **cert-manager** automates TLS certificates for Grafana's HTTPS ingress.<br>• **At Rest:** Relies on **Azure Disk Encryption** for PersisentVolumes holding Prometheus metrics, Loki logs, and Jaeger traces. |
+| **Secure Infrastructure and Architecture** | • **Network Policies:** **Calico** or **Cilium** policies are critical to restrict traffic. Example: Only allow Otel Collectors to talk to Prometheus' remote write endpoint, and only allow Grafana to query Prometheus/Loki.<br>• **Policy Enforcement:** Use **OPA/Gatekeeper** to enforce policies like "all Prometheus pods must have a 'readonly' root filesystem" or "Grafana must only use specific image registries."<br>• **Isolation:** Deploy the observability stack to a dedicated namespace (e.g., `monitoring`) with strict RBAC limits. |
+| **Log Management and Auditing** | • **Collection:** **Fluent Bit** DaemonSet collects node/container logs and forwards them to **Grafana Loki**.<br>• **Audit Trail:** Kubernetes API server audit logs are a critical source, also ingested by Fluent Bit and sent to Loki for secure storage and querying. This provides a record of who accessed the observability stack itself.<br>• **Platform Logs:** Azure platform logs (e.g., AKS cluster operations) can be exported to the OSS stack via Azure Monitor Managed Service for Prometheus. |
+| **Securing Workloads and Applications** | • **Image Security:** Scan all images (Grafana, Prometheus, Loki, etc.) in CI/CD using **Trivy** before deployment to AKS.<br>• **Runtime Security:** **Falco** rules can detect suspicious activity within the observability namespace, such as a shell spawned in a Prometheus pod.<br>• **Secrets Management:** Use **HashiCorp Vault** with the CSI Driver to securely provide credentials to Grafana for data sources, or to application pods needing to export metrics. |
+| **Identity and Access Management (IAM)** | • **Cluster Access:** **Azure AD Integration** is used for engineers to authenticate with `kubectl` to view observability pods.<br>• **Application Access:** **Grafana Authentication** is configured to use OAuth2 (e.g., with Azure AD, GitHub) to control user access to dashboards and data. Loki and Prometheus are configured with Grafana for data source access, not directly by users.<br>• **Component Authentication:** Prometheus and scrape targets can be secured using mutual TLS or basic auth configured via the Otel Collector and Prometheus configuration. |
 
 ---
 
-### **Direct Tool-to-Security Mapping**
+### **Key Security Configurations for Your Stack:**
 
-| OSS Tool | Primary Security Considerations in AKS |
-| :--- | :--- |
-| **OpenTelemetry Collector** | • Secure connection (mTLS/TLS) to backends (Prometheus, Loki, Jaeger).<br>• Configuration of sensitive processors (e.g., `filter`). |
-| **Prometheus** | • Enable authentication (e.g., basic auth) for the API and remote write endpoints.<br>• Restrict access to its UI via network policies and ingress rules.<br>• Secure persistent volume for time-series data. |
-| **Grafana Loki** | • Configure object storage (e.g., Azure Blob) with managed identities for data.<br>• Enable authentication for the write API (used by collectors) and read API (used by Grafana). |
-| **Jaeger** | • Secure access to the UI and collector endpoints via ingress and network policies.<br>• Configure secure connections to its storage backend (e.g., Elasticsearch, Cassandra). |
-| **Grafana** | • **Primary IAM Gatekeeper:** Set up Azure AD OAuth, SAML, or LDAP integration.<br>• Configure datasource permissions to limit which users can query which data.<br>• Secure the admin credentials and avoid storing secrets in plaintext in dashboards. |
+*   **Grafana:**
+    *   Secure the `/admin` endpoints.
+    *   Use strong external authentication (OAuth2/OIDC with Azure AD).
+    *   Configure data source permissions carefully to avoid privilege escalation.
+*   **Prometheus:**
+    *   Enable the `web.enable-admin-api` flag only if necessary and secure it.
+    *   Use `scrape_configs` with `tls_config` and `authorization` headers for secure scraping.
+    *   Configure Prometheus' remote write authentication for Otel Collector.
+*   **Loki:**
+    *   Configure `auth_enabled: true` in multi-tenant mode.
+    *   Use the Grafana Auth Proxy pattern to manage access, avoiding direct user access to the Loki API.
+*   **Jaeger:**
+    *   As a headless service (no UI), its API must be protected by network policies, only allowing queries from Grafana or other authorized services.
+*   **Otel Collector:**
+    *   Secure its metrics and traces endpoints using the `basicauth` extension or by receiving data only over a mTLS-secured connection from the service mesh.
