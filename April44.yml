@@ -1,33 +1,94 @@
-@startuml testdiag
-!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+@startuml Observability_AKS_C4_L3_Enhanced
+!includeurl https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
 LAYOUT_WITH_LEGEND()
 
-title DEV Observability Platform – C4 L2 (Container View)
+title <color:#0078D4>DEV Observability Platform – Component View (L3)</color>\n<size:12></size>
 
-Person(user, "Developer / SRE", "Uses dashboards via Azure AD SSO")
+skinparam backgroundColor #F8F9FA
+skinparam shadowing true
+skinparam rectangleFontColor white
+skinparam arrowColor #444444
+skinparam arrowFontColor #222222
+skinparam arrowThickness 2
+skinparam arrowFontSize 11
 
-System_Boundary(obs, "Dedicated AKS Cluster") {
-    Container(grafana, "Grafana", "Web UI", "Dashboards & visualization")
-    Container(otel, "OTel Collector", "Go Service", "Collects & routes telemetry")
-    Container(prometheus, "Prometheus", "TSDB", "Stores metrics")
-    Container(loki, "Loki", "Log DB", "Stores logs")
-    Container(jaeger, "Jaeger", "Tracing Backend", "Stores traces")
-    Container(ingress, "NGINX Ingress", "K8s Ingress", "Routes incoming traffic")
+' =========================
+' GRAFANA POD
+' =========================
+package "Grafana Pod" #1565C0 {
+  Component(gf_core, "Grafana Core", "Dashboards, Alerts")
+  Component(gf_ds, "Data Sources", "Prometheus, Loki, Jaeger")
+  Component(gf_alert, "Alerting Engine", "Rules & Notifications")
+  Component(gf_auth, "OAuth2 Proxy", "Azure AD SSO")
+  Component(gf_cfg, "Config Provider", "Dashboards via GitOps")
 }
 
-System_Ext(nonprod, "Non-Prod AKS (DEV + FT)", "Kubernetes", "Telemetry sources")
-System_Ext(blob, "Azure Blob Storage", "Object Storage", "Long-term retention")
-System_Ext(aad, "Azure AD", "Identity Provider", "SSO authentication")
+Rel(dev, gf_auth, "HTTPS / SSO")
+Rel(gf_auth, gf_core, "Auth Tokens")
+Rel(gf_core, gf_ds, "Queries")
+Rel(gf_core, gf_alert, "Executes Alerts")
+Rel(gf_cfg, gf_core, "Provision Config")
 
-Rel(nonprod, ingress, "Send telemetry", "OTLP/gRPC")
-Rel(ingress, otel, "Forward traffic")
-Rel(otel, prometheus, "Send metrics")
-Rel(otel, loki, "Send logs")
-Rel(otel, jaeger, "Send traces")
-Rel(prometheus, blob, "Export snapshots")
-Rel(loki, blob, "Export logs")
-Rel(user, grafana, "Access dashboards", "HTTPS")
-Rel(grafana, aad, "Authenticate", "OAuth2/OIDC")
+' =========================
+' OTEL COLLECTOR
+' =========================
+package "OTel Collector Pod" #2E7D32 {
+  Component(otel_rcv, "Receivers", "OTLP, Prometheus, Jaeger")
+  Component(otel_proc, "Processors", "Batch, Resource, Transform")
+  Component(otel_exp, "Exporters", "Prometheus, Loki, Jaeger, Azure Monitor")
+}
+
+Rel(ingress, otel_rcv, "OTLP gRPC/HTTP")
+Rel(otel_rcv, otel_proc, "Forward Telemetry")
+Rel(otel_proc, otel_exp, "Processed Export")
+
+' =========================
+' PROMETHEUS + THANOS
+' =========================
+package "Prometheus + Thanos" #F57C00 {
+  Component(prom_srv, "Prometheus Server", "Scrapes Metrics")
+  Component(prom_sd, "Service Discovery", "K8s Targets")
+  Component(thanos_side, "Thanos Sidecar", "Upload to Blob")
+  Component(thanos_query, "Thanos Query", "Long-term Queries")
+}
+
+Rel(otel_exp, prom_srv, "Remote Write")
+Rel(prom_srv, thanos_side, "Upload Blocks")
+Rel(thanos_side, blob, "Store Metrics")
+Rel(thanos_query, prom_srv, "Federated Queries")
+
+' =========================
+' LOKI
+' =========================
+package "Loki" #00838F {
+  Component(loki_dist, "Distributor", "Receives Logs")
+  Component(loki_ing, "Ingester", "Stores Chunks")
+  Component(loki_q, "Querier", "Executes LogQL")
+  Component(loki_idx, "Index Gateway", "Metadata Index")
+}
+
+Rel(otel_exp, loki_dist, "Push Logs")
+Rel(loki_dist, loki_ing, "Forward Logs")
+Rel(loki_ing, blob, "Store Chunks")
+Rel(loki_q, loki_idx, "Index Lookups")
+Rel(gf_ds, loki_q, "Log Queries")
+
+' =========================
+' JAEGER
+' =========================
+package "Jaeger" #6A1B9A {
+  Component(jaeger_col, "Collector", "Receives Spans")
+  Component(jaeger_ing, "Ingester", "Stores Spans")
+  Component(jaeger_q, "Query Service", "Trace Query API")
+  Component(jaeger_ui, "Jaeger UI", "Optional UI Access")
+}
+
+Rel(otel_exp, jaeger_col, "Push Spans")
+Rel(jaeger_col, jaeger_ing, "Process Spans")
+Rel(jaeger_ing, blob, "Persist Spans")
+Rel(jaeger_q, jaeger_ing, "Trace Lookup")
+Rel(gf_ds, jaeger_q, "Trace Queries")
+Rel(dev, jaeger_ui, "Optional Access")
 
 SHOW_LEGEND()
 @enduml
