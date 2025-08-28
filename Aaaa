@@ -1,11 +1,15 @@
-2. Operational Complexity and Management
+Of course. Here is the security mapping presented in a wiki-friendly table format.
 
-Significant Reduction in Management Overhead: Operational focus shifts from infrastructure maintenance (managing VMs, OS patching) to application deployment and lifecycle management.
+### **Security Framework for Dedicated AKS Hosting**
 
-Declarative and Version-Controlled Configuration: The entire stack is defined as code using Kustomize or Helm charts. This enables atomic, predictable deployments and rollbacks, ensuring consistency across environments.
+This table outlines the shared responsibility model for securing an Open-Source Observability stack on a dedicated Azure Kubernetes Service (AKS) cluster.
 
-Unified Management Plane: All observability components are managed through the unified Kubernetes API (kubectl) and can be integrated into GitOps workflows (e.g., FluxCD, ArgoCD), providing a single, consistent control plane.
+| Security Component | Implementation in Dedicated AKS | Azure-Managed Responsibilities | Customer-Managed Responsibilities |
+| :--- | :--- | :--- | :--- |
+| **Data Protection & Encryption** | **Data at Rest:** Azure Disk Encryption (ADE) with SSE/CMK, Encrypted Etcd.<br>**Data in Transit:** Service Mesh (e.g., Linkerd, Istio) for mTLS, TLS termination at Ingress, Encrypted API Server communication. | Provides encryption for Managed Disks and Etcd. Manages encryption keys for control plane. | Configuring Customer-Managed Keys (CMK). Implementing and managing a service mesh. Managing TLS certificates for ingress. |
+| **Secure Infrastructure & Architecture** | Hardened node OS, Managed control plane, Cluster VNet integration, Network Policies. | Maintains and patches the host OS and control plane components. Provides secure underlying hypervisor and physical infrastructure. | Configuring network policies (Calico/Azure). Designing and securing the cluster VNet. Deploying a private cluster. Configuring node pools. |
+| **Logging & Auditing** | Azure Monitor for Containers, Log Analytics Workspace, Kubernetes Audit Logs, Azure Sentinel (SIEM). | Collects and aggregates control plane logs and metrics. Provides the pipeline and storage infrastructure. | Configuring log retention policies. Creating custom alerts and dashboards. Investigating alerts and performing threat hunting. |
+| **Workload & Application Security** | Pod Security Standards (PSS), Azure Container Registry (ACR) vulnerability scanning, Microsoft Defender for Containers, Azure Key Vault CSI Driver. | Scans images in ACR for vulnerabilities. Provides threat detection signals for nodes. | Enforcing Pod Security Admission (PSA). Remediating vulnerabilities found in images. Investigating runtime alerts. Integrating Key Vault with workloads. |
+| **Identity & Access Management (IAM)** | Azure AD Integration, Kubernetes RBAC, Azure RBAC, Managed Identities, Azure Workload Identity. | Provides Azure AD service and manages user identities. Provides Managed Identity infrastructure. | Configuring Azure AD integration. Defining Kubernetes RBAC roles and bindings. Assigning Azure RBAC roles for cluster management. Configuring workload identities. |
 
-Automated Infrastructure Management: The underlying node OS security patching, scaling, and cluster upgrades are managed automatically by Azure Kubernetes Service (AKS), reducing the team's operational burden.
-
-Simplified Architecture: This approach presents a single, consolidated observability data plane to manage, which is operationally simpler than managing a separate observability sidecar per application cluster (as in Option B).
+**Key:** **SSE** = Storage Service Encryption, **CMK** = Customer-Managed Keys, **mTLS** = Mutual TLS, **VNet** = Virtual Network, **SIEM** = Security Information and Event Management.
