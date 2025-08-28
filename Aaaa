@@ -1,97 +1,10 @@
-# Infrastructure as Code (IAC) - Observability Stack Components
-
-This document outlines the detailed components of an observability stack deployed using **Helm** and **Kustomize** for Infrastructure as Code management.
-
-## 🔹 Grafana Pod
-
-The Grafana pod serves as the primary visualization and alerting interface for the observability stack.
-
-### Core Components
-- **Grafana Core** – Handles dashboard rendering and serves as the alert manager interface
-- **Data Source Plugins** – Provides integrations with:
-  - Prometheus (metrics)
-  - Loki (logs) 
-  - Jaeger (distributed tracing)
-- **Alerting Engine** – Sends notifications to external channels:
-  - Slack
-  - Microsoft Teams
-  - PagerDuty
-- **OAuth2 Proxy Sidecar** – Manages Single Sign-On (SSO) authentication via Azure Active Directory
-- **Config Provider** – Dynamically loads dashboards and data sources from GitOps repositories using Helm charts and ConfigMaps
-
-## 🔹 OpenTelemetry (OTel) Collector Pod
-
-The OTel Collector acts as a central hub for telemetry data processing and routing.
-
-### Receivers
-- **OTLP (OpenTelemetry Protocol)** – Accepts telemetry data via gRPC and HTTP protocols
-- **Prometheus Receiver** – Scrapes metrics from Prometheus-compatible endpoints
-- **Jaeger Receiver** – Ingests distributed tracing data in Jaeger format
-
-### Processors
-- **Batch Processor** – Optimizes export throughput by batching telemetry data
-- **Resource Processor** – Enriches telemetry data with Kubernetes metadata (pod names, namespaces, labels)
-- **Transform Processor** – Performs data manipulation:
-  - Renames metric labels
-  - Redacts sensitive fields
-  - Applies data normalization rules
-
-### Exporters
-- **Prometheus Remote Write** – Exports metrics to Prometheus storage
-- **Loki Push API** – Sends log data to Loki for storage and querying
-- **Jaeger gRPC** – Forwards trace data to Jaeger backend
-- **Azure Monitor** (optional) – Integrates with Azure's native monitoring service
-
-## 🔹 Prometheus + Thanos
-
-Prometheus provides metrics collection and storage, enhanced with Thanos for long-term retention and querying.
-
-### Components
-- **Prometheus Server** – Scrapes metrics from OTel Collector and application endpoints
-- **Service Discovery** – Automatically discovers targets via Kubernetes API integration
-- **Thanos Sidecar** – Uploads Prometheus data blocks to Azure Blob Storage for long-term retention
-- **Query Layer** – Enables efficient querying across short-term (Prometheus) and long-term (Thanos) data stores
-
-## 🔹 Loki
-
-Loki provides centralized log aggregation and querying capabilities.
-
-### Architecture Components
-- **Distributor** – Receives incoming log streams and distributes them across ingestors
-- **Ingester** – Processes and writes log chunks to Azure Blob Storage
-- **Querier** – Handles log query requests and retrieves data from storage
-- **Index Gateway** – Manages log metadata and indexing for efficient querying
-
-## 🔹 Jaeger
-
-Jaeger handles distributed tracing for microservices observability.
-
-### Core Services
-- **Collector** – Receives trace spans from OpenTelemetry Collector
-- **Ingester** – Processes and writes span data to Blob Storage or database backend
-- **Query Service** – Provides trace lookup capabilities for Grafana integration
-- **UI (optional)** – Native Jaeger interface (can be embedded or hidden behind Grafana)
-
-## 🔹 Ingress Controller
-
-The ingress controller manages external access and routing to observability services.
-
-### Configuration
-- **Ingress Rules** – Defines routing for:
-  - OTLP endpoint: `otlp.monitoring.internal` (internal telemetry ingestion)
-  - Grafana endpoint: `grafana.monitoring.company.com` (external dashboard access)
-- **TLS/mTLS Termination** – Handles SSL certificate management integrated with Azure Key Vault CSI driver for secure certificate storage and rotation
-
-## IAC Deployment Strategy
-
-### Helm Charts
-- **Package Management** – Uses Helm for templating and versioning of Kubernetes manifests
-- **Value Overrides** – Environment-specific configurations managed through values files
-- **Dependency Management** – Coordinates deployment order and dependencies between services
-
-### Kustomize
-- **Configuration Management** – Handles environment-specific customizations without duplicating base manifests
-- **Patch Management** – Applies targeted modifications for different deployment environments
-- **Resource Composition** – Combines base configurations with overlays for staging, production, and development environments
-
-This architecture provides a comprehensive, cloud-native observability solution with proper separation of concerns and scalable data processing capabilities.
+| Cost Category                | Details (Assumptions)                                                                          | Monthly (\$) |
+| ---------------------------- | ---------------------------------------------------------------------------------------------- | ------------ |
+| **Compute (VM Nodes)**       | 2 × D4s\_v3 @ \$138.24                                                                         | **276.48**   |
+| **Node OS Disks**            | 2 × 128 GiB Premium SSD (\~\$19.20 each)                                                       | 38.40        |
+| **Blob Storage**             | 1 TB for logs/metrics/traces                                                                   | 18.40        |
+| **Load Balancer (Ingress)**  | 1 Standard LB                                                                                  | 18.00        |
+| **Azure Key Vault**          | 1 instance (\~50 secrets/ops)                                                                  | 10.00        |
+| **Azure Container Registry** | Basic Tier (image pulls)                                                                       | 5.00         |
+| **Other OSS Components**     | Grafana, Loki, Prometheus, Jaeger, OTel (no extra infra costs, only consume cluster resources) | 0.00         |
+| **Total (Estimated)**        |                                                                                                | **366.28**   |
