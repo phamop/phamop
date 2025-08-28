@@ -1,95 +1,59 @@
 = Technical Non-Functional Requirements (NFRs) =
-This section defines the **technical non-functional requirements** for the Observability Platform, implemented using **Kustomize** and **Helm**.
+This section defines the technical non-functional requirements for the Observability Platform, implemented using **Kustomize** and **Helm**.
 
-== Summary Table ==
 {| class="wikitable" style="width:100%; text-align:left;"
-! Requirement Category !! Technical Target / Configuration
+! Requirement Category !! Target / Policy !! Technical Implementation
 |-
-| Availability || 99.9% uptime; multi-AZ AKS nodes; PodDisruptionBudgets + anti-affinity
+| Availability || 99.9% uptime for ingestion and Grafana UI || 
+* AKS cluster deployed across Availability Zones with system + workload node pools  
+* PodDisruptionBudgets for Grafana, OTel Collector  
+* PodAntiAffinity rules for HA workloads  
+* Resource requests/limits defined in Helm values  
+* HPA enabled for Grafana + OTel Collector  
 |-
-| Security || Azure AD SSO, RBAC, mTLS/TLS enforced, SSE/CMK for Blob Storage
+| Security || Enforce identity, access, and encryption standards || 
+* AKS deployed in dedicated VNet  
+* Calico `NetworkPolicy` for pod-to-pod isolation  
+* Restrict ingress to corporate IPs  
+* Azure AD integrated for AKS + Grafana (OAuth2 SSO)  
+* Kubernetes RBAC + Azure AD groups for Grafana permissions  
+* TLS 1.3 enforced at ingress and mesh/service traffic  
+* Blob storage encrypted with SSE/CMK  
 |-
-| Performance || <5s query response; tuned Prometheus/Loki; dedicated node pools
+| Performance || <5s query latency for hot data (<30d) || 
+* Dedicated memory-optimized node pool for Prometheus  
+* Prometheus: `retention.time=30d`, `min-block-duration=2h`  
+* Loki: `chunk_target_size=1MB`, `retention_period=30d`  
+* OTel Collector batching: `batch.timeout=5s`, `send_batch_size=512`  
 |-
-| Retention || 30d hot data (Prometheus/Loki/Jaeger); 90d cold archive in Blob
+| Retention || 30 days hot storage; 90 days total with cold archive || 
+* Prometheus Helm: `server.retention=30d`  
+* Loki Helm: `chunk_store_config.max_look_back_period=30d`  
+* Jaeger: backend TTL=30d, traces exported to Blob  
+* Azure Blob Lifecycle Policy → archive after 30d, expire after 90d  
 |-
-| Operability || Prometheus self-monitoring, Loki log aggregation, Teams/Slack alerting (GitOps optional future)
+| Operability || Self-monitoring, proactive alerting, centralized logs (GitOps future option) || 
+* Prometheus scrapes observability components (`/metrics`)  
+* Alertmanager routes alerts to Teams/Slack  
+* Loki aggregates cluster + workload logs  
+* GitOps (ArgoCD/FluxCD) planned for future declarative rollouts  
 |-
-| Cost || Spot node pools, autoscaling, tiered Blob storage, Azure Budgets
+| Cost || Optimize spend with autoscaling + storage tiering || 
+* Spot Node Pools for non-critical workloads (e.g., Loki compactor)  
+* Cluster Autoscaler (min/max node pools)  
+* Azure Blob tiered storage: Hot → Cool → Archive  
+* Azure Budgets + Cost Alerts enabled at RG level  
 |-
-| Scalability || HPA, VPA, Cluster Autoscaler, federation via Azure Arc (future)
+| Scalability || Autoscale workloads and clusters; federation planned || 
+* HPA for Grafana, OTel Collector (CPU/mem/custom metrics)  
+* VPA for Prometheus + Loki StatefulSets (recommendation mode)  
+* Cluster Autoscaler for AKS  
+* Future: Multi-cluster federation via Azure Arc  
 |-
-| Compliance & Auditability || CIS hardening, OPA/Azure Policy, immutable audit logs (WORM)
+| Compliance & Auditability || Meet CIS benchmarks; enforce policies; retain audit logs || 
+* CIS Kubernetes + AKS baseline policies applied  
+* AKS control plane + Key Vault + AAD logs → centralized in Loki  
+* Azure Blob immutable WORM policies for audit logs  
+* OPA Gatekeeper + Azure Policy enforce namespace/workload compliance  
+* Azure AD Conditional Access + PIM for JIT admin access  
 |}
-
-== Availability ==
-* **Target:** 99.9% platform uptime.  
-* **Technical Implementation:**
-** Deploy AKS cluster across Availability Zones with system + workload node pools.  
-** Configure `PodDisruptionBudgets` for Grafana and OTel Collector.  
-** Apply `podAntiAffinity` rules to avoid single-node failures.  
-** Resource requests/limits defined in Helm values.  
-** Horizontal Pod Autoscaler (HPA) for Grafana + OTel Collector with CPU/memory thresholds.  
-
-== Security ==
-* **Technical Implementation:**
-** '''Network Security:'''  
-*** Deploy AKS in a dedicated VNet.  
-*** Use Application Security Groups and `NetworkPolicy` (Calico) for pod-to-pod isolation.  
-*** Restrict ingress to corporate IP ranges.  
-** '''Authentication:'''  
-*** Azure AD integrated with AKS via Managed Identities.  
-*** Grafana configured with Azure AD OAuth2 SSO.  
-** '''Authorization:'''  
-*** Kubernetes RBAC scoped to service accounts.  
-*** Grafana data source + dashboard access mapped to Azure AD groups.  
-** '''Encryption:'''  
-*** TLS 1.3 enforced at ingress and service-to-service traffic (via service mesh or ingress controller).  
-*** Data at rest encrypted in Azure Blob with **Server-Side Encryption (SSE/CMK)**.  
-
-== Performance ==
-* **Target:** <5s query latency for Grafana dashboards on hot data (<30 days).  
-* **Technical Implementation:**
-** Dedicated node pool for Prometheus (memory-optimized).  
-** Prometheus tuning: `storage.tsdb.retention.time=30d`, `storage.tsdb.min-block-duration=2h`.  
-** Loki tuning: `chunk_target_size=1MB`, `table_manager.retention_period=30d`.  
-** OTel Collector: batching processor configured (`batch.timeout=5s`, `batch.send_batch_size=512`).  
-
-== Retention ==
-* **Policy:**  
-** 30 days hot retention in Prometheus, Loki, Jaeger.  
-** 90 days total retention using Azure Blob (archive after 30 days).  
-* **Technical Implementation:**  
-** Prometheus Helm values: `server.retention=30d`.  
-** Loki Helm values: `chunk_store_config.max_look_back_period=30d`.  
-** Jaeger configured with backend storage TTL = 30d; traces exported to Blob.  
-** Blob Lifecycle policies configured for cold storage + auto-expiry after 90 days.  
-
-== Operability ==
-* **Technical Implementation:**
-** Monitoring: Prometheus scrapes observability stack components (`/metrics` endpoints).  
-** Alerting: Prometheus Alertmanager routes alerts to Microsoft Teams/Slack channels.  
-** Logging: Loki aggregates AKS system + workload logs.  
-** GitOps (Future): Optional integration with ArgoCD/FluxCD for declarative rollouts once stable.  
-
-== Cost ==
-* **Technical Implementation:**
-** Azure Spot Node Pools for non-critical workloads (e.g., Loki compactor).  
-** Cluster Autoscaler enabled with min/max node pool sizes.  
-** Tiered storage: Azure Blob (Hot → Cool → Archive) for log/trace data.  
-** Azure Budgets and Cost Alerts configured per Resource Group.  
-
-== Scalability ==
-* **Technical Implementation:**
-** HPA enabled for Grafana + OTel Collector based on CPU/memory and custom metrics.  
-** VPA configured for Prometheus + Loki StatefulSets (recommendation-only mode initially).  
-** Cluster Autoscaler enabled for AKS node pools.  
-** Federation (Future): Azure Arc + multi-cluster observability for cross-region scaling.  
-
-== Compliance & Auditability ==
-* **Technical Implementation:**
-** CIS Kubernetes + Azure AKS Benchmarks applied (baseline security policies).  
-** AKS Audit Logs → Azure Monitor → Loki for centralized analysis.  
-** Azure Key Vault diagnostic logs exported to Blob with immutable WORM policy.  
-** OPA Gatekeeper + Azure Policy enforce workload and namespace compliance.  
-** Azure AD Conditional Access + Privileged Identity Management (PIM) for JIT admin access.  
