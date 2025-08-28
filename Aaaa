@@ -1,23 +1,30 @@
-| Cost Category                | Details (Assumptions)                                                                          | Monthly (\$) |
-| ---------------------------- | ---------------------------------------------------------------------------------------------- | ------------ |
-| **Compute (VM Nodes)**       | 2 × D4s\_v3 @ \$138.24                                                                         | **276.48**   |
-| **Node OS Disks**            | 2 × 128 GiB Premium SSD (\~\$19.20 each)                                                       | 38.40        |
-| **Blob Storage**             | 1 TB for logs/metrics/traces                                                                   | 18.40        |
-| **Load Balancer (Ingress)**  | 1 Standard LB                                                                                  | 18.00        |
-| **Azure Key Vault**          | 1 instance (\~50 secrets/ops)                                                                  | 10.00        |
-| **Azure Container Registry** | Basic Tier (image pulls)                                                                       | 5.00         |
-| **Other OSS Components**     | Grafana, Loki, Prometheus, Jaeger, OTel (no extra infra costs, only consume cluster resources) | 0.00         |
-| **Total (Estimated)**        |                                                                                                | **366.28**   |
+| **Cost Component**                 | **Specifications**                                | **Monthly Cost (CAD)** | **Annual Cost (CAD)** |
+| ---------------------------------- | ------------------------------------------------- | ---------------------- | --------------------- |
+| **Compute Resources**              | 2 × D4s\_v3 VMs (730 hours/month)                 | \$347.48               | \$4,169.76            |
+| **Control Plane**                  | Standard Tier (SLA)                               | \$97.09                | \$1,165.08            |
+| **OS & Storage**                   | 2 × 128 GB Premium SSD OS Disks (P10)             | \$41.60                | \$499.20              |
+| **Networking**                     | Standard Load Balancer, Public IP, minimal egress | \$35.44                | \$425.28              |
+| **Retention Storage**              | 1 TB Hot LRS Blob Storage                         | \$106.13               | \$1,273.56            |
+| **Observability**                  | Existing resource (Log Analytics / shared stack)  | \$0.00                 | \$0.00                |
+| **Azure Key Vault**                | Existing resource                                 | \$0.00                 | \$0.00                |
+| **Azure Container Registry (ACR)** | Existing resource                                 | \$0.00                 | \$0.00                |
+| **Total Estimated Cost**           | —                                                 | **\$627.74**           | **\$7,532.88**        |
 
 
 
-| Cost Category                       | Assumptions & Notes                         | Monthly (CAD) |
-| ----------------------------------- | ------------------------------------------- | ------------- |
-| **Compute (2 × D8s\_v3)**           | 0.52 CAD/hr × 2 × 730 hours                 | **759.20**    |
-| **OS Premium SSD Disks**            | 128 GB each × 2 × 24.20 CAD                 | **48.40**     |
-| **Internal Load Balancer**          | \~0.0162 CAD/hr                             | **11.83**     |
-| **Blob Storage (1 TB)**             | Long-term logs/metrics/traces               | **24.84**     |
-| **Azure Key Vault**                 | Secrets management                          | **13.50**     |
-| **ACR Basic**                       | Container image registry                    | **6.75**      |
-| **OSS Stack (Grafana, Loki, etc.)** | Included within AKS compute (no infra cost) | **0.00**      |
-| **Total Estimated Monthly**         |                                             | **864.52**    |
+
+
+
+
+| **Cost Component**                 | **Specifications**                                  | **Monthly Cost (CAD)** | **Annual Cost (CAD)** |
+| ---------------------------------- | --------------------------------------------------- | ---------------------- | --------------------- |
+| **Compute Resources**              | 2 × D8s\_v3 VMs (730 hours/month)                   | **\$347.48**           | **\$4,169.76**        |
+| **Control Plane**                  | Standard Tier SLA                                   | **\$97.09**            | **\$1,165.08**        |
+| **OS & Storage**                   | 2 × 128 GB Premium SSD OS Disks (P10)               | **\$41.60**            | **\$499.20**          |
+| **Networking**                     | Standard Load Balancer + Public IP + minimal egress | **\$35.44**            | **\$425.28**          |
+| **Retention Storage**              | 1 TB LRS Hot Blob Storage                           | **\$106.13**           | **\$1,273.56**        |
+| **Observability**                  | Existing Log Analytics / Workspace                  | \$0.00                 | \$0.00                |
+| **Azure Key Vault**                | Existing Shared Resource                            | \$0.00                 | \$0.00                |
+| **Azure Container Registry (ACR)** | Existing Shared Resource                            | \$0.00                 | \$0.00                |
+| **Total Estimated Cost**           | —                                                   | **\$627.74**           | **\$7,532.88**        |
+
