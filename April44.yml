@@ -15,7 +15,7 @@ System_Boundary(aks_cluster, "Dedicated AKS Cluster - Security Hardened") {
     Container(otel, "OTel Collector", "OpenTelemetry Collector", "Backend Service", "Collects, processes, and routes telemetry data with TLS")
     
     ' === Storage Layer ===
-    Container(prometheus, "Prometheus", "Prometheus", "Time-series Database", "Metrics storage with file-based authentication")
+    Container(mimir, "Mimir", "Grafana Mimir", "Time-series Database", "Horizontally scalable metrics storage with multi-tenancy")
     Container(loki, "Loki", "Loki", "Log Database", "Log aggregation with multi-tenant authentication")
     Container(jaeger, "Jaeger", "Jaeger", "Tracing System", "Distributed tracing with storage plugins")
     
@@ -23,7 +23,7 @@ System_Boundary(aks_cluster, "Dedicated AKS Cluster - Security Hardened") {
     Container(grafana, "Grafana", "Grafana", "Web Application", "Unified dashboard with RBAC and Azure AD integration")
     
     ' === Internal Storage ===
-    ContainerDb(prometheus_db, "Prometheus TSDB", "TSDB", "Local metrics storage (encrypted volumes)")
+    ContainerDb(mimir_storage, "Mimir Storage", "Object Storage", "Distributed metrics storage (encrypted blocks)")
     ContainerDb(loki_db, "Loki Object Storage", "Object Storage", "Local log storage (encrypted)")
     ContainerDb(jaeger_db, "Jaeger Backend", "Elasticsearch/Cassandra", "Trace storage (encrypted at rest)")
     
@@ -33,7 +33,6 @@ System_Boundary(aks_cluster, "Dedicated AKS Cluster - Security Hardened") {
 }
 
 ' === External Systems ===
-'Container(app_pods, "Application Pods", "Various", "Kubernetes Pods", "Source applications with OTLP instrumentation")
 Container(vm_agents, "Non-Prod AKS \n(App pod(DEV + FT))", "Various", "Monitoring Agent", "Infrastructure agents with mTLS")
 ContainerDb(blob_storage, "Azure Blob Storage", "Azure Blob Storage", "Cloud Object Storage", "Long-term encrypted data retention")
 System_Ext(aad, "Azure AD", "Microsoft Entra ID", "Identity Provider", "OIDC provider for SSO authentication")
@@ -46,23 +45,22 @@ Rel(akv, aad, "Authenticates access", "OIDC + RBAC")
 Rel(opa, aks_cluster, "Enforces policies", "Admission control")
 
 ' === Data Flow with Security ===
-'Rel(app_pods, ingress, "Sends OTLP/gRPC", "mTLS encrypted")
 Rel(vm_agents, ingress, "Sends OTLP/gRPC", "mTLS encrypted")
 Rel(ingress, otel, "Routes traffic", "HTTPS with WAF")
-Rel(otel, prometheus, "Sends metrics", "HTTPS with auth")
+Rel(otel, mimir, "Sends metrics", "Remote Write API with auth")
 Rel(otel, loki, "Sends logs", "HTTPS with auth")
 Rel(otel, jaeger, "Sends traces", "HTTPS with auth")
 
 ' === Query Relationships ===
-Rel(grafana, prometheus, "Queries metrics", "HTTPS with bearer token")
+Rel(grafana, mimir, "Queries metrics", "PromQL over HTTPS with bearer token")
 Rel(grafana, loki, "Queries logs", "HTTPS with bearer token")
 Rel(grafana, jaeger, "Queries traces", "HTTPS with bearer token")
 
 ' === Storage Relationships ===
-Rel(prometheus, prometheus_db, "Stores metrics", "Encrypted volume")
+Rel(mimir, mimir_storage, "Stores TSDB blocks", "Encrypted storage")
+Rel(mimir, blob_storage, "Long-term storage", "Azure SAS token")
 Rel(loki, loki_db, "Stores logs", "Encrypted storage")
 Rel(jaeger, jaeger_db, "Stores traces", "Encrypted connection")
-Rel(prometheus, blob_storage, "Exports metrics", "Azure SAS token")
 Rel(loki, blob_storage, "Exports logs", "Azure SAS token")
 
 ' === User Access ===
@@ -71,7 +69,7 @@ Rel(user, aad, "Authenticates", "OIDC redirect")
 Rel(aad, oauth2_proxy, "Issues tokens", "OIDC callback")
 
 ' === Secrets Management ===
-Rel(akv, prometheus, "Provides credentials", "API/CSI driver")
+Rel(akv, mimir, "Provides credentials", "API/CSI driver")
 Rel(akv, loki, "Provides credentials", "API/CSI driver")
 Rel(akv, jaeger, "Provides credentials", "API/CSI driver")
 Rel(akv, grafana, "Provides secrets", "API/CSI driver")
@@ -79,9 +77,9 @@ Rel(akv, grafana, "Provides secrets", "API/CSI driver")
 ' === Layout ===
 Lay_D(ingress, oauth2_proxy)
 Lay_R(oauth2_proxy, otel)
-Lay_D(otel, prometheus)
-Lay_R(prometheus, loki)
+Lay_D(otel, mimir)
+Lay_R(mimir, loki)
 Lay_R(loki, jaeger)
-Lay_D(prometheus, grafana)
+Lay_D(mimir, grafana)
 
 @enduml
