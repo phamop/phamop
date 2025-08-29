@@ -1,140 +1,122 @@
-@startuml Observability_AKS_C4_L3_Dedicated
-!includeurl https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
-LAYOUT_TOP_DOWN()
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
 
-title <color:#0078D4>Observability AKS Platform – Component View (L3)</color>\n<size:12>Dedicated Observability AKS Cluster managing FT & DEV telemetry</size>
+title Dedicated Observability Platform with OSS Security Stack - Component View (L3)
 
-' =========================
-' GLOBAL STYLE
-' =========================
-skinparam defaultFontColor #000000
-skinparam rectangleFontColor #000000
-skinparam arrowFontColor #000000
-skinparam noteFontColor #000000
-skinparam shadowing true
-skinparam arrowThickness 2
-skinparam arrowColor #444444
-skinparam backgroundColor #FFFFFF
+Person(user, "Developer/\nSRE", "Corporate user accessing observability dashboards")
 
-' =========================
-' EXTERNAL ACTORS
-' =========================
-Person(dev, "Developer/SRE", "Monitors both DEV & FT") #B3E5FC/Black
-System_Ext(ingress, "Azure Load Balancer / Ingress", "External traffic entry point") #FFE0B2/Black
-System_Ext(blob, "Azure Blob Storage", "Long-term storage") #DDDDDD/Black
-
-' =========================
-' DEV + FT CLUSTERS (Telemetry Sources)
-' =========================
-Container_Boundary(aks_sources, "FT & DEV AKS Clusters (Telemetry Sources)") #F1F8E9 {
-
-  Container_Boundary(aks_dev, "AKS DEV Cluster") #E8F5E9 {
-    Component(dev_apps, "DEV Applications", "Microservices, APIs") #C8E6C9
-    Component(dev_kube, "Kubernetes Components", "kubelet, kube-proxy, API server") #C8E6C9
-    Component(dev_nodes, "Node Metrics", "CPU, Memory, Disk, Network") #C8E6C9
-    Component(dev_otel_agent, "OTel Agent", "DaemonSet collector") #A5D6A7
-  }
-
-  Container_Boundary(aks_ft, "AKS FT Cluster") #E3F2FD {
-    Component(ft_apps, "FT Applications", "Test Services, Load Tests") #BBDEFB
-    Component(ft_kube, "Kubernetes Components", "kubelet, kube-proxy, API server") #BBDEFB
-    Component(ft_nodes, "Node Metrics", "CPU, Memory, Disk, Network") #BBDEFB
-    Component(ft_otel_agent, "OTel Agent", "DaemonSet collector") #90CAF9
-  }
+System_Boundary(aks_cluster, "Dedicated AKS Cluster - Security Hardened") {
+    
+    ' === Security Layer ===
+    Container_Boundary(security_layer, "Security & Gateway Layer") {
+        Component(oauth2_proxy, "OAuth2 Proxy", "OAuth2 Proxy", "Handles authentication and authorization with OIDC")
+        Component(ingress, "NGINX Ingress", "NGINX + ModSecurity", "Routes traffic with WAF protection")
+        Component(cert_manager, "Cert Manager", "cert-manager", "Automated TLS certificate management with AKV integration")
+        Component(opa, "OPA Gatekeeper", "Open Policy Agent", "Enforces security policies and compliance")
+    }
+    
+    ' === Processing Layer ===
+    Container_Boundary(processing_layer, "Telemetry Processing Layer") {
+        Component(otel_rcv, "OTel Receivers", "OTLP, Prometheus, K8s", "Receives telemetry from sources")
+        Component(otel_proc, "OTel Processors", "Batch, Resource, Transform", "Processes and enriches telemetry")
+        Component(otel_exp, "OTel Exporters", "Remote Write, HTTP Push", "Exports to storage backends")
+    }
+    
+    ' === Mimir Stack ===
+    Container_Boundary(mimir_stack, "Mimir Metrics Platform") {
+        Component(mimir_dist, "Mimir Distributor", "Load Balancer", "Receives metrics via remote write with authentication")
+        Component(mimir_ing, "Mimir Ingester", "TSDB Engine", "Stores recent metrics in memory and creates blocks")
+        Component(mimir_query_fe, "Mimir Query Frontend", "Query Coordinator", "Handles PromQL queries with caching")
+        Component(mimir_querier, "Mimir Querier", "Query Engine", "Executes queries against ingester and store-gateway")
+        Component(mimir_store, "Mimir Store Gateway", "Block Reader", "Provides access to long-term storage blocks")
+        Component(mimir_compact, "Mimir Compactor", "Block Manager", "Compacts and manages TSDB blocks lifecycle")
+    }
+    
+    ' === Storage Layer ===
+    Container_Boundary(storage_layer, "Log & Trace Storage") {
+        Component(loki_dist, "Loki Distributor", "Log Router", "Receives logs with multi-tenant authentication")
+        Component(loki_ing, "Loki Ingester", "Log Storage", "Stores log chunks with encryption")
+        Component(loki_query, "Loki Querier", "LogQL Engine", "Executes LogQL queries")
+        Component(jaeger_col, "Jaeger Collector", "Span Receiver", "Receives traces with storage plugins")
+        Component(jaeger_query, "Jaeger Query", "Trace API", "Provides trace query interface")
+    }
+    
+    ' === Visualization Layer ===
+    Container_Boundary(viz_layer, "Visualization & Alerting") {
+        Component(grafana_core, "Grafana Core", "Dashboard Engine", "Unified dashboard with RBAC")
+        Component(grafana_auth, "Grafana Auth", "Azure AD Integration", "SSO authentication and RBAC")
+        Component(grafana_alert, "Grafana Alerting", "Alert Manager", "Alert rules and notifications")
+        Component(grafana_ds, "Data Sources", "Query Adapters", "Connects to Mimir, Loki, Jaeger")
+    }
+    
+    ' === Internal Storage ===
+    Container_Boundary(storage_backends, "Encrypted Storage Backends") {
+        ComponentDb(mimir_blocks, "Mimir Blocks", "TSDB Blocks", "Encrypted metrics storage")
+        ComponentDb(loki_chunks, "Loki Chunks", "Object Storage", "Encrypted log chunks")
+        ComponentDb(jaeger_spans, "Jaeger Backend", "Elasticsearch", "Encrypted trace storage")
+    }
+    
+    ' === Security Components ===
+    Container_Boundary(security_services, "Security Services") {
+        Component(akv, "Azure Key Vault", "EDDV-APP-EIKV01", "Manages secrets, certificates, and keys")
+        Component(akv_csi, "AKV CSI Driver", "Secret Provider", "Mounts secrets as volumes")
+    }
 }
 
-' =========================
-' DEDICATED OBSERVABILITY AKS CLUSTER
-' =========================
-Container_Boundary(obs_aks, "Dedicated Observability AKS Cluster") #FFF3E0 {
+' === External Systems ===
+Container(vm_agents, "Non-Prod AKS\n(DEV + FT Pods)", "OTel Agents", "Source applications with OTLP instrumentation and mTLS")
+ComponentDb(blob_storage, "Azure Blob Storage", "Cloud Storage", "Long-term encrypted data retention")
+System_Ext(aad, "Azure AD", "Microsoft Entra ID", "OIDC provider for SSO authentication")
 
-  ' ---- OTel Collector ----
-  Container_Boundary(otel_collector, "OTel Collector Pod") #FFF9C4 {
-    Component(otel_rcv, "Receivers", "OTLP, Prometheus, Jaeger, K8s") #FFF59D
-    Component(otel_proc, "Processors", "Batch, Resource, Transform, Enrich") #FFF59D
-    Component(otel_exp, "Exporters", "Prometheus, Loki, Jaeger, Azure Monitor") #FFEB3B
-  }
+' === Security Relationships ===
+Rel(user, ingress, "Accesses Grafana", "HTTPS/TLS 1.3")
+Rel(ingress, oauth2_proxy, "Validates auth", "JWT validation")
+Rel(oauth2_proxy, aad, "OIDC auth", "OAuth2/OIDC")
+Rel(cert_manager, akv, "Gets certificates", "mTLS")
+Rel(akv_csi, akv, "Mounts secrets", "API/CSI")
+Rel(opa, aks_cluster, "Enforces policies", "Admission control")
 
-  ' ---- Mimir Stack ----
-  Container_Boundary(mimir_stack, "Mimir") #FBE9E7 {
-    Component(mimir_dist, "Mimir Distributor", "Receives Remote Write") #FFAB91
-    Component(mimir_ing, "Mimir Ingester", "Stores TSDB Blocks") #FF8A65
-    Component(mimir_query, "Mimir Query Frontend", "PromQL Queries") #FF7043
-    Component(mimir_querier, "Mimir Querier", "Executes Queries") #FF6F00
-    Component(mimir_store, "Mimir Store Gateway", "Long-term Storage Access") #FF5722
-    Component(mimir_compact, "Mimir Compactor", "Block Compaction") #E65100
-  }
+' === Data Ingestion Flow ===
+Rel(vm_agents, ingress, "OTLP telemetry", "mTLS encrypted")
+Rel(ingress, otel_rcv, "Routes traffic", "HTTPS/WAF")
+Rel(otel_rcv, otel_proc, "Raw telemetry", "Internal")
+Rel(otel_proc, otel_exp, "Processed data", "Internal")
 
-  ' ---- Loki ----
-  Container_Boundary(loki_stack, "Loki") #E0F7FA {
-    Component(loki_dist, "Distributor", "Receives Logs") #B2EBF2
-    Component(loki_ing, "Ingester", "Stores Chunks") #80DEEA
-    Component(loki_q, "Querier", "Executes LogQL") #4DD0E1
-  }
+' === Mimir Data Flow ===
+Rel(otel_exp, mimir_dist, "Metrics", "Remote Write/HTTPS")
+Rel(mimir_dist, mimir_ing, "Metrics", "gRPC/mTLS")
+Rel(mimir_ing, mimir_blocks, "TSDB blocks", "Encrypted")
+Rel(mimir_compact, mimir_blocks, "Block compaction", "Encrypted")
+Rel(mimir_blocks, blob_storage, "Long-term storage", "Azure SAS")
 
-  ' ---- Jaeger ----
-  Container_Boundary(jaeger_stack, "Jaeger") #F3E5F5 {
-    Component(jaeger_col, "Collector", "Receives Spans") #E1BEE7
-    Component(jaeger_ing, "Ingester", "Stores Spans") #CE93D8
-    Component(jaeger_q, "Query Service", "Trace Query API") #BA68C8
-  }
+' === Query Flow - Mimir ===
+Rel(grafana_ds, mimir_query_fe, "PromQL queries", "HTTPS/Auth")
+Rel(mimir_query_fe, mimir_querier, "Query execution", "gRPC")
+Rel(mimir_querier, mimir_ing, "Recent data", "gRPC")
+Rel(mimir_querier, mimir_store, "Historical data", "gRPC")
+Rel(mimir_store, mimir_blocks, "Block queries", "Encrypted")
 
-  ' ---- Grafana ----
-  Container_Boundary(grafana_pod, "Grafana Pod") #E8EAF6 {
-    Component(gf_core, "Grafana Core", "Dashboards, Alerts") #C5CAE9
-    Component(gf_ds, "Data Sources", "Prometheus, Loki, Jaeger") #9FA8DA
-    Component(gf_alert, "Alerting Engine", "Rules & Notifications") #7986CB
-    Component(gf_auth, "OAuth2 Proxy", "Azure AD SSO") #5C6BC0
-  }
-}
+' === Log & Trace Flow ===
+Rel(otel_exp, loki_dist, "Logs", "HTTP Push/Auth")
+Rel(otel_exp, jaeger_col, "Traces", "OTLP/gRPC")
+Rel(loki_dist, loki_ing, "Log streams", "gRPC")
+Rel(loki_ing, loki_chunks, "Log chunks", "Encrypted")
+Rel(jaeger_col, jaeger_spans, "Span data", "Encrypted")
+Rel(loki_chunks, blob_storage, "Log export", "Azure SAS")
 
-' =========================
-' TELEMETRY FLOWS
-' =========================
+' === Grafana Integration ===
+Rel(oauth2_proxy, grafana_auth, "Auth tokens", "JWT")
+Rel(grafana_auth, grafana_core, "User context", "Internal")
+Rel(grafana_core, grafana_ds, "Data queries", "Internal")
+Rel(grafana_ds, loki_query, "LogQL queries", "HTTPS/Auth")
+Rel(grafana_ds, jaeger_query, "Trace queries", "HTTPS/Auth")
+Rel(grafana_core, grafana_alert, "Alert rules", "Internal")
 
-' DEV cluster signals (green arrows)
-Rel(dev_apps, dev_otel_agent, "📊📜🔍 Telemetry", "OTLP") #388E3C
-Rel(dev_kube, dev_otel_agent, "📊 API Metrics", "HTTP") #388E3C
-Rel(dev_nodes, dev_otel_agent, "📊 Node Metrics", "HTTP") #388E3C
-Rel(dev_otel_agent, otel_rcv, "DEV → Telemetry", "OTLP gRPC") #388E3C
+' === Security Integration ===
+Rel(akv_csi, mimir_dist, "TLS certs", "Volume mount")
+Rel(akv_csi, mimir_ing, "Auth tokens", "Volume mount")
+Rel(akv_csi, loki_dist, "Credentials", "Volume mount")
+Rel(akv_csi, jaeger_col, "DB credentials", "Volume mount")
+Rel(akv_csi, grafana_core, "Secrets", "Volume mount")
 
-' FT cluster signals (blue arrows)
-Rel(ft_apps, ft_otel_agent, "📊📜🔍 Telemetry", "OTLP") #1565C0
-Rel(ft_kube, ft_otel_agent, "📊 API Metrics", "HTTP") #1565C0
-Rel(ft_nodes, ft_otel_agent, "📊 Node Metrics", "HTTP") #1565C0
-Rel(ft_otel_agent, otel_rcv, "FT → Telemetry", "OTLP gRPC") #1565C0
-
-' Ingress telemetry (grey arrows)
-Rel(ingress, otel_rcv, "📜 Ingress Logs", "HTTP") #666666
-
-' Collector → processing → exporters
-Rel(otel_rcv, otel_proc, "Raw telemetry", "Internal") #F57F17
-Rel(otel_proc, otel_exp, "Processed telemetry", "Internal") #F57F17
-Rel(otel_exp, mimir_dist, "📊 Metrics", "Remote Write") #E64A19
-Rel(otel_exp, loki_dist, "📜 Logs", "HTTP Push") #00838F
-Rel(otel_exp, jaeger_col, "🔍 Traces", "OTLP gRPC") #6A1B9A
-
-' Mimir internal flow
-Rel(mimir_dist, mimir_ing, "📊 Metrics", "gRPC") #D84315
-Rel(mimir_ing, blob, "📊 TSDB Blocks", "HTTPS") #D84315
-Rel(mimir_compact, blob, "📊 Compacted Blocks", "HTTPS") #D84315
-Rel(mimir_store, blob, "📊 Long-term Storage", "HTTPS") #D84315
-Rel(mimir_query, mimir_querier, "📊 Query Execution", "gRPC") #D84315
-Rel(mimir_querier, mimir_ing, "📊 Recent Data", "gRPC") #D84315
-Rel(mimir_querier, mimir_store, "📊 Historical Data", "gRPC") #D84315
-
-' Other backends → Blob
-Rel(loki_ing, blob, "📜 Log Chunks", "HTTPS") #006064
-Rel(jaeger_ing, blob, "🔍 Spans", "HTTPS") #4A148C
-
-' Grafana queries
-Rel(dev, gf_auth, "Access Dashboards", "HTTPS/SSO")
-Rel(gf_auth, gf_core, "Auth Tokens")
-Rel(gf_core, gf_ds, "Data Queries")
-Rel(gf_ds, mimir_query, "📊 PromQL Queries")
-Rel(gf_ds, loki_q, "📜 LogQL Queries")
-Rel(gf_ds, jaeger_q, "🔍 Trace Queries")
-Rel(gf_core, gf_alert, "Execute Alerts")
-
-SHOW_LEGEND()
 @enduml
