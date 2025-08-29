@@ -1,131 +1,87 @@
-@startuml Observability_AKS_C4_L3_Dedicated
-!includeurl https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
-LAYOUT_TOP_DOWN()
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
 
-title <color:#0078D4>Observability AKS Platform – Component View (L3)</color>\n<size:12>Dedicated Observability AKS Cluster managing FT & DEV telemetry</size>
+title Dedicated Observability Platform with OSS Security Stack Diagram 
 
-' =========================
-' GLOBAL STYLE
-' =========================
-skinparam defaultFontColor #000000
-skinparam rectangleFontColor #000000
-skinparam arrowFontColor #000000
-skinparam noteFontColor #000000
-skinparam shadowing true
-skinparam arrowThickness 2
-skinparam arrowColor #444444
-skinparam backgroundColor #FFFFFF
+Person(user, "Developer/\nSRE", "Corporate user accessing observability dashboards")
 
-' =========================
-' EXTERNAL ACTORS
-' =========================
-Person(dev, "Developer/SRE", "Monitors both DEV & FT") #B3E5FC/Black
-System_Ext(ingress, "Azure Load Balancer / Ingress", "External traffic entry point") #FFE0B2/Black
-System_Ext(blob, "Azure Blob Storage", "Long-term storage") #DDDDDD/Black
-
-' =========================
-' DEV + FT CLUSTERS (Telemetry Sources)
-' =========================
-Container_Boundary(aks_sources, "FT & DEV AKS Clusters (Telemetry Sources)") #F1F8E9 {
-
-  Container_Boundary(aks_dev, "AKS DEV Cluster") #E8F5E9 {
-    Component(dev_apps, "DEV Applications", "Microservices, APIs") #C8E6C9
-    Component(dev_kube, "Kubernetes Components", "kubelet, kube-proxy, API server") #C8E6C9
-    Component(dev_nodes, "Node Metrics", "CPU, Memory, Disk, Network") #C8E6C9
-    Component(dev_otel_agent, "OTel Agent", "DaemonSet collector") #A5D6A7
-  }
-
-  Container_Boundary(aks_ft, "AKS FT Cluster") #E3F2FD {
-    Component(ft_apps, "FT Applications", "Test Services, Load Tests") #BBDEFB
-    Component(ft_kube, "Kubernetes Components", "kubelet, kube-proxy, API server") #BBDEFB
-    Component(ft_nodes, "Node Metrics", "CPU, Memory, Disk, Network") #BBDEFB
-    Component(ft_otel_agent, "OTel Agent", "DaemonSet collector") #90CAF9
-  }
+System_Boundary(aks_cluster, "Dedicated AKS Cluster - Security Hardened") {
+    ' === Security Layer ===
+    Container(oauth2_proxy, "OAuth2 Proxy", "OAuth2 Proxy", "Security Proxy", "Handles authentication and authorization with OIDC")
+    Container(ingress, "NGINX Ingress", "NGINX + ModSecurity", "Web Server", "Routes traffic with WAF protection")
+    Container(cert_manager, "Cert Manager", "cert-manager", "Certificate Controller", "Automated TLS certificate management with AKV integration")
+    
+    ' === Processing Layer ===
+    Container(otel, "OTel Collector", "OpenTelemetry Collector", "Backend Service", "Collects, processes, and routes telemetry data with TLS")
+    
+    ' === Storage Layer ===
+    Container(prometheus, "Prometheus", "Prometheus", "Time-series Database", "Metrics storage with file-based authentication")
+    Container(loki, "Loki", "Loki", "Log Database", "Log aggregation with multi-tenant authentication")
+    Container(jaeger, "Jaeger", "Jaeger", "Tracing System", "Distributed tracing with storage plugins")
+    
+    ' === Visualization Layer ===
+    Container(grafana, "Grafana", "Grafana", "Web Application", "Unified dashboard with RBAC and Azure AD integration")
+    
+    ' === Internal Storage ===
+    ContainerDb(prometheus_db, "Prometheus TSDB", "TSDB", "Local metrics storage (encrypted volumes)")
+    ContainerDb(loki_db, "Loki Object Storage", "Object Storage", "Local log storage (encrypted)")
+    ContainerDb(jaeger_db, "Jaeger Backend", "Elasticsearch/Cassandra", "Trace storage (encrypted at rest)")
+    
+    ' === Security Components ===
+    Container(akv, "Azure Key Vault\nEDDV-APP-EIKV01", "Secrets Management", "Manages secrets, certificates, and keys for workloads")
+    Container(opa, "OPA Gatekeeper", "Open Policy Agent", "Policy Controller", "Enforces security policies and compliance")
 }
 
-' =========================
-' DEDICATED OBSERVABILITY AKS CLUSTER
-' =========================
-Container_Boundary(obs_aks, "Dedicated Observability AKS Cluster") #FFF3E0 {
+' === External Systems ===
+'Container(app_pods, "Application Pods", "Various", "Kubernetes Pods", "Source applications with OTLP instrumentation")
+Container(vm_agents, "Non-Prod AKS \n(App pod(DEV + FT))", "Various", "Monitoring Agent", "Infrastructure agents with mTLS")
+ContainerDb(blob_storage, "Azure Blob Storage", "Azure Blob Storage", "Cloud Object Storage", "Long-term encrypted data retention")
+System_Ext(aad, "Azure AD", "Microsoft Entra ID", "Identity Provider", "OIDC provider for SSO authentication")
 
-  ' ---- OTel Collector ----
-  Container_Boundary(otel_collector, "OTel Collector Pod") #FFF9C4 {
-    Component(otel_rcv, "Receivers", "OTLP, Prometheus, Jaeger, K8s") #FFF59D
-    Component(otel_proc, "Processors", "Batch, Resource, Transform, Enrich") #FFF59D
-    Component(otel_exp, "Exporters", "Prometheus, Loki, Jaeger, Azure Monitor") #FFEB3B
-  }
+' === Security Relationships ===
+Rel(ingress, oauth2_proxy, "Validates auth tokens", "JWT validation")
+Rel(oauth2_proxy, aad, "OIDC authentication", "OAuth2/OIDC")
+Rel(cert_manager, akv, "Retrieves certificates", "mTLS/TLS integration")
+Rel(akv, aad, "Authenticates access", "OIDC + RBAC")
+Rel(opa, aks_cluster, "Enforces policies", "Admission control")
 
-  ' ---- Prometheus + Thanos ----
-  Container_Boundary(prometheus_stack, "Prometheus + Thanos") #FBE9E7 {
-    Component(prom_srv, "Prometheus Server", "Scrapes Metrics") #FFCCBC
-    Component(thanos_side, "Thanos Sidecar", "Upload to Blob") #FFAB91
-    Component(thanos_query, "Thanos Query", "Long-term Queries") #FF8A65
-  }
+' === Data Flow with Security ===
+'Rel(app_pods, ingress, "Sends OTLP/gRPC", "mTLS encrypted")
+Rel(vm_agents, ingress, "Sends OTLP/gRPC", "mTLS encrypted")
+Rel(ingress, otel, "Routes traffic", "HTTPS with WAF")
+Rel(otel, prometheus, "Sends metrics", "HTTPS with auth")
+Rel(otel, loki, "Sends logs", "HTTPS with auth")
+Rel(otel, jaeger, "Sends traces", "HTTPS with auth")
 
-  ' ---- Loki ----
-  Container_Boundary(loki_stack, "Loki") #E0F7FA {
-    Component(loki_dist, "Distributor", "Receives Logs") #B2EBF2
-    Component(loki_ing, "Ingester", "Stores Chunks") #80DEEA
-    Component(loki_q, "Querier", "Executes LogQL") #4DD0E1
-  }
+' === Query Relationships ===
+Rel(grafana, prometheus, "Queries metrics", "HTTPS with bearer token")
+Rel(grafana, loki, "Queries logs", "HTTPS with bearer token")
+Rel(grafana, jaeger, "Queries traces", "HTTPS with bearer token")
 
-  ' ---- Jaeger ----
-  Container_Boundary(jaeger_stack, "Jaeger") #F3E5F5 {
-    Component(jaeger_col, "Collector", "Receives Spans") #E1BEE7
-    Component(jaeger_ing, "Ingester", "Stores Spans") #CE93D8
-    Component(jaeger_q, "Query Service", "Trace Query API") #BA68C8
-  }
+' === Storage Relationships ===
+Rel(prometheus, prometheus_db, "Stores metrics", "Encrypted volume")
+Rel(loki, loki_db, "Stores logs", "Encrypted storage")
+Rel(jaeger, jaeger_db, "Stores traces", "Encrypted connection")
+Rel(prometheus, blob_storage, "Exports metrics", "Azure SAS token")
+Rel(loki, blob_storage, "Exports logs", "Azure SAS token")
 
-  ' ---- Grafana ----
-  Container_Boundary(grafana_pod, "Grafana Pod") #E8EAF6 {
-    Component(gf_core, "Grafana Core", "Dashboards, Alerts") #C5CAE9
-    Component(gf_ds, "Data Sources", "Prometheus, Loki, Jaeger") #9FA8DA
-    Component(gf_alert, "Alerting Engine", "Rules & Notifications") #7986CB
-    Component(gf_auth, "OAuth2 Proxy", "Azure AD SSO") #5C6BC0
-  }
-}
+' === User Access ===
+Rel(user, ingress, "Accesses Grafana", "HTTPS with TLS 1.3")
+Rel(user, aad, "Authenticates", "OIDC redirect")
+Rel(aad, oauth2_proxy, "Issues tokens", "OIDC callback")
 
-' =========================
-' TELEMETRY FLOWS
-' =========================
+' === Secrets Management ===
+Rel(akv, prometheus, "Provides credentials", "API/CSI driver")
+Rel(akv, loki, "Provides credentials", "API/CSI driver")
+Rel(akv, jaeger, "Provides credentials", "API/CSI driver")
+Rel(akv, grafana, "Provides secrets", "API/CSI driver")
 
-' DEV cluster signals (green arrows)
-Rel(dev_apps, dev_otel_agent, "📊📜🔍 Telemetry", "OTLP") #388E3C
-Rel(dev_kube, dev_otel_agent, "📊 API Metrics", "HTTP") #388E3C
-Rel(dev_nodes, dev_otel_agent, "📊 Node Metrics", "HTTP") #388E3C
-Rel(dev_otel_agent, otel_rcv, "DEV → Telemetry", "OTLP gRPC") #388E3C
+' === Layout ===
+Lay_D(ingress, oauth2_proxy)
+Lay_R(oauth2_proxy, otel)
+Lay_D(otel, prometheus)
+Lay_R(prometheus, loki)
+Lay_R(loki, jaeger)
+Lay_D(prometheus, grafana)
 
-' FT cluster signals (blue arrows)
-Rel(ft_apps, ft_otel_agent, "📊📜🔍 Telemetry", "OTLP") #1565C0
-Rel(ft_kube, ft_otel_agent, "📊 API Metrics", "HTTP") #1565C0
-Rel(ft_nodes, ft_otel_agent, "📊 Node Metrics", "HTTP") #1565C0
-Rel(ft_otel_agent, otel_rcv, "FT → Telemetry", "OTLP gRPC") #1565C0
-
-' Ingress telemetry (grey arrows)
-Rel(ingress, otel_rcv, "📜 Ingress Logs", "HTTP") #666666
-
-' Collector → processing → exporters
-Rel(otel_rcv, otel_proc, "Raw telemetry", "Internal") #F57F17
-Rel(otel_proc, otel_exp, "Processed telemetry", "Internal") #F57F17
-Rel(otel_exp, prom_srv, "📊 Metrics", "Remote Write") #E64A19
-Rel(otel_exp, loki_dist, "📜 Logs", "HTTP Push") #00838F
-Rel(otel_exp, jaeger_col, "🔍 Traces", "OTLP gRPC") #6A1B9A
-
-' Backends → Blob
-Rel(thanos_side, blob, "📊 Metrics Store", "HTTPS") #D84315
-Rel(loki_ing, blob, "📜 Log Chunks", "HTTPS") #006064
-Rel(jaeger_ing, blob, "🔍 Spans", "HTTPS") #4A148C
-
-' Grafana queries
-Rel(dev, gf_auth, "Access Dashboards", "HTTPS/SSO")
-Rel(gf_auth, gf_core, "Auth Tokens")
-Rel(gf_core, gf_ds, "Data Queries")
-Rel(gf_ds, prom_srv, "📊 PromQL Queries")
-Rel(gf_ds, thanos_query, "📊 Historical Metrics")
-Rel(gf_ds, loki_q, "📜 LogQL Queries")
-Rel(gf_ds, jaeger_q, "🔍 Trace Queries")
-Rel(gf_core, gf_alert, "Execute Alerts")
-
-SHOW_LEGEND()
 @enduml
-
