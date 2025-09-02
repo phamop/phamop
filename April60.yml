@@ -1,8 +1,6 @@
-all  the question have been answered from 
-the costing to Https;
-Costing has been updated to reflects  
-https with mTLS via  cert-manager
-Option 1 labeled as current draft has equally been updated
+All questions regarding the implementation of HTTPS with mTLS have been addressed.
+
+The costing documentation has been updated to reflect this change, which utilizes cert-manager. Furthermore, Option 1 (labeled as the "current draft") has also been revised accordingly.
 
 
 
