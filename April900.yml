@@ -3,7 +3,7 @@
 LAYOUT_WITH_LEGEND()
 title Dedicated Observability Platform with OSS Security Stack Diagram 
 
-Person(user, "Developer/\nSRE", "Corporate user accessing observability dashboards")
+Person(user, "Developer/\nSRE", "Azure AD SSO",  "Corporate user accessing observability dashboards")
 
 System_Boundary(aks_cluster, "Dedicated AKS Cluster - Security Hardened") {
     ' === Security Layer ===
@@ -12,30 +12,30 @@ System_Boundary(aks_cluster, "Dedicated AKS Cluster - Security Hardened") {
     Container(cert_manager, "Certificate Controller", "cert-manager",  "Automated TLS certificate management with AKV integration")
     
     ' === Processing Layer ===
-    Container(otel, "OTel Collector", "OpenTelemetry Collector", "Backend Service", "Collects, processes, and routes telemetry data with TLS")
+    Container(otel, "OTel Collector", "OpenTelemetry Collector", "Collects, processes, and routes telemetry data with TLS")
     
     ' === Storage Layer ===
-    Container(mimir, "Mimir", "Grafana Mimir", "Time-series Database", "Horizontally scalable metrics storage with multi-tenancy")
-    Container(loki, "Loki", "Loki", "Log Database", "Log aggregation with multi-tenant authentication")
-    Container(jaeger, "Jaeger", "Jaeger", "Tracing System", "Distributed tracing with storage plugins")
+    Container(mimir, "Mimir",  "Time-series Database -TSD", "Horizontally scalable metrics storage with multi-tenancy")
+    Container(loki, "Loki", "Log Database", "Log aggregation with multi-tenant authentication")
+    Container(jaeger "Jaeger", "Jaeger", "Distributed tracing with storage plugins")
     
     ' === Visualization Layer ===
-    Container(grafana, "Grafana", "Grafana", "Web Application", "Unified dashboard with RBAC and Azure AD integration")
+    Container(grafana, "Grafana", "Grafana - Web Application", "Unified dashboard with RBAC and Azure AD integration")
     
     ' === Internal Storage ===
     ContainerDb(mimir_storage, "Mimir Storage", "Object Storage", "Distributed metrics storage (encrypted blocks)")
     ContainerDb(loki_db, "Loki Object Storage", "Object Storage", "Local log storage (encrypted)")
-    ContainerDb(jaeger_db, "Jaeger Backend", "Elasticsearch/Cassandra", "Trace storage (encrypted at rest)")
+    ContainerDb(jaeger_db, "Jaeger Backend", "Elasticsearch", "Trace storage (encrypted at rest)")
     
     ' === Security Components ===
     Container(akv, "Azure Key Vault\nEDDV-APP-EIKV01", "Secrets Management", "Manages secrets, certificates, and keys for workloads")
-    Container(opa, "OPA Gatekeeper", "Open Policy Agent", "Policy Controller", "Enforces security policies and compliance")
+    Container(opa, "OPA Gatekeeper",  "Open Policy Agent", "Enforces security policies and compliance")
 }
 
 ' === External Systems ===
-Container(vm_agents, "Non-Prod AKS \n(App pod(DEV + FT))", "Various", "Monitoring Agent", "Infrastructure agents with mTLS")
-ContainerDb(blob_storage, "Azure Blob Storage", "Azure Blob Storage", "Cloud Object Storage", "Long-term encrypted data retention")
-System_Ext(aad, "Azure AD", "Microsoft Entra ID", "Identity Provider", "OIDC provider for SSO authentication")
+Container(vm_agents, "Non-Prod AKS \n(App pod(DEV + FT))", "AKS Workload", "Infrastructure agents with mTLS")
+ContainerDb(blob_storage, "Storage", "Azure Blob Storage", "Cloud Object Storage", "Long-term encrypted data retention")
+System_Ext(aad, "Azure AD", "Identity Provider", "OIDC provider for SSO authentication")
 
 ' === Security Relationships ===
 Rel(ingress, oauth2_proxy, "Validates auth tokens", "JWT validation")
