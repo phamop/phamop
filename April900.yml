@@ -1,38 +1,85 @@
 @startuml
-!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
 LAYOUT_WITH_LEGEND()
-title Dedicated Observability Platform Diagram 
+title Dedicated Observability Platform with OSS Security Stack Diagram 
 
-Person(user, "Developer\nSRE", "SSO" , "Corporate user accessing observability dashboards via Azure AD SSO")
+Person(user, "Developer/\nSRE", "Corporate user accessing observability dashboards")
 
-System_Boundary(aks_cluster, "Dedicated AKS Cluster") {
-    System(grafana, "Grafana Service", "Unified dashboard for observability data visualization")
-    System(otel, "OTel Collector Service", "Collects, processes, and routes telemetry data")
-    System(prometheus, "Prometheus", "Time-series database for metrics storage")
-    System(loki, "Loki", "Log aggregation system")
-    System(jaeger, "Jaeger", "Distributed tracing system")
-    System(ingress, "Internal NGINX Ingress Controller", "load Balancer" "Routes incoming telemetry data")
+System_Boundary(aks_cluster, "Dedicated AKS Cluster - Security Hardened") {
+    ' === Security Layer ===
+    Container(oauth2_proxy, "Security Proxy", "OAuth2", "Handles authentication and authorization with OIDC")
+    Container(ingress, "NGINX Ingress", "Ingress", "Routes traffic with WAF protection")
+    Container(cert_manager, "Certificate Controller", "cert-manager",  "Automated TLS certificate management with AKV integration")
+    
+    ' === Processing Layer ===
+    Container(otel, "OTel Collector", "OpenTelemetry Collector", "Backend Service", "Collects, processes, and routes telemetry data with TLS")
+    
+    ' === Storage Layer ===
+    Container(mimir, "Mimir", "Grafana Mimir", "Time-series Database", "Horizontally scalable metrics storage with multi-tenancy")
+    Container(loki, "Loki", "Loki", "Log Database", "Log aggregation with multi-tenant authentication")
+    Container(jaeger, "Jaeger", "Jaeger", "Tracing System", "Distributed tracing with storage plugins")
+    
+    ' === Visualization Layer ===
+    Container(grafana, "Grafana", "Grafana", "Web Application", "Unified dashboard with RBAC and Azure AD integration")
+    
+    ' === Internal Storage ===
+    ContainerDb(mimir_storage, "Mimir Storage", "Object Storage", "Distributed metrics storage (encrypted blocks)")
+    ContainerDb(loki_db, "Loki Object Storage", "Object Storage", "Local log storage (encrypted)")
+    ContainerDb(jaeger_db, "Jaeger Backend", "Elasticsearch/Cassandra", "Trace storage (encrypted at rest)")
+    
+    ' === Security Components ===
+    Container(akv, "Azure Key Vault\nEDDV-APP-EIKV01", "Secrets Management", "Manages secrets, certificates, and keys for workloads")
+    Container(opa, "OPA Gatekeeper", "Open Policy Agent", "Policy Controller", "Enforces security policies and compliance")
 }
 
-'System(app_pods, "Application Pods", "Source applications generating telemetry data")
-System(vm_agents, "Non-Prod AKS Clusters (DEV + FT)", "AKS" ,"workloads emitting telemetry signal")
-System(blob_storage, "Storage", "Azure Blob Storage", "Cloud storage for long-term data retention")
-System_Ext(aad, , "AAD", "Azure AD", "Provides SSO authentication")
+' === External Systems ===
+Container(vm_agents, "Non-Prod AKS \n(App pod(DEV + FT))", "Various", "Monitoring Agent", "Infrastructure agents with mTLS")
+ContainerDb(blob_storage, "Azure Blob Storage", "Azure Blob Storage", "Cloud Object Storage", "Long-term encrypted data retention")
+System_Ext(aad, "Azure AD", "Microsoft Entra ID", "Identity Provider", "OIDC provider for SSO authentication")
 
-' Define relationships
-'Rel(app_pods, ingress, "Sends OTLP/gRPC (metrics, logs, traces)")
-Rel(vm_agents, ingress, "Sends OTLP/gRPC (metrics, logs, traces)")
-Rel(ingress, otel, "Routes traffic")
-Rel(otel, prometheus, "Sends metrics")
-Rel(otel, loki, "Sends logs")
-Rel(otel, jaeger, "Sends traces")
-Rel(prometheus, grafana, "Queried for metrics")
-Rel(loki, grafana, "Queried for logs")
-Rel(jaeger, grafana, "Queried for traces")
-Rel(prometheus, blob_storage, "Exports metrics snapshot for retention")
-Rel(loki, blob_storage, "Exports log data for retention")
-Rel(user, grafana, "Accesses via browser", "HTTPS")
-Rel(user, aad, "Authenticates with")
-Rel(aad, grafana, "Validates token for", "OAuth/OIDC")
+' === Security Relationships ===
+Rel(ingress, oauth2_proxy, "Validates auth tokens", "JWT validation")
+Rel(oauth2_proxy, aad, "OIDC authentication", "OAuth2/OIDC")
+Rel(cert_manager, akv, "Retrieves certificates", "mTLS/TLS integration")
+Rel(akv, aad, "Authenticates access", "OIDC + RBAC")
+Rel(opa, aks_cluster, "Enforces policies", "Admission control")
+
+' === Data Flow with Security ===
+Rel(vm_agents, ingress, "Sends OTLP/gRPC", "mTLS encrypted")
+Rel(ingress, otel, "Routes traffic", "HTTPS with WAF")
+Rel(otel, mimir, "Sends metrics", "Remote Write API with auth")
+Rel(otel, loki, "Sends logs", "HTTPS with auth")
+Rel(otel, jaeger, "Sends traces", "HTTPS with auth")
+
+' === Query Relationships ===
+Rel(grafana, mimir, "Queries metrics", "PromQL over HTTPS with bearer token")
+Rel(grafana, loki, "Queries logs", "HTTPS with bearer token")
+Rel(grafana, jaeger, "Queries traces", "HTTPS with bearer token")
+
+' === Storage Relationships ===
+Rel(mimir, mimir_storage, "Stores TSDB blocks", "Encrypted storage")
+Rel(mimir, blob_storage, "Long-term storage", "Azure SAS token")
+Rel(loki, loki_db, "Stores logs", "Encrypted storage")
+Rel(jaeger, jaeger_db, "Stores traces", "Encrypted connection")
+Rel(loki, blob_storage, "Exports logs", "Azure SAS token")
+
+' === User Access ===
+Rel(user, ingress, "Accesses Grafana", "HTTPS with TLS 1.3")
+Rel(user, aad, "Authenticates", "OIDC redirect")
+Rel(aad, oauth2_proxy, "Issues tokens", "OIDC callback")
+
+' === Secrets Management ===
+Rel(akv, mimir, "Provides credentials", "API/CSI driver")
+Rel(akv, loki, "Provides credentials", "API/CSI driver")
+Rel(akv, jaeger, "Provides credentials", "API/CSI driver")
+Rel(akv, grafana, "Provides secrets", "API/CSI driver")
+
+' === Layout ===
+Lay_D(ingress, oauth2_proxy)
+Lay_R(oauth2_proxy, otel)
+Lay_D(otel, mimir)
+Lay_R(mimir, loki)
+Lay_R(loki, jaeger)
+Lay_D(mimir, grafana)
 
 @enduml
