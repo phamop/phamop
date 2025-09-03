@@ -1,14 +1,10 @@
-Secure Infrastructure and Architecture |
-• Network Policies: Calico or Cilium policies are critical to restrict traffic. To allow only the OSS component to communicate with the necessary endpoint (e.g., remote write endpoint) and only allow Grafana to query Prometheus/Loki.
-• Access Control: Use Azure RBAC to enforce least-privilege access and role assignments across Kubernetes resources and observability components (e.g., ensuring only Grafana service accounts can query data sources, or restricting Prometheus write operations).
-• Isolation: Deploy the observability stack to a dedicated namespace – monitoring – with strict RBAC limits.
+Azure RBAC integrates with Azure AD and other telemtry components
+    Provides fine-grained access control for AKS resources relevants OSS components
+    via role assignment for cluster-level authorization.
+end note 
 
-Compliance & Auditability | Ensures the platform adheres to industry standards and regulations. | Standardized, secure, and auditable configuration. |
-• Enforcement of CIS AKS baseline policies.
-• Use of Azure Policy and RBAC role assignments for compliance.
-• Blob Write Once, Read Many (WORM) storage for immutable audit logs.
-
-
-**Secure Infrastructure and Architecture** | • **Network Policies:** **Calico** or **Cilium** policies are critical to restrict traffic. To allow only the OSS component to communicate the necessary endpoint such remote write endpoint, and only allow Grafana to query Prometheus/Loki.<br>• **Policy Enforcement:** Use **OPA/Gatekeeper** to enforce policies like "all Prometheus pods must have a 'readonly' root filesystem" or "Grafana must only use specific image registries."<br>• **Isolation:** Deploy the observability stack to a dedicated namespace - **monitoring** with strict RBAC limits. |
-
-**Compliance & Auditability** | Ensures the platform adheres to industry standards and regulations. | Standardized, secure, and auditable configuration. | • Enforcement of CIS AKS baseline policies.<br>• Use of OPA Gatekeeper and Azure Policy.<br>• Blob Write Once, Read Many (WORM) storage for immutable audit logs. |
+ Azure RBAC enforces access policies
+    through role assignments across
+    cluster resources and services.
+    It provides access control
+    but does not handle runtime data flows.
