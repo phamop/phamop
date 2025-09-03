@@ -1,17 +1,9 @@
-' === OPA Governance Relationships (Dashed) ===
-Rel_D(opa, ingress, "Governs admission policies", "OPA Constraint") 
-Rel_D(opa, otel, "Governs admission policies", "OPA Constraint") 
-Rel_D(opa, grafana, "Governs admission policies", "OPA Constraint") 
-Rel_D(opa, mimir_storage, "Governs admission policies", "OPA Constraint") 
-
-
-
 @startuml
 !include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
 LAYOUT_WITH_LEGEND()
 title Dedicated Observability Platform with OSS Security Stack Diagram 
 
-Person(user, "Developer/\nSRE", "Azure AD SSO",  "Corporate user accessing observability dashboards")
+Person(user, "Developer/\nSRE", "Azure AD SSO Corporate user accessing observability dashboards")
 
 System_Boundary(aks_cluster, "Dedicated AKS Cluster" ) {
     ' === Security Layer ===
@@ -38,12 +30,13 @@ System_Boundary(aks_cluster, "Dedicated AKS Cluster" ) {
     ' === Security Components ===
     Container(akv, "Azure Key Vault\nEDDV-APP-EIKV01", "Secrets Management", "Manages secrets, certificates, and keys for workloads")
     Container(opa, "OPA Gatekeeper",  "Open Policy Agent", "Enforces security policies and compliance")
+
 }
 
 ' === External Systems ===
 Container(vm_agents, "Non-Prod AKS \n(App pod(DEV + FT))", "AKS Workload", "Infrastructure agents with mTLS")
 ContainerDb(blob_storage, "Storage", "Azure Blob Storage", "Cloud Object Storage  - Long-term encrypted data retention")
-System_Ext(aad, "Azure AD", "Identity Provider", "OIDC provider for SSO authentication")
+Container_Ext(aad, "Azure AD", "Identity Provider", "OIDC provider for SSO authentication")
 
 ' === Security Relationships ===
 Rel(ingress, oauth2_proxy, "Validates auth tokens", "JWT validation")
@@ -83,6 +76,12 @@ Rel(akv, loki, "Provides credentials", "API/CSI driver")
 Rel(akv, jaeger, "Provides credentials", "API/CSI driver")
 Rel(akv, grafana, "Provides secrets", "API/CSI driver")
 
+' === OPA Governance Relationships (Dashed) ===
+'Rel_D(opa, ingress, "Governs admission policies", "OPA Constraint") 
+'Rel_D(opa, otel, "Governs admission policies", "OPA Constraint") 
+'Rel_D(opa, grafana, "Governs admission policies", "OPA Constraint") 
+'Rel_D(opa, mimir_storage, "Governs admission policies", "OPA Constraint") 
+
 ' === Layout ===
 Lay_D(ingress, oauth2_proxy)
 Lay_R(oauth2_proxy, otel)
@@ -90,5 +89,11 @@ Lay_D(otel, mimir)
 Lay_R(mimir, loki)
 Lay_R(loki, jaeger)
 Lay_D(mimir, grafana)
+
+Note right of opa 
+    OPA Gatekeeper operates at admission control.
+    It enforces policies during resources creation/update
+    but has no direct runtime data flow connections.
+end note 
 
 @enduml
