@@ -1,3 +1,11 @@
+' === OPA Governance Relationships (Dashed) ===
+Rel_D(opa, ingress, "Governs admission policies", "OPA Constraint") 
+Rel_D(opa, otel, "Governs admission policies", "OPA Constraint") 
+Rel_D(opa, grafana, "Governs admission policies", "OPA Constraint") 
+Rel_D(opa, mimir_storage, "Governs admission policies", "OPA Constraint") 
+
+
+
 @startuml
 !include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
 LAYOUT_WITH_LEGEND()
