@@ -29,8 +29,7 @@ System_Boundary(aks_cluster, "Dedicated AKS Cluster" ) {
     
     ' === Security Components ===
     Container(akv, "Azure Key Vault\nEDDV-APP-EIKV01", "Secrets Management", "Manages secrets, certificates, and keys for workloads")
-    Container(opa, "OPA Gatekeeper",  "Open Policy Agent", "Enforces security policies and compliance")
-
+    Container(azure_rbac, "Azure RBAC", "Role-Based Access Control", "Authorization and access management across AKS resources")
 }
 
 ' === External Systems ===
@@ -43,7 +42,7 @@ Rel(ingress, oauth2_proxy, "Validates auth tokens", "JWT validation")
 Rel(oauth2_proxy, aad, "OIDC authentication", "OAuth2/OIDC")
 Rel(cert_manager, akv, "Retrieves certificates", "mTLS/TLS integration")
 Rel(akv, aad, "Authenticates access", "OIDC + RBAC")
-Rel(opa, aks_cluster, "Enforces policies", "Admission control")
+Rel(azure_rbac, aks_cluster, "Controls authorization", "Role assignments and scope")
 
 ' === Data Flow with Security ===
 Rel(vm_agents, ingress, "Sends OTLP/gRPC", "mTLS encrypted")
@@ -76,12 +75,6 @@ Rel(akv, loki, "Provides credentials", "API/CSI driver")
 Rel(akv, jaeger, "Provides credentials", "API/CSI driver")
 Rel(akv, grafana, "Provides secrets", "API/CSI driver")
 
-' === OPA Governance Relationships (Dashed) ===
-'Rel_D(opa, ingress, "Governs admission policies", "OPA Constraint") 
-'Rel_D(opa, otel, "Governs admission policies", "OPA Constraint") 
-'Rel_D(opa, grafana, "Governs admission policies", "OPA Constraint") 
-'Rel_D(opa, mimir_storage, "Governs admission policies", "OPA Constraint") 
-
 ' === Layout ===
 Lay_D(ingress, oauth2_proxy)
 Lay_R(oauth2_proxy, otel)
@@ -90,10 +83,10 @@ Lay_R(mimir, loki)
 Lay_R(loki, jaeger)
 Lay_D(mimir, grafana)
 
-Note right of opa 
-    OPA Gatekeeper operates at admission control.
-    It enforces policies during resources creation/update
-    but has no direct runtime data flow connections.
+Note right of azure_rbac 
+    Azure RBAC integrates with Azure AD.
+    Provides fine-grained access control for AKS resources
+    for cluster-level authorization.
 end note 
 
 @enduml
