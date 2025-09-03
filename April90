@@ -1,142 +1,86 @@
-@startuml observability-stack-enhanced
-!includeurl https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
-
-' ==== THEME & STYLING ====
-UpdateElementStyle(Person, $bgColor="#4A90E2", $fontColor="white", $borderColor="#3A70B2")
-UpdateElementStyle(System, $bgColor="#1565C0", $fontColor="white")
-UpdateElementStyle(Container, $bgColor="#2196F3", $fontColor="white")
-UpdateElementStyle(System_Ext, $bgColor="#0078D4", $fontColor="white")
-UpdateElementStyle(Deployment, $bgColor="#64B5F6", $fontColor="white", $borderColor="#1976D2")
-
-skinparam backgroundColor #F8F9FA
-skinparam defaultFontColor #333333
-skinparam noteBackgroundColor #FFFFFF
-skinparam noteBorderColor #999999
-skinparam arrowColor #666666
-skinparam arrowFontColor #333333
-skinparam arrowFontSize 11
-
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
 LAYOUT_WITH_LEGEND()
+title Dedicated Observability Platform with OSS Security Stack Diagram 
 
-title <color:#0078D4>Observability OSS Stack on Azure</color>\n<size:12>C4 Container Diagram with NSG Rules</size>
+Person(user, "Developer/\nSRE", "Azure AD SSO",  "Corporate user accessing observability dashboards")
 
-' ==== Persons ====
-Person(developer, "Developer", "Application Developer")
-Person(sre, "SRE/DevOps", "Site Reliability Engineer")
-
-' ==== Azure Network ====
-System_Boundary(azure_network, "Azure Virtual Network") {
+System_Boundary(aks_cluster, "Dedicated AKS Cluster" ) {
+    ' === Security Layer ===
+    Container(oauth2_proxy, "Security Proxy", "OAuth2", "Handles authentication and authorization with OIDC")
+    Container(ingress, "NGINX Ingress", "Ingress", "Routes traffic with WAF protection")
+    Container(cert_manager, "Certificate Controller", "cert-manager",  "Automated TLS certificate management with AKV integration")
     
-    ' ---- AKS Cluster ----
-    System_Boundary(aks_cluster, "Azure Kubernetes Service (AKS)") {
-        
-        Container_Boundary(otel_namespace, "OpenTelemetry Namespace") {
-            Container(otel_operator, "OTEL Operator", "Kubernetes Operator", "Manages OTEL Collector CRDs")
-            Container(otel_collector, "OTEL Collector", "Deployment", "Receives, processes, and exports telemetry data")
-        }
-        
-        Container_Boundary(monitoring_namespace, "Monitoring Namespace") {
-            Container(prometheus, "Prometheus", "Time Series DB", "Stores and queries metrics data")
-            Container(loki, "Loki", "Log Aggregation", "Stores and queries log data")
-            Container(jaeger, "Jaeger", "Distributed Tracing", "Stores and queries trace data")
-        }
-        
-        Container_Boundary(app_namespace, "Application Namespace") {
-            Container(app_pods, "Application Pods", "Microservices", "Business applications with OTEL instrumentation")
-        }
-    }
+    ' === Processing Layer ===
+    Container(otel, "OTel Collector", "OpenTelemetry Collector", "Collects, processes, and routes telemetry data with TLS")
     
-    ' ---- VM Subnet ----
-    System_Boundary(vm_subnet, "VM Subnet") {
-        Container(grafana_vm, "Grafana VM", "Virtual Machine", "Visualization and dashboarding platform")
-        Container(sso_provider, "SSO Provider", "Azure AD/OIDC", "Authentication service for Grafana")
-        
-        ' NSG for Grafana VM
-        Container(nsg_grafana, "NSG Rules", "Network Security Group", "Controls inbound/outbound traffic to Grafana VM")
-    }
+    ' === Storage Layer ===
+    Container(mimir, "Mimir",  "Time-series Database -TSD", "Horizontally scalable metrics storage with multi-tenancy")
+    Container(loki, "Loki", "Log Database", "Log aggregation with multi-tenant authentication")
+    Container(jaeger, "Jaeger", "Jaeger", "Distributed tracing with storage plugins")
     
-    ' NSG for AKS to Grafana communication
-    Container(nsg_aks_to_grafana, "NSG: AKS to Grafana", "Network Security Group", "Allows traffic from AKS to Grafana backends")
+    ' === Visualization Layer ===
+    Container(grafana, "Grafana", "Grafana - Web Application", "Unified dashboard with RBAC and Azure AD integration")
+    
+    ' === Internal Storage ===
+    ContainerDb(mimir_storage, "Mimir Storage", "Object Storage", "Distributed metrics storage (encrypted blocks)")
+    ContainerDb(loki_db, "Loki Object Storage", "Object Storage", "Local log storage (encrypted)")
+    ContainerDb(jaeger_db, "Jaeger Backend", "Elasticsearch", "Trace storage (encrypted at rest)")
+    
+    ' === Security Components ===
+    Container(akv, "Azure Key Vault\nEDDV-APP-EIKV01", "Secrets Management", "Manages secrets, certificates, and keys for workloads")
+    Container(opa, "OPA Gatekeeper",  "Open Policy Agent", "Enforces security policies and compliance")
 }
 
-' ==== External System ====
-System_Ext(azure_ad, "Azure Active Directory", "Identity Provider for SSO")
+' === External Systems ===
+Container(vm_agents, "Non-Prod AKS \n(App pod(DEV + FT))", "AKS Workload", "Infrastructure agents with mTLS")
+ContainerDb(blob_storage, "Storage", "Azure Blob Storage", "Cloud Object Storage  - Long-term encrypted data retention")
+System_Ext(aad, "Azure AD", "Identity Provider", "OIDC provider for SSO authentication")
 
-' ==== Relationships ====
-' Users access Grafana directly
-Rel(developer, grafana_vm, "Access dashboards (HTTPS)", "Browser")
-Rel(sre, grafana_vm, "Access dashboards (HTTPS)", "Browser")
+' === Security Relationships ===
+Rel(ingress, oauth2_proxy, "Validates auth tokens", "JWT validation")
+Rel(oauth2_proxy, aad, "OIDC authentication", "OAuth2/OIDC")
+Rel(cert_manager, akv, "Retrieves certificates", "mTLS/TLS integration")
+Rel(akv, aad, "Authenticates access", "OIDC + RBAC")
+Rel(opa, aks_cluster, "Enforces policies", "Admission control")
 
-' App telemetry
-Rel(app_pods, otel_collector, "Sends telemetry (OTLP/gRPC, HTTP)")
+' === Data Flow with Security ===
+Rel(vm_agents, ingress, "Sends OTLP/gRPC", "mTLS encrypted")
+Rel(ingress, otel, "Routes traffic", "HTTPS with WAF")
+Rel(otel, mimir, "Sends metrics", "Remote Write API with auth")
+Rel(otel, loki, "Sends logs", "HTTPS with auth")
+Rel(otel, jaeger, "Sends traces", "HTTPS with auth")
 
-' Collector exports
-Rel(otel_collector, prometheus, "Exports metrics", "Prometheus Remote Write")
-Rel(otel_collector, loki, "Exports logs", "Loki HTTP API")
-Rel(otel_collector, jaeger, "Exports traces", "Jaeger gRPC")
+' === Query Relationships ===
+Rel(grafana, mimir, "Queries metrics", "PromQL over HTTPS with bearer token")
+Rel(grafana, loki, "Queries logs", "HTTPS with bearer token")
+Rel(grafana, jaeger, "Queries traces", "HTTPS with bearer token")
 
-' Operator manages Collector
-Rel(otel_operator, otel_collector, "Manages configuration", "Kubernetes API")
+' === Storage Relationships ===
+Rel(mimir, mimir_storage, "Stores TSDB blocks", "Encrypted storage")
+Rel(mimir, blob_storage, "Long-term storage", "Azure SAS token")
+Rel(loki, loki_db, "Stores logs", "Encrypted storage")
+Rel(jaeger, jaeger_db, "Stores traces", "Encrypted connection")
+Rel(loki, blob_storage, "Exports logs", "Azure SAS token")
+Rel(jaeger_db, blob_storage, "Long-term storage", "Azure SAS token")
 
-' Grafana queries backends through NSG
-Rel(grafana_vm, nsg_aks_to_grafana, "Outbound queries", "HTTP/HTTPS")
-Rel(nsg_aks_to_grafana, prometheus, "Allows metrics queries", "PromQL/HTTP (3100)")
-Rel(nsg_aks_to_grafana, loki, "Allows log queries", "LogQL/HTTP (3100)")
-Rel(nsg_aks_to_grafana, jaeger, "Allows trace queries", "Jaeger API/HTTP (16686)")
+' === User Access ===
+Rel(user, ingress, "Accesses Grafana", "HTTPS with TLS 1.3")
+Rel(user, aad, "Authenticates", "OIDC redirect")
+Rel(aad, oauth2_proxy, "Issues tokens", "OIDC callback")
 
-' Grafana authentication
-Rel(grafana_vm, sso_provider, "SSO Authentication", "OIDC")
-Rel(sso_provider, azure_ad, "Validates tokens", "OIDC/SAML")
+' === Secrets Management ===
+Rel(akv, mimir, "Provides credentials", "API/CSI driver")
+Rel(akv, loki, "Provides credentials", "API/CSI driver")
+Rel(akv, jaeger, "Provides credentials", "API/CSI driver")
+Rel(akv, grafana, "Provides secrets", "API/CSI driver")
 
-' NSG for Grafana VM
-Rel(nsg_grafana, grafana_vm, "Filters traffic", "Network Rules")
-
-' Optional: SRE may still query Prometheus directly through NSG
-Rel(sre, nsg_aks_to_grafana, "Direct queries", "CLI/API")
-Rel(nsg_aks_to_grafana, prometheus, "Allows direct access", "PromQL/API (9090)")
-
-SHOW_LEGEND()
-
-' ==== Notes ====
-note right of nsg_aks_to_grafana
-<b>NSG Rules: AKS to Grafana</b>
-- Allow HTTPS from AKS subnet to Grafana VM
-- Allow HTTP from AKS subnet to Prometheus (port 9090)
-- Allow HTTP from AKS subnet to Loki (port 3100)
-- Allow HTTP from AKS subnet to Jaeger (port 16686)
-- Deny all other inbound traffic
-end note
-
-note right of otel_collector
-<b>OTEL Collector Configuration</b>
-- Receivers: OTLP, Jaeger, Zipkin
-- Processors: Batch, Memory Limiter
-- Exporters: Prometheus, Loki, Jaeger
-- Resource detection: K8s attributes
-end note
-
-note right of grafana_vm
-<b>Grafana Configuration</b>
-- Data Sources: Prometheus, Loki, Jaeger
-- Auth: SSO via Azure AD/OIDC
-- Dashboards: provisioned via config
-- Direct access enabled (no ingress)
-end note
-
-note left of aks_cluster
-<b>AKS Configuration</b>
-- Network Policy enabled
-- Azure CNI networking
-- Managed Identity
-- Private cluster option
-- Auto-scaling enabled
-end note
-
-note right of prometheus
-<b>Prometheus Config</b>
-- Remote write enabled
-- Retention: 15d local
-- Scraping: via OTEL & serviceMonitor
-end note
+' === Layout ===
+Lay_D(ingress, oauth2_proxy)
+Lay_R(oauth2_proxy, otel)
+Lay_D(otel, mimir)
+Lay_R(mimir, loki)
+Lay_R(loki, jaeger)
+Lay_D(mimir, grafana)
 
 @enduml
