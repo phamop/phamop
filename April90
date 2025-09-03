@@ -1,3 +1,11 @@
+
+Component(azure_rbac, "Azure RBAC", "Access Control", 
+  "Provides role-based access control integrated with Azure AD for OSS observability components (Grafana, Prometheus, Loki, OTel) and AKS resources. 
+   Ensures fine-grained, cluster-level authorization via role assignments, focusing on access governance rather than runtime data flow control.")
+
+
+
+
 note right of azure_rbac
   • Integrates with Azure AD and OSS observability components
   • Provides fine-grained role-based access control
