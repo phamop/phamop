@@ -11,7 +11,19 @@ end note
 
 
 Note right of azure_rbac 
+
     Azure RBAC integrates with Azure AD and other telemtry components
+    to provide fine-grained authorization. It governs access to both Kubernetes resources and integrated open-source observability tools, enforcing security policies through centralized role assignments at the cluster level
     Provides fine-grained access control for AKS resources relevants OSS components
     via for cluster-level authorization.
+end note 
+
+
+Note right of azure_rbac 
+
+    Azure RBAC integrates with Azure AD and other telemetry components.
+    It governs access to both Kubernetes resources and integrated OSS tools, 
+    enforcing security policies through centralized role assignments at the cluster level.
+   Focused on access control
+  
 end note 
