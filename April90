@@ -1,10 +1,11 @@
-Azure RBAC integrates with Azure AD and other telemtry components
-    Provides fine-grained access control for AKS resources relevants OSS components
-    via role assignment for cluster-level authorization.
-end note 
+note right of aks_cluster
+  == Azure RBAC ==
+  • Integrates with Azure AD and OSS observability components
+  • Provides fine-grained role-based access control
+  • Enforces access via role assignments across
+    subscription, cluster, namespace, and resources
+  • Supports cluster-level authorization for telemetry components
+  • Focused on access control (who can do what),
+    not runtime data flows between services
+end note
 
- Azure RBAC enforces access policies
-    through role assignments across
-    cluster resources and services.
-    It provides access control
-    but does not handle runtime data flows.
