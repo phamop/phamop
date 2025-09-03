@@ -1,92 +1,137 @@
 @startuml
-!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
 LAYOUT_WITH_LEGEND()
-title Dedicated Observability Platform with OSS Security Stack Diagram 
+title Dedicated Observability Platform with OSS Security Stack - Component View (L3)
 
-Person(user, "Developer/\nSRE", "Azure AD SSO Corporate user accessing observability dashboards")
+Person(user, "Developer/\nSRE",  "Azure AD SSO Corporate user accessing observability dashboards")
 
-System_Boundary(aks_cluster, "Dedicated AKS Cluster" ) {
-    ' === Security Layer ===
-    Container(oauth2_proxy, "Security Proxy", "OAuth2", "Handles authentication and authorization with OIDC")
-    Container(ingress, "NGINX Ingress", "Ingress", "Routes traffic with WAF protection")
-    Container(cert_manager, "Certificate Controller", "cert-manager",  "Automated TLS certificate management with AKV integration")
+System_Boundary(aks_cluster, "Dedicated AKS Cluster ") {
     
+    ' === Security Layer ===
+    Container_Boundary(security_layer, "Security & Gateway Layer") {
+        Component(oauth2_proxy, "Security Proxy", "OAuth2", "Handles authentication and authorization with OIDC")
+        Component(ingress, "NGINX Ingress", "Ingress", "Routes traffic with WAF protection")
+        Component(cert_manager, "Certificate Controller", "cert-manager",  "Automated TLS certificate management with AKV integration")
+        Component(opa, "OPA Gatekeeper",  "Open Policy Agent", "Enforces security policies and compliance")
+        
+    }
+  
     ' === Processing Layer ===
-    Container(otel, "OTel Collector", "OpenTelemetry Collector", "Collects, processes, and routes telemetry data with TLS")
+    Container_Boundary(processing_layer, "Telemetry Processing Layer") {
+        Component(otel_rcv, "OTel Receivers", "OTLP + Prometheus + K8s", "Receives telemetry from sources")
+        Component(otel_proc, "OTel Processors", "Batch + Resource +  Transform", "Processes and enriches telemetry")
+        Component(otel_exp, "OTel Exporters", "Remote Write, HTTP Push", "Exports to storage backends")
+    }
+    
+    ' === Mimir Stack ===
+    Container_Boundary(mimir_stack, "Mimir Metrics Platform") {
+        Component(mimir_dist, "Mimir Distributor", "Load Balancer", "Receives metrics via remote write with authentication")
+        Component(mimir_ing, "Mimir Ingester", "TSDB Engine", "Stores recent metrics in memory and creates blocks")
+        Component(mimir_query_fe, "Mimir Query Frontend", "Query Coordinator", "Handles PromQL queries with caching")
+        Component(mimir_querier, "Mimir Querier", "Query Engine", "Executes queries against ingester and store-gateway")
+        Component(mimir_store, "Mimir Store Gateway", "Block Reader", "Provides access to long-term storage blocks")
+        Component(mimir_compact, "Mimir Compactor", "Block Manager", "Compacts and manages TSDB blocks lifecycle")
+    }
     
     ' === Storage Layer ===
-    Container(mimir, "Mimir",  "Time-series Database -TSD", "Horizontally scalable metrics storage with multi-tenancy")
-    Container(loki, "Loki", "Log Database", "Log aggregation with multi-tenant authentication")
-    Container(jaeger, "Jaeger", "Jaeger", "Distributed tracing with storage plugins")
+    Container_Boundary(storage_layer, "Log & Trace Storage") {
+        Component(loki_dist, "Loki Distributor", "Log Router", "Receives logs with multi-tenant authentication")
+        Component(loki_ing, "Loki Ingester", "Log Storage", "Stores log chunks with encryption")
+        Component(loki_query, "Loki Querier", "LogQL Engine", "Executes LogQL queries")
+        Component(jaeger_col, "Jaeger Collector", "Span Receiver", "Receives traces with storage plugins")
+        Component(jaeger_query, "Jaeger Query", "Trace API", "Provides trace query interface")
+    }
     
     ' === Visualization Layer ===
-    Container(grafana, "Grafana", "Grafana - Web Application", "Unified dashboard with RBAC and Azure AD integration")
+    Container_Boundary(viz_layer, "Visualization & Alerting") {
+        Component(grafana_core, "Grafana Core", "Dashboard Engine", "Unified dashboard with RBAC")
+        Component(grafana_auth, "Grafana Auth", "Azure AD Integration", "SSO authentication and RBAC")
+        Component(grafana_alert, "Grafana Alerting", "Alert Manager", "Alert rules and notifications")
+        Component(grafana_ds, "Data Sources", "Query Adapters", "Connects to Mimir, Loki, Jaeger")
+    }
     
     ' === Internal Storage ===
-    ContainerDb(mimir_storage, "Mimir Storage", "Object Storage", "Distributed metrics storage (encrypted blocks)")
-    ContainerDb(loki_db, "Loki Object Storage", "Object Storage", "Local log storage (encrypted)")
-    ContainerDb(jaeger_db, "Jaeger Backend", "Elasticsearch", "Trace storage (encrypted at rest)")
+    Container_Boundary(storage_backends, "Encrypted Storage Backends") {
+        ComponentDb(mimir_blocks, "Mimir Blocks", "TSDB Blocks", "Encrypted metrics storage")
+        ComponentDb(loki_chunks, "Loki Chunks", "Object Storage", "Encrypted log chunks")
+        ComponentDb(jaeger_spans, "Jaeger Backend", "Elasticsearch", "Encrypted trace storage")
+    }
     
     ' === Security Components ===
-    Container(akv, "Azure Key Vault\nEDDV-APP-EIKV01", "Secrets Management", "Manages secrets, certificates, and keys for workloads")
-    Container(azure_rbac, "Azure RBAC", "Role-Based Access Control", "Authorization and access management across AKS resources")
+    Container_Boundary(security_services, "Security Services") {
+        Component(akv, "Azure Key Vault", "EDDV-APP-EIKV01", "Manages secrets, certificates, and keys")
+        Component(akv_csi, "AKV CSI Driver", "Secret Provider", "Mounts secrets as volumes")
+    }
 }
 
 ' === External Systems ===
-Container(vm_agents, "Non-Prod AKS \n(App pod(DEV + FT))", "AKS Workload", "Infrastructure agents with mTLS")
-ContainerDb(blob_storage, "Storage", "Azure Blob Storage", "Cloud Object Storage  - Long-term encrypted data retention")
-Container_Ext(aad, "Azure AD", "Identity Provider", "OIDC provider for SSO authentication")
+Container(vm_agents, "Non-Prod AKS\n(DEV + FT Pods)", "OTel Agents", "Source applications with OTLP instrumentation and mTLS")
+ComponentDb(blob_storage, "Azure Blob Storage", "Cloud Storage", "Long-term encrypted data retention")
+Component_Ext(aad, "Azure AD", "Microsoft Entra ID", "OIDC provider for SSO authentication")
 
 ' === Security Relationships ===
-Rel(ingress, oauth2_proxy, "Validates auth tokens", "JWT validation")
-Rel(oauth2_proxy, aad, "OIDC authentication", "OAuth2/OIDC")
-Rel(cert_manager, akv, "Retrieves certificates", "mTLS/TLS integration")
-Rel(akv, aad, "Authenticates access", "OIDC + RBAC")
-Rel(azure_rbac, aks_cluster, "Controls authorization", "Role assignments and scope")
+Rel(user, ingress, "Accesses Grafana", "HTTPS/TLS 1.3")
+Rel(ingress, oauth2_proxy, "Validates auth", "JWT validation")
+Rel(oauth2_proxy, aad, "OIDC auth", "OAuth2/OIDC")
+Rel(cert_manager, akv, "Gets certificates", "mTLS")
+Rel(akv_csi, akv, "Mounts secrets", "API/CSI")
+Rel(opa, aks_cluster, "Enforces policies", "Admission control")
 
-' === Data Flow with Security ===
-Rel(vm_agents, ingress, "Sends OTLP/gRPC", "mTLS encrypted")
-Rel(ingress, otel, "Routes traffic", "HTTPS with WAF")
-Rel(otel, mimir, "Sends metrics", "Remote Write API with auth")
-Rel(otel, loki, "Sends logs", "HTTPS with auth")
-Rel(otel, jaeger, "Sends traces", "HTTPS with auth")
+' === Data Ingestion Flow ===
+Rel(vm_agents, ingress, "OTLP telemetry", "mTLS encrypted")
+Rel(ingress, otel_rcv, "Routes traffic", "HTTPS/WAF")
+Rel(otel_rcv, otel_proc, "Raw telemetry", "Internal")
+Rel(otel_proc, otel_exp, "Processed data", "Internal")
 
-' === Query Relationships ===
-Rel(grafana, mimir, "Queries metrics", "PromQL over HTTPS with bearer token")
-Rel(grafana, loki, "Queries logs", "HTTPS with bearer token")
-Rel(grafana, jaeger, "Queries traces", "HTTPS with bearer token")
+' === Mimir Data Flow ===
+Rel(otel_exp, mimir_dist, "Metrics", "Remote Write/HTTPS")
+Rel(mimir_dist, mimir_ing, "Metrics", "gRPC/mTLS")
+Rel(mimir_ing, mimir_blocks, "TSDB blocks", "Encrypted")
+Rel(mimir_compact, mimir_blocks, "Block compaction", "Encrypted")
+Rel(mimir_blocks, blob_storage, "Long-term storage", "Azure SAS")
 
-' === Storage Relationships ===
-Rel(mimir, mimir_storage, "Stores TSDB blocks", "Encrypted storage")
-Rel(mimir, blob_storage, "Long-term storage", "Azure SAS token")
-Rel(loki, loki_db, "Stores logs", "Encrypted storage")
-Rel(jaeger, jaeger_db, "Stores traces", "Encrypted connection")
-Rel(loki, blob_storage, "Exports logs", "Azure SAS token")
-Rel(jaeger_db, blob_storage, "Long-term storage", "Azure SAS token")
+' === Query Flow - Mimir ===
+Rel(grafana_ds, mimir_query_fe, "PromQL queries", "HTTPS/Auth")
+Rel(mimir_query_fe, mimir_querier, "Query execution", "gRPC")
+Rel(mimir_querier, mimir_ing, "Recent data", "gRPC")
+Rel(mimir_querier, mimir_store, "Historical data", "gRPC")
+Rel(mimir_store, mimir_blocks, "Block queries", "Encrypted")
 
-' === User Access ===
-Rel(user, ingress, "Accesses Grafana", "HTTPS with TLS 1.3")
-Rel(user, aad, "Authenticates", "OIDC redirect")
-Rel(aad, oauth2_proxy, "Issues tokens", "OIDC callback")
+' === Log & Trace Flow ===
+Rel(otel_exp, loki_dist, "Logs", "HTTP Push/Auth")
+Rel(otel_exp, jaeger_col, "Traces", "OTLP/gRPC")
+Rel(loki_dist, loki_ing, "Log streams", "gRPC")
+Rel(loki_ing, loki_chunks, "Log chunks", "Encrypted")
+Rel(jaeger_col, jaeger_spans, "Span data", "Encrypted")
+Rel(jaeger_spans, blob_storage, "long term storage")
+Rel(loki_chunks, blob_storage, "Log export", "Azure SAS")
 
-' === Secrets Management ===
-Rel(akv, mimir, "Provides credentials", "API/CSI driver")
-Rel(akv, loki, "Provides credentials", "API/CSI driver")
-Rel(akv, jaeger, "Provides credentials", "API/CSI driver")
-Rel(akv, grafana, "Provides secrets", "API/CSI driver")
+' === Grafana Integration ===
+Rel(oauth2_proxy, grafana_auth, "Auth tokens", "JWT")
+Rel(grafana_auth, grafana_core, "User context", "Internal")
+Rel(grafana_core, grafana_ds, "Data queries", "Internal")
+Rel(grafana_ds, loki_query, "LogQL queries", "HTTPS/Auth")
+Rel(grafana_ds, jaeger_query, "Trace queries", "HTTPS/Auth")
+Rel(grafana_core, grafana_alert, "Alert rules", "Internal")
 
-' === Layout ===
-Lay_D(ingress, oauth2_proxy)
-Lay_R(oauth2_proxy, otel)
-Lay_D(otel, mimir)
-Lay_R(mimir, loki)
-Lay_R(loki, jaeger)
-Lay_D(mimir, grafana)
+' === Security Integration ===
+Rel(akv_csi, mimir_dist, "TLS certs", "Volume mount")
+Rel(akv_csi, mimir_ing, "Auth tokens", "Volume mount")
+Rel(akv_csi, loki_dist, "Credentials", "Volume mount")
+Rel(akv_csi, jaeger_col, "DB credentials", "Volume mount")
+Rel(akv_csi, grafana_core, "Secrets", "Volume mount")
 
-Note right of azure_rbac 
-    Azure RBAC integrates with Azure AD.
-    Provides fine-grained access control for AKS resources
-    for cluster-level authorization.
-end note 
+' === OPA Governance Relationships (Dashed) ===
+'Rel_D(opa, ingress, "Governs admission policies", "OPA Constraint") 
+'Rel_D(opa, otel, "Governs admission policies", "OPA Constraint") 
+'Rel_D(opa, grafana, "Governs admission policies", "OPA Constraint") 
+'Rel_D(opa, mimir_storage, "Governs admission policies", "OPA Constraint") 
+
+
+Note right of opa 
+    OPA Gatekeeper operates at admission control.
+    It enforces policies during resources creation/update
+    but has no direct runtime data flow connections.
+end note  
 
 @enduml
