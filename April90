@@ -12,8 +12,7 @@ System_Boundary(aks_cluster, "Dedicated AKS Cluster ") {
         Component(oauth2_proxy, "Security Proxy", "OAuth2", "Handles authentication and authorization with OIDC")
         Component(ingress, "NGINX Ingress", "Ingress", "Routes traffic with WAF protection")
         Component(cert_manager, "Certificate Controller", "cert-manager",  "Automated TLS certificate management with AKV integration")
-        Component(opa, "OPA Gatekeeper",  "Open Policy Agent", "Enforces security policies and compliance")
-        
+        Component(azure_rbac, "Azure RBAC", "Role-Based Access Control", "Enforces access permissions and role assignments")
     }
   
     ' === Processing Layer ===
@@ -75,7 +74,7 @@ Rel(ingress, oauth2_proxy, "Validates auth", "JWT validation")
 Rel(oauth2_proxy, aad, "OIDC auth", "OAuth2/OIDC")
 Rel(cert_manager, akv, "Gets certificates", "mTLS")
 Rel(akv_csi, akv, "Mounts secrets", "API/CSI")
-Rel(opa, aks_cluster, "Enforces policies", "Admission control")
+Rel(azure_rbac, aks_cluster, "Controls access", "Role assignments")
 
 ' === Data Ingestion Flow ===
 Rel(vm_agents, ingress, "OTLP telemetry", "mTLS encrypted")
@@ -121,17 +120,12 @@ Rel(akv_csi, loki_dist, "Credentials", "Volume mount")
 Rel(akv_csi, jaeger_col, "DB credentials", "Volume mount")
 Rel(akv_csi, grafana_core, "Secrets", "Volume mount")
 
-' === OPA Governance Relationships (Dashed) ===
-'Rel_D(opa, ingress, "Governs admission policies", "OPA Constraint") 
-'Rel_D(opa, otel, "Governs admission policies", "OPA Constraint") 
-'Rel_D(opa, grafana, "Governs admission policies", "OPA Constraint") 
-'Rel_D(opa, mimir_storage, "Governs admission policies", "OPA Constraint") 
-
-
-Note right of opa 
-    OPA Gatekeeper operates at admission control.
-    It enforces policies during resources creation/update
-    but has no direct runtime data flow connections.
+Note right of azure_rbac
+    Azure RBAC enforces access policies
+    through role assignments across
+    cluster resources and services.
+    It replaces OPA for access control
+    but does not handle runtime data flows.
 end note  
 
 @enduml
