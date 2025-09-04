@@ -1,3 +1,4 @@
+Private cluster configuration with appropriate networking (private endpoints, authorized IP ranges)
 Enhanced Security & Governance: Private network isolation, robust authentication, and centralized management of observability data flows.
 
 Modern Telemetry Pipeline: Implementation of the Otel-collector as a standard, vendor-agnostic agent for collecting and exporting metrics, logs, and traces.
