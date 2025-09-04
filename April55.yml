@@ -1,1 +1,13 @@
+Description
+Stand up a dedicated Linux VM to temporarily host the OSS observability stack (Grafana, Prometheus, Loki, Jaeger) for the dev environment, with AKS sending telemetry to the VM. Keep access private and time-boxed while ingress issues are resolved.
+Expected outcomes
+Unblocked visibility: Teams can access observability UIs without changing AKS/APIM.
+Minimal risk: Private-only access; limited and controlled exposure.
+Operationally simple: Containerized deployment and basic runbook.
+Documented deviation: Dev environment exception captured with a clear sunset plan.
+Acceptance criteria
+VM host running the OSS stack using a containerized approach, reachable within the private network.
+Telemetry visible end-to-end from AKS (metrics, logs, traces) in the VM-hosted tools.
+Private-only access to UIs (no public exposure); basic auth enabled.
+Time-boxed workaround with defined exit criteria and decommission steps.
 
