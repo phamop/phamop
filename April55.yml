@@ -1,3 +1,15 @@
+- **Problem/Need:**  
+  Dev APIM/AKS ingress constraints block access to observability UIs (Grafana/Jaeger). A reviewed design is required to define a secure, private, and time-boxed approach for hosting an  OSS stack on a dedicated AKS.
+
+- **Expected Outcome:**  
+  Approved design  for the OSS observability stack on a dedicated AKS cluster with implementation roadmap, security posture and stakeholder approval. This dedicated platform will be hosted on dedicated AKS cluster will serve as a centralized solution for  unimpeded access to telemetry signal/data  from existing AKS. 
+
+
+
+
+
+
+
 ## Title  
 Dev: Design for Dedicated AKS OSS Observability Stack
 
