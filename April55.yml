@@ -1,3 +1,150 @@
+# EPIC: Dedicated AKS Observability Stack Implementation
+
+## Description
+Deploy a comprehensive OSS observability stack (Grafana, Prometheus, Loki, Jaeger) as a permanent solution within a dedicated AKS cluster for the dev environment. This implementation will provide centralized monitoring, logging, and tracing capabilities with proper GitOps-free deployment using Helm and Kustomize for configuration management.
+
+## Expected Outcomes
+- **Complete observability coverage**: Teams gain full visibility into metrics, logs, and traces across all AKS workloads
+- **Production-ready foundation**: Establish scalable, maintainable observability infrastructure that can be promoted to higher environments
+- **Streamlined operations**: Leverage Helm for package management and Kustomize for environment-specific configurations
+- **Enhanced developer experience**: Self-service access to observability data with proper RBAC and namespace isolation
+
+## Acceptance Criteria
+
+### Infrastructure & Deployment
+- [ ] Dedicated AKS cluster provisioned with appropriate node pools for observability workloads
+- [ ] Helm charts deployed for all observability stack components:
+  - Prometheus (metrics collection and storage)
+  - Grafana (visualization and dashboards)
+  - Loki (log aggregation and querying)
+  - Jaeger (distributed tracing)
+- [ ] Kustomize overlays configured for dev environment-specific settings
+- [ ] Persistent storage configured for data retention requirements
+- [ ] Resource quotas and limits properly configured for optimal performance
+
+### Observability Integration
+- [ ] End-to-end telemetry collection from source AKS clusters:
+  - Metrics: Node, pod, and application-level metrics via Prometheus
+  - Logs: Container and application logs via Loki
+  - Traces: Distributed tracing data via Jaeger
+- [ ] Service discovery and auto-configuration for dynamic workloads
+- [ ] Cross-cluster networking configured for telemetry ingestion
+- [ ] Data retention policies implemented according to compliance requirements
+
+### Security & Access Control
+- [ ] Private cluster configuration with no public endpoint exposure
+- [ ] Azure AD integration for authentication
+- [ ] RBAC policies configured for team-based access control
+- [ ] Network security groups and policies restricting access to authorized networks
+- [ ] TLS encryption enabled for all observability endpoints
+- [ ] Secrets management integrated with Azure Key Vault
+
+### Operational Excellence
+- [ ] Comprehensive monitoring of the observability stack itself (meta-monitoring)
+- [ ] Automated backup and disaster recovery procedures
+- [ ] Alerting rules configured for system health and performance
+- [ ] Runbooks documented for common operational tasks
+- [ ] Performance benchmarking and capacity planning completed
+- [ ] Upgrade procedures documented and tested
+
+### Documentation & Knowledge Transfer
+- [ ] Architecture documentation including data flows and dependencies
+- [ ] User guides for accessing and using observability tools
+- [ ] Developer onboarding documentation for instrumentation
+- [ ] Troubleshooting guides and common issue resolution
+- [ ] Configuration management procedures for Helm and Kustomize
+
+## Technical Implementation Notes
+
+### Helm Chart Structure
+```
+observability-stack/
+├── charts/
+│   ├── prometheus/
+│   ├── grafana/
+│   ├── loki/
+│   └── jaeger/
+├── values/
+│   ├── values-dev.yaml
+│   ├── values-staging.yaml
+│   └── values-prod.yaml
+└── Chart.yaml
+```
+
+### Kustomize Configuration
+- Base configurations for common settings
+- Environment-specific overlays for dev/staging/prod
+- ConfigMap and Secret generators for dynamic configuration
+- Resource transformations for environment-appropriate sizing
+
+### Key Components
+- **Prometheus**: Metrics collection with federation capabilities
+- **Grafana**: Unified dashboards with data source integration
+- **Loki**: Log aggregation with LogQL querying
+- **Jaeger**: Distributed tracing with sampling strategies
+- **AlertManager**: Centralized alerting with notification routing
+
+## Success Metrics
+- 99.9% uptime for observability stack
+- <2 second query response time for Grafana dashboards
+- Complete telemetry coverage for all monitored AKS clusters
+- Zero security incidents related to observability access
+- 100% of development teams onboarded and actively using the platform
+
+## Dependencies
+- Azure subscription with appropriate quotas
+- Network connectivity between source and observability AKS clusters
+- Azure AD tenant configuration for authentication
+- Storage account for long-term data retention
+- DNS configuration for internal service discovery
+
+
+
+
+
+
+Of course. Here is the EPIC content redefined for a **dedicated AKS cluster** as a permanent, internal solution, utilizing Helm/Kustomize and explicitly excluding GitOps.
+
+---
+
+### **Description**
+Provision a dedicated, internal AKS cluster to permanently host the OSS observability stack (Grafana, Prometheus, Loki, Tempo) for the dev environment. This cluster will be the centralized telemetry sink for all development workloads. Access will be strictly private, leveraging AKS networking and ingress controllers designed for internal traffic.
+
+**Key Shift from Original:** This is not a temporary VM but a permanent, managed Kubernetes platform, aligning with our core infrastructure and expertise.
+
+### **Expected Outcomes**
+*   **Permanent Visibility Platform:** Establish a reliable, scalable, and maintainable observability foundation for the dev environment, eliminating the need for a future migration.
+*   **Enhanced Security Posture:** All access remains entirely within the private network fabric. There is no public exposure, reducing the attack surface compared to a time-boxed VM with potential configuration drift.
+*   **Operational Consistency:** Deployment and management use our standard tools (Helm, Kustomize) on a familiar platform (AKS), increasing reliability and simplifying maintenance.
+*   **Fully Documented Solution:** Complete runbook and architecture diagram for the observability cluster and its integration with workload clusters.
+
+### **Acceptance Criteria**
+1.  **Dedicated AKS Cluster:** A new AKS cluster is provisioned within the development subscription, configured with a private endpoint and no public API server access.
+2.  **OSS Stack Deployment:** The full stack (Grafana, Prometheus, Loki, Tempo) is deployed via Helm charts, configured with Kustomize for environment-specific values (e.g., basic auth credentials, data retention periods).
+3.  **Private Ingress:** Stack UIs (Grafana, etc.) are exposed via an **internal** Ingress Controller (e.g., NGINX Ingress) or an Application Gateway Ingress Controller (AGIC), making them reachable only from within the private network (e.g., via VPN/bastion host).
+4.  **Telemetry Integration:**
+    *   Prometheus is configured to scrape metrics from the workload AKS clusters via their managed Prometheus endpoints or scraping configs.
+    *   Workload clusters are configured to forward logs to Loki and traces to Tempo running on the observability cluster, using Otel collectors or fluent-bit.
+5.  **Authentication:** Basic auth is enabled and configured for all UI endpoints (Grafana, Prometheus, etc.).
+6.  **Permanent Solution Documentation:** A runbook detailing:
+    *   Architecture and network flow diagram.
+    *   Steps to deploy/update the Helm charts.
+    *   How to access the UIs securely.
+    *   Monitoring and alerting for the observability stack itself.
+    *   Data backup and retention policies.
+
+---
+
+### **Why This is a Superior Approach**
+
+*   **Permanence & Scalability:** AKS is a managed service that handles patching, scaling, and reliability, providing a solid foundation for a critical platform like observability.
+*   **Ecosystem Alignment:** Uses the same tooling (Containers, Helm, Kustomize) and platform (Kubernetes) as our applications, reducing cognitive load and operational overhead.
+*   **Improved Security:** AKS integrates natively with Azure networking and security tools (Managed Identities, VNet integration, Private Link). A time-boxed VM is more likely to become a forgotten security liability.
+*   **No "Temporary" Technical Debt:** This solution solves the problem definitively without creating a future project to decommission and migrate away from a VM, saving significant future effort.
+
+
+
+
 Description
 Stand up a dedicated Linux VM to temporarily host the OSS observability stack (Grafana, Prometheus, Loki, Jaeger) for the dev environment, with AKS sending telemetry to the VM. Keep access private and time-boxed while ingress issues are resolved.
 Expected outcomes
