@@ -1,10 +1,100 @@
-- **Problem/Need:**  
-  Dev APIM/AKS ingress constraints block access to observability UIs (Grafana/Jaeger). A reviewed design is required to define a secure, private, and time-boxed approach for hosting an  OSS stack on a dedicated AKS.
+We will begin by establishing a secure, dedicated AKS cluster as the foundational platform. The observability stack (Grafana, Jaeger, etc.) will then be deployed using Infrastructure as Code (IaC) and GitOps principles to ensure consistency, repeatability, and auditability. Crucially, access will be strictly controlled via a private ingress solution (like an Internal Ingress Controller or Azure API Management with VNET integration) and explicitly granted on a need-to-know basis. The implementation will be iterative, with each phase culminating in a validation checkpoint to ensure security, functionality, and stakeholder alignment before proceeding.
+The approach remains a phased, security-first methodology but leverages a CI/CD pipeline driven by Helm for package management and Kustomize for environment-specific overlays. This combination provides a powerful and explicit IaC pattern. The dedicated AKS cluster will be provisioned via Terraform/Bicep, after which all observability stack deployments and configurations will be managed through pipeline executions that helm install/upgrade and kustomize build commands. This ensures version-controlled, repeatable, and auditable deployments without the autonomous reconciliation of a GitOps operator. Access remains strictly controlled via private ingress and Azure AD integration.
 
-- **Expected Outcome:**  
-  Approved design  for the OSS observability stack on a dedicated AKS cluster with implementation roadmap, security posture and stakeholder approval. This dedicated platform will be hosted on dedicated AKS cluster will serve as a centralized solution for  unimpeded access to telemetry signal/data  from existing AKS. 
+Key Steps (Helm & Kustomize Focus)
+Phase 1: Foundation & IaC Setup
 
+Stakeholder Alignment & Requirement Finalization:
 
+Conduct workshops to formalize requirements.
+
+Output: Signed-off design document.
+
+Cluster Provisioning (Terraform/Bicep):
+
+Define and provision the dedicated AKS cluster and its network using Terraform or Bicep.
+
+Output: A running, secure AKS cluster in the target VNET.
+
+CI/CD Pipeline & Repository Structure Setup:
+
+Establish a CI/CD pipeline (Azure DevOps, GitHub Actions) with the necessary service connection/kubeconfig to access the new AKS cluster.
+
+Structure the git repository for Helm and Kustomize:
+
+text
+observability-platform/
+├── charts/                 # Base Helm charts (for Grafana, Jaeger, etc.)
+├── overlays/
+│   ├── dev/               # Kustomize overlay for development
+│   │   ├── kustomization.yaml
+│   │   └── values-grafana.yaml  # Environment-specific values
+│   └── prod/              # Kustomize overlay for production
+│       ├── kustomization.yaml
+│       └── values-grafana.yaml
+├── scripts/               # Scripts for pipeline (e.g., helm upgrade commands)
+└── azure-pipelines.yaml   # Pipeline definition
+Output: A configured pipeline and a logically structured repository.
+
+Phase 2: Deployment & Configuration with Helm/Kustomize
+
+Package Stack with Helm Charts:
+
+Define the requirements for each tool (Grafana, Jaeger) in Chart.yaml files.
+
+Create a parent chart or individual charts for each component.
+
+Output: Versioned Helm charts ready for deployment.
+
+Customize Deployment with Kustomize:
+
+Use Kustomize to manage environment-specific configurations on top of the Helm charts.
+
+The kustomization.yaml file in each overlay (e.g., overlays/prod/) will:
+
+Define a helmChart directive to point to the base chart.
+
+Include a values file (e.g., values-grafana.yaml) to override default Helm values for that specific environment (e.g., setting resource limits, enabling persistence).
+
+Generate the final Kubernetes manifests by combining the Helm template output with the Kustomize overlays.
+
+Output: Environment-specific manifests generated from a single source of truth.
+
+Implement Secure, Private Ingress:
+
+The Ingress Controller (e.g., NGINX) is deployed via its Helm chart.
+
+The configuration to make it internal (e.g., controller.service.annotations."service.beta.kubernetes.io/azure-load-balancer-internal": "true") is defined in a Kustomize values file within the prod overlay.
+
+Ingress resources for Grafana/Jaeger are defined as templates in their respective Helm charts.
+
+Output: UIs are accessible only via a private IP address.
+
+Configure Access & Authentication (Azure AD):
+
+Azure AD integration for Grafana is configured by setting Helm values (e.g., grafana.ini sections for auth.azuread) in the Kustomize overlay files. Sensitive data like client secrets will be managed by Azure Key Vault Provider for Secrets Store CSI Driver, not stored in git.
+
+Phase 3: Validation & Rollout
+
+Pipeline-Triggered Deployment:
+
+The pipeline executes the deployment process:
+
+Step 1: Authenticate with AKS.
+
+Step 2: For each component, run a command that leverages the combination: helm upgrade -i <release-name> ./charts/<chart-name> -f ./overlays/prod/values-<chart-name>.yaml
+
+Alternatively, use kustomize build ./overlays/prod/ | kubectl apply -f - if the kustomization is configured to render the Helm chart.
+
+Output: The entire stack is deployed to the cluster via a controlled, auditable pipeline.
+
+Testing, Validation, and Onboarding:
+
+Perform security and functional validation as before.
+
+Onboard users and create operational runbooks.
+
+Output: A fully operational platform managed via Helm/Kustomize CI/CD.
 
 
 
