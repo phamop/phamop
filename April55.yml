@@ -1,98 +1,33 @@
+## Title  
+Dev: Design for Dedicated AKS OSS Observability Stack
 
-@startuml Azure_VMSS_Observability_GreyTheme
+## 1. Description  
+- **Problem/Need:**  
+  Dev APIM/AKS ingress constraints block access to observability UIs (Grafana/Jaeger). A reviewed design is required to define a secure, private, and time-boxed approach for hosting an  OSS stack on a dedicated AKS.
 
-title Azure VMSS OSS Observability (HA)\n<color:#C0C0C0><size:12>Grey Theme</size></color>
+- **Expected Outcome:**  
+  Approved design  for the OSS observability stack that operates in dedicated AKS and integrates with package covering VM sizing/config, containerization (Docker/Compose), IaC (Ansible), networking/security posture, data flow, retention, access model, and C4 L2/L3 diagrams to guide implementation and ADR addendum.
 
-skinparam shadowing false
-skinparam componentStyle rectangle
-skinparam rectangle {
-  RoundCorner 12
-}
-skinparam packageStyle rectangle
-skinparam packageBorderColor #666666
-skinparam packageBackgroundColor #E5E5E5
-skinparam noteBackgroundColor #1d0310ff
-skinparam noteBorderColor #E6C073
-skinparam noteFontColor #080808ff
-skinparam backgroundColor #404040
-skinparam defaultTextColor #F0F0F0
-skinparam ArrowColor #F0F0F0
-skinparam ArrowFontColor #F0F0F0
-skinparam defaultFontColor #F0F0F0
+- **Related Links:**  
+  - 
 
-rectangle "Azure Subscription" as Azure #5A5A5A {
-  
-  package "AKS Cluster" as AKS #7A7A7A {
-    component "Workloads" as Workloads #4E7DD1
-    component "OTel Agents\n(DaemonSet)" as OTelAgents #4E7DD1
-    component "Optional OTel Sidecars" as OTelSidecars #4E7DD1
-  }
+## 2. Implementation Approach  
+- **Key Steps:**  
+  - Gather constraints and assumptions (existing subnet, existing network-only access, team access methods, retention targets).  
+  - Propose VM sizing (CPU, RAM, SSD storage) with performance and retention headroom.  
+  - Define architecture and data flow: AKS OpenTelemetry Collectors forward metrics (Prometheus remote write), logs (Loki HTTP), traces (OTLP) to VM endpoints; enumerate required ports.  
+  - Containerization plan using Docker Compose for Grafana, Prometheus (remote write receiver), Loki, and Jaeger; outline service configs and restart policies.  
+  - IaC plan using Ansible (roles/playbooks for VM provisioning, Docker install, Compose deployment, firewall rules, users/secrets).  
+  - Security posture: credentials/RBAC, disable anonymous access, network allowlists; TLS if feasible within dev constraints.  
+  - Observability retention targets for dev (e.g., 7–14 days metrics/logs) and disk sizing rationale.  
+  - Deliver C4 L2 (logical) and C4 L3 (deployment) diagrams; review with stakeholders and incorporate feedback.  
+  - Produce the design document package and submit for signoff.
 
-  rectangle "Standard Internal Load Balancer\n(VIP: otel-gw.internal.corp)" as ILB #7A7A7A
+## 3. Value & Priority  
+- **Impact:**  
+  Creates a clear, reviewable plan that unblocks implementation, aligns stakeholders, and feeds the ADR addendum while minimizing risk.
 
-  package "VM Scale Set (3..10 VMs)" as VMSS #7A7A7A {
-    rectangle "VMs" as VMN #5A5A5A {
-      component "nginx\n(443)" as Nginx #A0A0A0
-      component "OTel Collector\nGateway (4317/4318)\nProm Exporter (9464)" as Gateway #4E7DD1
-      component "Prometheus\n(local TSDB on Premium SSD)" as Prom #9C6ADE
-      component "Thanos Sidecar" as ThanosSidecar #9C6ADE
-      component "Thanos Query / Store" as ThanosQS #9C6ADE
-      component "Loki Distributor\n(3100)" as LokiDist #4CAF50
-      component "Loki Ingester\n(WAL on SSD)" as LokiIngest #4CAF50
-      component "Loki Querier / Query-Frontend" as LokiQuery #4CAF50
-      component "Loki Compactor\n(ONE active)" as LokiComp #4CAF50
-      component "Jaeger Collector\n(14250 / 14268)" as JaegerCol #FF9800
-      component "Jaeger Query UI\n(16686)" as JaegerQuery #FF9800
-      component "Grafana\n(3000)" as Grafana #FF5252
-    }
-  }
 
-  database "Azure Blob Storage\n(thanos-bucket, loki-bucket)" as Blob #42A5F5
-  database "Elastic / OpenSearch\n(Traces Storage)" as TraceStore #FF9800
-  database "Azure Database for PostgreSQL\n(Grafana DB)" as PG #FF5252
-  component "Azure Key Vault\n(Secrets & Certs)" as KV #AB47BC
-  rectangle "App Gateway (WAF v2)\n443" as AppGW #A0A0A0
-}
 
-' ===== FLOWS =====
-Workloads -[#4E7DD1]-> OTelAgents : telemetry
-OTelSidecars -[#4E7DD1]-> ILB : OTLP 4317/4318
-OTelAgents -[#4E7DD1]-> ILB : OTLP 4317/4318
-ILB -[#4E7DD1]-> Gateway : LB traffic
 
-Gateway -[#9C6ADE]-> Prom : scrape 9464
-ThanosSidecar -[#9C6ADE]-> Blob : upload blocks
 
-Gateway -[#4CAF50]-> LokiDist : logs
-LokiIngest -[#4CAF50]-> Blob : chunks/index
-
-Gateway -[#FF9800]-> JaegerCol : traces
-JaegerCol -[#FF9800]-> TraceStore : spans
-
-Grafana -[#CCCCCC]-> ThanosQS : Prom/Thanos
-Grafana -[#CCCCCC]-> LokiQuery : LogQL
-Grafana -[#CCCCCC]-> JaegerQuery : Traces
-Grafana -[#CCCCCC]-> PG : dashboards/users
-AppGW -[#CCCCCC]-> Nginx : TLS /grafana, /jaeger
-Nginx -[#CCCCCC]-> Grafana
-Nginx -[#CCCCCC]-> JaegerQuery
-
-Gateway -[#AB47BC]-> KV : read certs
-Grafana -[#AB47BC]-> KV : secrets via MI
-
-note right of ILB
-  <b>ILB Health Probes:</b>
-   - 4317 (OTLP gRPC)
-   - 4318 (OTLP HTTP)
-   - 3100 (Loki distributor)
-   - 14250 (Jaeger collector)
-  <b>Idle timeout:</b>
-   - 30m
-end note
-
-note bottom of LokiComp
-  <b>Compaction:</b>
-  Exactly one active
-end note
-
-@enduml
