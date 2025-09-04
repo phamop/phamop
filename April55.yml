@@ -1,57 +1,30 @@
-Here's the redefined content for a dedicated AKS solution:
+## Title  
+Dev: Implement Temporary VM-hosted OSS Observability Stack
 
-**Description**
-Stand up a dedicated AKS cluster to permanently host the OSS observability stack (Grafana, Prometheus, Loki, Jaeger) for the dev environment, with the primary AKS cluster sending telemetry to the observability cluster. Deploy using Helm charts and Kustomize for configuration management, maintaining private access while establishing a robust, production-ready observability platform.
+## 1. Description  
+- **Problem/Need:**  
+  Implement the approved design to deploy a temporary, private VM-hosted OSS observability stack (Grafana, Prometheus, Loki, Jaeger) and wire AKS telemetry via OpenTelemetry Collector, without changing AKS/APIM ingress.
 
-**Expected outcomes**
-- **Unblocked visibility**: Teams can access observability UIs through a dedicated, properly configured AKS environment
-- **Production-ready architecture**: Kubernetes-native deployment with proper resource management, scaling, and high availability
-- **GitOps-ready foundation**: Helm and Kustomize configurations prepared for future GitOps integration
-- **Scalable solution**: Container orchestration allows for easy scaling and maintenance of observability components
+- **Expected Outcome:**  
+  Working deployment on a Linux VM using Docker Compose and Ansible, with existing network-only access, short retention, and a brief runbook. Telemetry from AKS is visible end-to-end.
 
-**Acceptance criteria**
-- Dedicated AKS cluster deployed with the OSS observability stack using Helm charts
-- Kustomize overlays configured for environment-specific customizations (dev, staging, prod-ready)
-- Telemetry flowing end-to-end from primary AKS cluster to observability cluster (metrics, logs, traces)
-- Private networking established between clusters with secure service mesh or network policies
-- Persistent storage configured for data retention (Prometheus metrics, Loki logs)
-- Resource quotas and limits properly configured for each observability component
-- Basic authentication and RBAC implemented for UI access
-- Load balancing and ingress properly configured within the private network
-- Monitoring and alerting configured for the observability stack itself
-- Documentation delivered: deployment runbook, Helm values documentation, and network architecture diagram
-- Backup and disaster recovery procedures documented
-- Performance benchmarks established for the observability cluster
+- **Related Links:**  
+  - (Link to the approved design story)
 
-This approach provides a permanent, scalable solution that leverages Kubernetes best practices while maintaining the private access requirements and preparing for future GitOps adoption.
+## 2. Implementation Approach  
+- **Key Steps:**  
+  - Provision VM in the existing subnet; apply firewall/NSG rules for local-only access.  
+  - Use Ansible to install Docker, deploy Docker Compose stack (Grafana, Prometheus with remote write receiver, Loki, Jaeger), configure restart policies.  
+  - Configure OpenTelemetry Collector in AKS to forward metrics (remote write), logs (Loki HTTP), and traces (OTLP) to the VM.  
+  - Apply credentials, RBAC, and disable anonymous access; set retention in Prometheus/Loki per design.  
+  - Validate telemetry flow and UI access; create a short runbook for common tasks and troubleshooting.  
+  - Version compose files and Ansible playbooks in the repo; record decommission/sunset steps.
 
+## 3. Value & Priority  
+- **Impact:**  
+  Restores developer observability rapidly with minimal risk and clear rollback path.
 
 
 
-Revised Description & Solution
-Title: Establish a Dedicated AKS Cluster for the OSS Observability Stack (Grafana, Prometheus, Loki, Jaeger)
 
-Description:
-Deploy a dedicated, internal AKS cluster to permanently host the OSS observability stack. This cluster will act as the centralized telemetry sink for all development environments. All access will be kept private within the corporate network, with authentication required for UI access. This solution provides a robust, scalable, and operationally simple platform for observability data, moving beyond a temporary VM-based workaround.
 
-Expected Outcomes:
-
-Unblocked & Permanent Visibility: Development teams gain immediate and reliable access to observability UIs via private ingress, without modifying the primary application AKS clusters or APIM.
-
-Minimal Risk & Enhanced Security: The cluster is deployed on a private network with no public endpoints. All UI access is protected by authentication.
-
-Operationally Simple & Scalable: A containerized deployment managed via Helm and Kustomize ensures easy setup, versioning, and future upgrades.
-
-Documented Strategy: The architecture decision is captured in an ADR, establishing this as the sanctioned pattern for development observability.
-
-Acceptance Criteria:
-
-A dedicated AKS cluster is provisioned, configured with a private API server and node pool.
-
-The OSS stack (Prometheus, Grafana, Loki, Jaeger) is successfully deployed via Helm charts, customized with Kustomize for environment-specific config.
-
-Telemetry is flowing end-to-end from the primary application AKS cluster to the observability cluster (metrics to Prometheus, logs to Loki, traces to Jaeger).
-
-All UIs (Grafana, etc.) are accessible only via private network connectivity (e.g., through a bastion host or VPN) with basic auth or a similar authentication mechanism enabled.
-
-Full documentation is delivered: a runbook for deployment/management and an ADR addendum justifying the dedicated cluster approach.
