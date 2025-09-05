@@ -1,3 +1,8 @@
+kubectl delete deployment -l app.kubernetes.io/managed-by=opentelemetry-operator --all-namespaces
+kubectl delete service -l app.kubernetes.io/managed-by=opentelemetry-operator --all-namespaces
+
+
+
 kubectl delete crd opentelemetrycollectors.opentelemetry.io
 kubectl delete crd instrumentations.opentelemetry.io
 kubectl delete crd opampbridges.opentelemetry.io
