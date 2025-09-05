@@ -1,5 +1,3 @@
-kubectl get deployment otel-collector-collector  -n eddv3-hbt -o jsonpath='{.metadata.ownerReferences}'
-[{"apiVersion":"opentelemetry.io/v1beta1","blockOwnerDeletion":true,"controller":true,"kind":"OpenTelemetryCollector","name":"otel-collector","uid":"af891ec9-a327-44bc-996e-3569a1393513"}]
-
- kubectl get deployment otelcollector-collector -n eddv3-hbt -o jsonpath='{.metadata.ownerReferences}'
-[{"apiVersion":"opentelemetry.io/v1beta1","blockOwnerDeletion":true,"controller":true,"kind":"OpenTelemetryCollector","name":"otelcollector","uid":"4a0a26f5-4b04-4aef-ad47-8155eb12771b"}]
+kubectl delete crd opentelemetrycollectors.opentelemetry.io
+kubectl delete crd instrumentations.opentelemetry.io
+kubectl delete crd opampbridges.opentelemetry.io
