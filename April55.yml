@@ -5,3 +5,22 @@ Remove OSS stack on both  DEV/FT environment
 
    
  Implementation Approach  
+
+
+All OSS observability stack pods, deployments, statefulsets, and daemonsets are terminated and removed from the FT Kubernetes cluster.
+
+AC2: All associated Persistent Volume Claims (PVCs) and Persistent Volumes (PVs) storing time-series data and Grafana dashboards are permanently deleted.
+
+AC3: All Kubernetes Services, Ingresses, and Network Policies for the OSS stack are removed.
+
+AC4: Any dedicated namespaces (e.g., monitoring) are removed from the FT cluster, or confirmed empty of OSS resources.
+
+Remove any custom resources (e.g., Servicemonitor, Podmonitor CRDs from Prometheus Operator).
+
+Delete deployments/statefulsets to gracefully terminate the applications.
+
+Delete services and ingresses.
+
+Delete PVCs/PVs to release storage.
+
+Finally, delete the namespace.
