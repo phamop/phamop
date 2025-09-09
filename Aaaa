@@ -1,3 +1,172 @@
+Of course. Here is a formal document created from the provided outline, expanded with detailed, practical content suitable for an engineering or platform team.
+
+---
+
+### **Document Title: Discovery and Implementation Plan: AKS Observability Stack & Jaeger Refactoring**
+
+**Version:** 1.0
+**Date:** October 26, 2023
+**Author:** [Your Name/Team Name]
+**Status:** Draft for Review
+
+### **1. Description**
+
+This document serves as a comprehensive discovery and planning artifact for the deployment and optimization of our observability stack on Azure Kubernetes Service (AKS). The primary objectives are to ensure a seamless, secure, and production-ready deployment by gathering all necessary configuration details and requirements. A specific focus is placed on refactoring the Jaeger tracing component from its current proof-of-concept (POC) `allInOne` configuration to a highly available, scalable, and durable `production` strategy.
+
+### **2. Implementation Approach**
+
+#### **2.1. Shared Technology Integration**
+
+##### **i. Certificate Issuer**
+
+*   **Solution:** **cert-manager**
+*   **Rationale:** cert-manager is the de facto standard for automated TLS certificate management within Kubernetes. It provides robust integration with various Issuers and ClusterIssuers, simplifying the process of obtaining, renewing, and using certificates.
+*   **Implementation Details:**
+    *   **ClusterIssuer (Recommended for cluster-wide use):** We will deploy a `ClusterIssuer` resource configured for our chosen certificate authority.
+    *   **Primary CA:** **Let's Encrypt (Production)**. Provides free, automated, and widely trusted certificates.
+        *   **Issuer Type:** `ACME` (Automated Certificate Management Environment)
+        *   **Challenge Provider:** `HTTP01` using the `nginx` ingress class. This is the most straightforward method for public-facing ingresses.
+    *   **Annotation:** To trigger certificate issuance, the following annotation will be added to Ingress resources:
+        ```yaml
+        cert-manager.io/cluster-issuer: "letsencrypt-prod"
+        ```
+    *   **Fallback Option (Internal/Private CA):** For internal services requiring certificates not signed by a public CA, a second `ClusterIssuer` will be configured using **Azure Key Vault** or **Venafi** as the issuer, leveraging the AAD Workload Identity integration for secure access.
+
+##### **ii. Ingress Controller**
+
+*   **Solution:** **NGINX Ingress Controller** (kubernetes.github.io/ingress-nginx)
+*   **Rationale:** The NGINX Ingress Controller is mature, feature-rich, well-supported, and aligns with our current technology footprint. It provides the necessary performance and flexibility for routing traffic to our observability tools (e.g., Grafana, Jaeger Query, Alertmanager).
+*   **Implementation Details:**
+    *   **Namespace:** `ingress-nginx` (dedicated namespace for isolation).
+    *   **Installation Method:** Helm chart (`ingress-nginx` from https://github.com/kubernetes/ingress-nginx).
+    *   **Service Type:** `LoadBalancer` (Azure will provision a public Azure Load Balancer with a static IP).
+    *   **Key Annotations & Configurations:** Annotations will be applied on the *Ingress resources* for the observability applications, not on the controller itself.
+        *   **TLS/SSL Redirect:**
+            ```yaml
+            nginx.ingress.kubernetes.io/ssl-redirect: "true"
+            ```
+        *   **Proxy Body Size** (for large trace payloads):
+            ```yaml
+            nginx.ingress.kubernetes.io/proxy-body-size: "20m"
+            ```
+        *   **Basic Auth** (if needed for a staging endpoint):
+            ```yaml
+            nginx.ingress.kubernetes.io/auth-type: basic
+            nginx.ingress.kubernetes.io/auth-secret: basic-auth
+            nginx.ingress.kubernetes.io/auth-realm: "Authentication Required"
+            ```
+
+##### **iii. Group Sync & RBAC**
+
+*   **Method:** **Azure Active Directory (AAD) Integration with AKS.**
+*   **Rationale:** Leveraging AAD integration provides a seamless and secure identity layer for the cluster, eliminating the need for separate credential management and enabling centralized user and group lifecycle management.
+*   **Implementation Details:**
+    *   **AKS Cluster Configuration:** The AKS cluster **must be created or reconfigured** with the `--aad-admin-group-object-ids` parameter to grant specific AAD groups cluster-admin access.
+    *   **Group Synchronization:** Azure AD groups (e.g., `aks-observability-admins`, `aks-observability-viewers`) will be used to manage access.
+    *   **RBAC Mapping:** Kubernetes `RoleBinding` and `ClusterRoleBinding` resources will be created that reference the Azure AD groups.
+        *   **Namespace:** `monitoring` (or similar)
+        *   **Sample Bindings:**
+            *   **Admin RoleBinding (Grafana/Jaeger Admin):**
+                ```yaml
+                apiVersion: rbac.authorization.k8s.io/v1
+                kind: RoleBinding
+                metadata:
+                  name: observability-admins
+                  namespace: monitoring
+                subjects:
+                - kind: Group
+                  name: "aks-observability-admins" # Name of the AAD Group
+                  apiGroup: rbac.authorization.k8s.io
+                roleRef:
+                  kind: ClusterRole
+                  name: admin # Pre-defined Kubernetes ClusterRole
+                  apiGroup: rbac.authorization.k8s.io
+                ```
+            *   **Viewer RoleBinding (Grafana/Jaeger Viewer):**
+                ```yaml
+                apiVersion: rbac.authorization.k8s.io/v1
+                kind: RoleBinding
+                metadata:
+                  name: observability-viewers
+                  namespace: monitoring
+                subjects:
+                - kind: Group
+                  name: "aks-observability-viewers" # Name of the AAD Group
+                  apiGroup: rbac.authorization.k8s.io
+                roleRef:
+                  kind: ClusterRole
+                  name: view # Pre-defined Kubernetes ClusterRole
+                  apiGroup: rbac.authorization.k8s.io
+                ```
+
+#### **2.2. Jaeger Optimization & Transition**
+
+*   **Current State Analysis:** The existing deployment uses the `allInOne` strategy, which combines agent, collector, query, and UI in a single pod with in-memory storage. This is unsuitable for production due to:
+    *   **Data Loss:** Traces are lost on pod restart.
+    *   **Lack of Scalability:** Components cannot be scaled independently.
+    *   **No Persistence:** In-memory storage is ephemeral.
+*   **Target State:** **`production` deployment strategy.**
+*   **Implementation Details:**
+    *   **Strategy:** `production`
+    *   **Storage Backend:** **Elasticsearch**. (Primary choice due to its proven integration with Jaeger and scalability. **Azure Monitor managed service for Elastic** will be evaluated vs. self-managed ECK on AKS).
+    *   **Architecture:**
+        *   **Jaeger Agent:** Deployed as a DaemonSet on every node to receive traces from applications.
+        *   **Jaeger Collector:** Deployed as a scalable Deployment. Receives traces from Agents, performs processing, and writes to Elasticsearch storage.
+        *   **Jaeger Query:** Deployed as a scalable Deployment. Provides API and UI for retrieving traces from storage.
+    *   **Helm Chart Analysis:** The official Jaeger Helm chart (`jaegertracing/jaeger`) will be analyzed. The current `values.yaml` will be refactored to:
+        *   Set `provisionDataStore.cassandra=false` (as we are using Elasticsearch).
+        *   Configure the `storage` section with the Elasticsearch node(s) URL and credentials (pulled from a Kubernetes Secret).
+        *   Set the correct `strategy` and disable the `allInOne` image.
+
+### **3. Value & Priority**
+
+*   **High Priority.** This proactive discovery directly addresses operational and security risks.
+*   **Security Hardening:** Defining RBAC and TLS upfront significantly reduces the attack surface and prevents unauthorized access to sensitive observability data.
+*   **Operational Stability:** Transitioning Jaeger to a production architecture eliminates the risk of data loss and ensures the tracing system is reliable and scalable, which is critical for debugging in production environments.
+*   **Compliance:** This approach ensures compliance with organizational policies regarding authentication, authorization, and encrypted communications.
+*   **Reduced Technical Debt:** Replacing the POC Jaeger setup removes a significant anti-pattern and lays a foundation that is easier to maintain and support.
+
+### **4. Done Criteria**
+
+A document is produced, cataloging all relevant AKS configuration details and the specific implementation details for:
+i.  Certificate Issuer **(Complete: Section 2.1.i)**
+ii. Ingress Controller **(Complete: Section 2.1.ii)**
+iii. Group Sync & RBAC configuration **(Complete: Section 2.1.iii)**
+
+**Validation:**
+The discovery document has been reviewed and signed off by the teams member.
+
+---
+
+**Sign-off:**
+
+*   **Platform / SRE Team Lead:** ________________________ Date: _________
+*   **Security Representative:** ________________________ Date: _________
+*   **Development Team Lead:** ________________________ Date: _________
+
+---
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 1. Description
 Gather all necessary configuration details and requirements to ensure a seamless, secure, and compatible deployment of our observability stack, with a specific focus on refactoring and optimizing the Jaeger tracing component
 
