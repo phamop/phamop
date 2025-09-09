@@ -1,3 +1,60 @@
+1. Description
+Gather all necessary configuration details and requirements to ensure a seamless, secure, and compatible deployment of our observability stack, with a specific focus on refactoring and optimizing the Jaeger tracing component
+
+2. Implementation Approach
+Shared Technology Integration:
+    Certificate Issuer: Identify the solution (e.g., cert-manager, public/private CA) and required annotations for automatic TLS certificate provisioning.
+    Ingress Controller: Determine the specific ingress controller (e.g., NGINX, Azure AGIC, Traefik) and its configuration namespace and annotations.
+    Group Sync & RBAC: Document the method for integrating AKS with Azure Active Directory (or other identity provider) for group synchronization. Map Azure AD groups to Kubernetes `RoleBindings` and `ClusterRoleBindings` for access control to observability tools.
+  Jaeger Optimization & Transition: Transition from the default, POC `allInOne` deployment strategy (using in-memory storage). Implement a production-optimized, highly available strategy using the `production` deployment mode.
+
+Analyze the existing Helm charts/Kustomize overlays to understand the current observability architecture and identify technical debt, anti-patterns, and areas for improvement
+
+3. Value & Priority
+Proactive discovery of integration points (e.g., RBAC, TLS, secrets) hardens the deployment, reduces the attack surface, and ensures compliance with organizational security policies.
+
+4. Done Criteria
+ A document is produced, cataloging all relevant AKS configuration details and the specific implementation details for:
+    i   Certificate Issuer
+    ii  Ingress Controller
+    iii Group Sync & RBAC configuration
+Validation:
+The discovery document has been reviewed and signed off by the teams member.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 Of course. Here is a refined, structured, and professional version of your request, suitable for a technical plan, project ticket, or statement of work.
 
 ---
