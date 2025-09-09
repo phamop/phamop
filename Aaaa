@@ -2,10 +2,33 @@ Prep for Observability OSS Stack
 
 Description
 ===========
+Gather all necessary configuration details and requirements for the target Dedicated AKS cluster to ensure a compatible and secure observability deployment.
+Analyze the current codebase (likely Helm charts/Kustomize) to understand the architecture, identify improvements, and ensure best practices.
+Transition from a default or less efficient Jaeger deployment strategy to a production-optimized mode.
+transtion from allinone default to production mode with elasticsearch storage and transition from memory to External Storage Backend: Elasticsearch
+
+
 Collecting all relevant information prior to deployment of Dedicated AKS.
 Reviewing the existing code
 Modification of jaeger component to optimized the current design
-Identifying the specific technology that  will be share with the implementation such Certificate issuer, ingress controller, group sync
+To ensure consistency, security, and operational efficiency, the following technologies will be shared across the cluster and with this observability stack.
+
+Technology	Purpose & Justification	Implementation Details
+Certificate Issuer	Purpose: To automatically provision and manage TLS certificates for secure (HTTPS) ingress endpoints.
+Choice: cert-manager with the Let's Encrypt issuer.	Shared Cluster Resource: A single ClusterIssuer (e.g., letsencrypt-prod) will be deployed. The observability ingress resources will simply annotate themselves to request a certificate from this shared issuer.
+Ingress Controller	Purpose: To manage external access to HTTP/HTTPS services within the cluster.
+Choice: NGINX Ingress Controller (supported by Kubernetes community) or Azure Application Gateway Ingress Controller (AGIC).	Shared Cluster Resource: A single ingress controller will handle routing for all applications, including Grafana, Alertmanager, etc. Ingress resources for observability will be created in the observability namespace.
+Group Sync	Purpose: To map Azure AD/AAD groups to Kubernetes RBAC groups for authentication and authorization in Grafana and the Kubernetes dashboard.
+Choice: Azure AD Pod Identity or Workload Identity + Kubernetes OIDC configuration.	Shared Mechanism: The AKS cluster will be configured with OIDC integration. The Grafana Helm chart will be configured with [auth.azuread] settings, using the shared identity mechanism to allow users to log in with their Azure AD credentials and inherit permissions based on their synced groups.
+
 
 Acceptance Criteria
 ==================
+
+Collecting all relevant information prior to deployment of Dedicated AKS." - Section 1 provides a structured pre-deployment checklist.
+
+ "Reviewing the existing code" - Section 2 defines the scope and key areas of the code review process.
+
+"Modification of jaeger component to optimized the current design" - Section 3 details a concrete optimization plan to replace Jaeger with Tempo, including rationale and implementation steps.
+
+"Identifying the specific technology that will be share with the implementation such Certificate issuer, ingress controller, group sync" - Section 4 explicitly identifies cert-manager, NGINX/AGIC, and Azure AD OIDC Integration as the shared technologies for the implementation.
