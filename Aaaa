@@ -1,1 +1,11 @@
-https://opentelemetry.io/docs/platforms/kubernetes/operator/
+Prep for Observability OSS Stack
+
+Description
+===========
+Collecting all relevant information prior to deployment of Dedicated AKS.
+Reviewing the existing code
+Modification of jaeger component to optimized the current design
+Identifying the specific technology that  will be share with the implementation such Certificate issuer, ingress controller, group sync
+
+Acceptance Criteria
+==================
