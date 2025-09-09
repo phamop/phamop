@@ -1,3 +1,68 @@
+Of course. Here is a refined, structured, and professional version of your request, suitable for a technical plan, project ticket, or statement of work.
+
+---
+
+### **1. Description: Pre-Implementation Discovery for Secure AKS Observability**
+
+**Objective:** To conduct a comprehensive discovery phase for the upcoming deployment of a Dedicated Azure Kubernetes Service (AKS) cluster. The goal is to gather all necessary configuration details and requirements to ensure a seamless, secure, and compatible deployment of our observability stack, with a specific focus on refactoring and optimizing the Jaeger tracing component.
+
+This phase will explicitly identify and document the shared technologies and integration points between the platform (AKS) and the observability workloads to prevent misconfiguration and security gaps.
+
+---
+
+### **2. Workflow & Implementation Details**
+
+**Phase 1: Discovery & Information Gathering**
+*   **Cluster Configuration:** Document AKS version, network model (CNI vs. Kubenet), network policies, and pod security standards (PSP/OPA).
+*   **Shared Technology Integration:**
+    *   **Certificate Issuer:** Identify the solution (e.g., cert-manager, public/private CA) and required annotations for automatic TLS certificate provisioning.
+    *   **Ingress Controller:** Determine the specific ingress controller (e.g., NGINX, Azure AGIC, Traefik) and its configuration namespace and annotations.
+    *   **Group Sync & RBAC:** Document the method for integrating AKS with Azure Active Directory (or other identity provider) for group synchronization. Map Azure AD groups to Kubernetes `RoleBindings` and `ClusterRoleBindings` for access control to observability tools.
+*   **Security & Compliance:** Identify secrets management strategy (e.g., Azure Key Vault Provider for Secrets Store CSI Driver), and any compliance requirements for data encryption (at-rest/in-transit).
+
+**Phase 2: Codebase Analysis & Refactoring**
+*   **Architectural Review:** Analyze the existing Helm charts/Kustomize overlays to understand the current observability architecture and identify technical debt, anti-patterns, and areas for improvement.
+*   **Implement Best Practices:** Refactor the codebase to align with Kubernetes and Helm best practices (e.g., proper use of `values.yaml`, templates, labels, and annotations).
+*   **Jaeger Optimization & Transition:**
+    *   **Current State:** Transition from the default, development-oriented **`allInOne`** deployment strategy (using in-memory storage).
+    *   **Target State:** Implement a production-optimized, highly available strategy using the **`production`** deployment mode.
+    *   **Storage Backend:** Migrate tracing data storage from volatile memory to a durable, scalable **Elasticsearch** backend, which may be deployed as a separate stateful component within the cluster or use a managed cloud service.
+
+---
+
+### **3. Business Value & Priority**
+
+*   **Why This Matters:**
+    *   **Reliability & Performance:** The optimized Jaeger deployment ensures tracing data is persisted and available, providing critical insights for debugging performance issues in production environments. Eliminates data loss from pod restarts.
+    *   **Security & Compliance:** Proactive discovery of integration points (e.g., RBAC, TLS, secrets) hardens the deployment, reduces the attack surface, and ensures compliance with organizational security policies.
+    *   **Operational Efficiency:** A well-refactored and documented codebase is easier to maintain, scale, and troubleshoot, reducing long-term operational overhead.
+    *   **Foundation for Scale:** The move to Elasticsearch provides a scalable storage backend capable of handling high-volume tracing data from distributed microservices.
+
+*   **Class of Service:** **Standard** – This is regular backlog work that is important for platform maturity and stability but is not currently blocking critical work or responding to an incident.
+
+---
+
+### **4. Definition of Done & Validation**
+
+**Completion Requirements:**
+
+1.  **Discovery Artifact:** A detailed document is produced, cataloging all relevant AKS configuration details and the specific implementation details for:
+    *   Certificate Issuer
+    *   Ingress Controller
+    *   Group Sync & RBAC configuration
+2.  **Refactored Codebase:** The existing Helm/Kustomize code has been analyzed, refactored, and validated to follow best practices. The new Jaeger production configuration with Elasticsearch storage is implemented and merged into the appropriate branch.
+3.  **Reusability:** The refactored code is modular and reusable for future cluster deployments.
+
+**Testing & Verification:**
+
+*   The discovery document has been **reviewed and signed off** by the infrastructure and security teams.
+*   The refactored Helm charts/Kustomize configurations have been **peer-reviewed** and **verified** to deploy successfully in a non-production environment, successfully connecting to the specified Elasticsearch backend.
+*   All defined integration points (TLS termination at ingress, secret injection, authentication) are **tested and confirmed** to be functional.
+
+**Final Sign-off:** The work is considered complete when reviewed and verified by the team lead or designated project architect.
+
+
+
 Description
 
 Gather all necessary configuration details and requirements for the target Dedicated AKS cluster to ensure a compatible and secure observability deployment.
