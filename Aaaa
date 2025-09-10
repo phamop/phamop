@@ -1,3 +1,7 @@
+To accelerate the initial setup of the Observability OSS stack, we will use a self-signed certificate for the development environment. This is a temporary measure to unblock development and testing. Once the stack is operational, we will follow the formal process to migrate to a certificate from our official issuer for production use
+
+
+
 After discussing with Saqib, we've decided to begin with a self-signed certificate. This will allow us to expedite the observability setup. Once complete, we will migrate to a proper certificate from our official issuer.
 
 
