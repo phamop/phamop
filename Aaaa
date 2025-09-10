@@ -1,16 +1,9 @@
-Key Changes & Components:
+Increased Reliability: The highly available Jaeger deployment on Elasticsearch eliminates single points of failure, ensuring tracing data is not lost during node failures.
 
-Deployment Mode: production
+Operational Efficiency: Automation through the Jaeger Operator and Cert-Manager reduces manual toil and potential for human error.
 
-Storage Backend: Elasticsearch. A highly available, persistent storage layer for trace data.
+Cost Management: The archiving strategy allows for cost-effective long-term retention of trace data in cheap blob storage while maintaining high-performance querying on recent data in Elasticsearch.
 
-Implementation: Use the official Elasticsearch ECK (Elastic Cloud on Kubernetes) Operator or a managed Azure Elasticsearch/OpenSearch service for reduced operational overhead.
-
-Retention & Archival: Implement a sidecar container or a CronJob that:
-
-Uses the Jaeger ES Index Cleaner: The official Jaeger image provides an es-index-cleaner tool that can be run as a CronJob to delete indices older than a certain period (e.g., 7 days).
-
-Optional - Archival to Blob Storage: For longer retention, a separate CronJob can use the jaeger-archive tool or a custom script to query older traces and archive them to Azure Blob Storage before the index cleaner deletes them from Elasticsearch. The Jaeger Query service can be configured to read from this archive.
 
 
 
