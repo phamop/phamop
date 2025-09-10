@@ -1,11 +1,20 @@
-To accelerate the initial setup of the Observability OSS stack, we will use a self-signed certificate for the development environment. This is a temporary measure to unblock development and testing. Once the stack is operational, we will follow the formal process to migrate to a certificate from our official issuer for production use
+Key Changes & Components:
+
+Deployment Mode: production
+
+Storage Backend: Elasticsearch. A highly available, persistent storage layer for trace data.
+
+Implementation: Use the official Elasticsearch ECK (Elastic Cloud on Kubernetes) Operator or a managed Azure Elasticsearch/OpenSearch service for reduced operational overhead.
+
+Retention & Archival: Implement a sidecar container or a CronJob that:
+
+Uses the Jaeger ES Index Cleaner: The official Jaeger image provides an es-index-cleaner tool that can be run as a CronJob to delete indices older than a certain period (e.g., 7 days).
+
+Optional - Archival to Blob Storage: For longer retention, a separate CronJob can use the jaeger-archive tool or a custom script to query older traces and archive them to Azure Blob Storage before the index cleaner deletes them from Elasticsearch. The Jaeger Query service can be configured to read from this archive.
 
 
 
-After discussing with Saqib, we've decided to begin with a self-signed certificate. This will allow us to expedite the observability setup. Once complete, we will migrate to a proper certificate from our official issuer.
 
-
-Of course. Here is a formal document created from the provided outline, expanded with detailed, practical content suitable for an engineering or platform team.
 
 ---
 
