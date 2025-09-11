@@ -1,3 +1,10 @@
+admissionWebhooks:
+  certManager:
+    enabled: true  # Use cert-manager for certificate management
+  autoGenerateCert: false  # Disable self-signed certs
+
+
+
 # Install cert-manager CRDs separately (ensures CRDs exist before HelmRelease)
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
