@@ -1,8 +1,13 @@
-resource mapping not found for name: "opentelemetry-operator-serving-cert" namespace: "monitoring" from "/azp/agent/_work/83/s/cluster/overlays/EDIT/opentelemetry-operator/kustomization-output.yaml": no matches for kind "Certificate" in version "cert-manager.io/v1"
-ensure CRDs are installed first
-resource mapping not found for name: "opentelemetry-operator-selfsigned-issuer" namespace: "monitoring" from "/azp/agent/_work/83/s/cluster/overlays/EDIT/opentelemetry-operator/kustomization-output.yaml": no matches for kind "Issuer" in version "cert-manager.io/v1"
-ensure CRDs are installed first
-*** Done
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: cert-manager
+
+resources:
+  - ../../../base/cert-manager
+
+patchesStrategicMerge:
+  - ../../../kustomize/overlays/EDIT/cert-manager/kustomization.yaml
 
 
 
