@@ -1,3 +1,11 @@
+resource mapping not found for name: "opentelemetry-operator-serving-cert" namespace: "monitoring" from "/azp/agent/_work/83/s/cluster/overlays/EDIT/opentelemetry-operator/kustomization-output.yaml": no matches for kind "Certificate" in version "cert-manager.io/v1"
+ensure CRDs are installed first
+resource mapping not found for name: "opentelemetry-operator-selfsigned-issuer" namespace: "monitoring" from "/azp/agent/_work/83/s/cluster/overlays/EDIT/opentelemetry-operator/kustomization-output.yaml": no matches for kind "Issuer" in version "cert-manager.io/v1"
+ensure CRDs are installed first
+*** Done
+
+
+
 Increased Reliability: The highly available Jaeger deployment on Elasticsearch eliminates single points of failure, ensuring tracing data is not lost during node failures.
 
 Operational Efficiency: Automation through the Jaeger Operator and Cert-Manager reduces manual toil and potential for human error.
