@@ -1,3 +1,147 @@
+.
+├── README.md
+├── cluster
+│   ├── base
+│   │   ├── cert-manager-operator
+│   │   │   ├── kustomization.yaml
+│   │   │   └── namespace.yaml
+│   │   ├── jaeger-operator
+│   │   │   └── kustomization.yaml
+│   │   └── opentelemetry-operator
+│   │       ├── clusterroles.yaml
+│   │       ├── kustomization.yaml
+│   │       ├── namespace.yaml
+│   │       └── serviceaccount.yaml
+│   └── overlays
+│       ├── EDDV
+│       │   ├── cert-manager-operator
+│       │   │   └── kustomization.yaml
+│       │   └── opentelemetry-operator
+│       │       └── kustomization.yaml
+│       └── EDIT
+│           ├── cert-manager-operator
+│           │   └── kustomization.yaml
+│           ├── jaeger-operator
+│           │   └── kustomization.yaml
+│           └── opentelemetry-operator
+│               ├── clusterrolebinding.yaml
+│               ├── issuer-cert.yaml
+│               └── kustomization.yaml
+├── helm
+│   ├── README.md
+│   ├── source
+│   │   ├── cert-manager
+│   │   │   ├── Chart.yaml
+│   │   │   └── source.yaml
+│   │   ├── crd-prometheus
+│   │   │   ├── Chart.yaml
+│   │   │   └── source.yaml
+│   │   ├── grafana
+│   │   │   ├── Chart.yaml
+│   │   │   └── source.yaml
+│   │   ├── jaeger
+│   │   │   ├── Chart.yaml
+│   │   │   └── source.yaml
+│   │   ├── otel-operator
+│   │   │   ├── Chart.yaml
+│   │   │   └── source.yaml
+│   │   └── prometheus
+│   │       ├── Chart.yaml
+│   │       └── source.yaml
+│   └── values
+│       ├── cert-manager-operator
+│       │   ├── Chart.yaml
+│       │   ├── deploy.yaml
+│       │   └── values.yaml
+│       ├── jaeger-operator
+│       │   ├── Chart.yaml
+│       │   ├── deploy.yaml
+│       │   └── values.yaml
+│       └── opentelemetry-operator
+│           ├── Chart.yaml
+│           ├── deploy.yaml
+│           └── values.yaml
+├── kustomize
+│   ├── base
+│   │   ├── cert-manager
+│   │   │   ├── crds.yaml
+│   │   │   └── kustomization.yaml
+│   │   ├── grafana
+│   │   │   ├── helm-values.yaml
+│   │   │   └── kustomization.yaml
+│   │   ├── jaeger
+│   │   │   ├── helm-values.yaml
+│   │   │   └── kustomization.yaml
+│   │   ├── loki
+│   │   │   ├── helm-values.yaml
+│   │   │   └── kustomization.yaml
+│   │   ├── opentelemetry
+│   │   │   ├── collector.yaml
+│   │   │   ├── kustomization.yaml
+│   │   │   └── serviceMetric.yaml
+│   │   └── prometheus
+│   │       ├── helm-values.yaml
+│   │       └── kustomization.yaml
+│   └── overlays
+│       ├── EDDV
+│       │   ├── crd
+│       │   │   ├── helm-values.yaml
+│       │   │   └── kustomization.yaml
+│       │   ├── grafana
+│       │   │   ├── config-patch.yaml
+│       │   │   ├── kustomization.yaml
+│       │   │   └── serviceaccount.yaml
+│       │   ├── jaeger
+│       │   │   ├── helm-values.yaml
+│       │   │   └── kustomization.yaml
+│       │   ├── loki
+│       │   │   ├── helm-values.yaml
+│       │   │   └── kustomization.yaml
+│       │   ├── opentelemetry
+│       │   │   ├── collector-patch.yaml
+│       │   │   ├── kustomization.yaml
+│       │   │   ├── otel-collector-crd.yaml
+│       │   │   └── serviceMonitor.yaml
+│       │   └── prometheus
+│       │       └── kustomization.yaml
+│       └── EDIT
+│           ├── 01-cert-manager
+│           │   └── kustomization.yaml
+│           ├── 01crd
+│           │   ├── helm-values.yaml
+│           │   └── kustomization.yaml
+│           ├── 02prometheus
+│           │   └── kustomization.yaml
+│           ├── 03loki
+│           │   └── kustomization.yaml
+│           ├── 04jaeger
+│           │   └── kustomization.yaml
+│           ├── 05opentelemetry
+│           │   ├── collector-patch.yaml
+│           │   ├── kustomization.yaml
+│           │   └── serviceMonitor.yaml
+│           └── 06grafana
+│               ├── config-patch.yaml
+│               ├── kustomization.yaml
+│               └── serviceaccount.yaml
+├── out
+│   └── content
+│       └── Ha-grafana
+│           └── Azure_VMSS_Observability_Enhanced.png
+├── steps
+│   ├── applyKustomize.yaml
+│   ├── deployHelmChart.yaml
+│   ├── pullHelmChartLocally.yaml
+│   ├── pushHelmChartAcr.yaml
+│   └── renderKustomize.yaml
+└── variables
+    ├── ENV-ED.yaml
+    ├── ENV-EDDV.yaml
+    ├── ENV-EDIT.yaml
+    └── README.md
+
+
+
 apiVersion: cert-manager.io/v1
 kind: Issuer
 metadata:
