@@ -1,3 +1,20 @@
+Current resource: /azp/agent/_work/30/s/cluster/overlays/EDIT/jaeger-operator
+Set the helmGlobals.configHome to the appropriate value.
+About to run kubectl kustomize
+error: invalid Kustomization: json: cannot unmarshal string into Go struct field Kustomization.patches of type types.Patch
+DONE resource /azp/agent/_work/30/s/cluster/overlays/EDIT/jaeger-operator
+Current resource: /azp/agent/_work/30/s/cluster/overlays/EDIT/opentelemetry-operator
+Set the helmGlobals.configHome to the appropriate value.
+About to run kubectl kustomize
+error: Multiple Strategic-Merge Patches in one `patches` entry is not allowed to set `patches.target` field: [path: "issuer-cert.yaml"]
+DONE resource /azp/agent/_work/30/s/cluster/overlays/EDIT/opentelemetry-operator
+
+##[error]Script failed with exit code: 1
+
+
+
+
+
 # helm/values/opentelemetry-operator/values.yaml
 admissionWebhooks:
   certManager:
