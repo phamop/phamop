@@ -1,3 +1,92 @@
+# helm/values/opentelemetry-operator/values.yaml
+admissionWebhooks:
+  certManager:
+    enabled: true
+  autoGenerateCert:
+    enabled: false
+
+
+# kustomize/base/cert-manager/kustomization.yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+generators:
+  - helmChart.yaml
+
+namespace: cert-manager
+
+# If you are not using Helm for CRDs and downloaded them separately, add:
+resources:
+  - crds.yaml
+
+
+
+
+
+# kustomize/base/cert-manager/helmChart.yaml
+apiVersion: builtin
+kind: HelmChartInflationGenerator
+metadata:
+  name: cert-manager
+name: cert-manager
+namespace: cert-manager
+repo: https://charts.jetstack.io
+version: v1.18.2
+releaseName: cert-manager
+valuesFile: ../../../../helm/values/cert-manager-operator/values.yaml
+
+
+
+
+# cluster/overlays/EDIT/opentelemetry-operator/kustomization.yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Include the base for opentelemetry operator
+bases:
+  - ../../../../kustomize/base/opentelemetry
+
+# If your cert-manager resources are in the same overlay, you might need to include them as a resource
+resources:
+  - ../../01-cert-manager/kustomization.yaml
+
+# Your patches and configurations for the issuer and certificate
+patches:
+  - target:
+      kind: Issuer
+      name: opentelemetry-operator-selfsigned-issuer
+    path: issuer-cert.yaml
+  # ... other patches
+
+
+
+# cluster/overlays/EDIT/opentelemetry-operator/issuer-cert.yaml
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: opentelemetry-operator-selfsigned-issuer
+  namespace: monitoring
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: opentelemetry-operator-serving-cert
+  namespace: monitoring
+spec:
+  secretName: opentelemetry-operator-serving-cert
+  issuerRef:
+    kind: Issuer
+    name: opentelemetry-operator-selfsigned-issuer
+  dnsNames:
+    - opentelemetry-operator-webhook.monitoring.svc
+    - opentelemetry-operator-webhook.monitoring.svc.cluster.local
+  commonName: opentelemetry-operator-webhook.monitoring.svc
+
+
+
+
 .
 ├── README.md
 ├── cluster
