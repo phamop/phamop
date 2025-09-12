@@ -1,3 +1,14 @@
+patches:
+  - path: issuer.yaml
+    target:
+      kind: Issuer
+      name: opentelemetry-operator-selfsigned-issuer
+  - path: certificate.yaml
+    target:
+      kind: Certificate
+      name: opentelemetry-operator-serving-cert
+
+
 Current resource: /azp/agent/_work/30/s/cluster/overlays/EDIT/jaeger-operator
 Set the helmGlobals.configHome to the appropriate value.
 About to run kubectl kustomize
