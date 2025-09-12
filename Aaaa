@@ -1,3 +1,23 @@
+Current resource: /azp/agent/_work/3/s/cluster/overlays/EDIT/jaeger-operator
+Set the helmGlobals.configHome to the appropriate value.
+About to run kubectl kustomize
+error: accumulating resources: accumulation err='accumulating resources from '../../../../base/jaeger-operator': evalsymlink failure on '/azp/agent/_work/3/s/base/jaeger-operator' : lstat /azp/agent/_work/3/s/base: no such file or directory': must build at directory: not a valid directory: evalsymlink failure on '/azp/agent/_work/3/s/base/jaeger-operator' : lstat /azp/agent/_work/3/s/base: no such file or directory
+DONE resource /azp/agent/_work/3/s/cluster/overlays/EDIT/jaeger-operator
+Current resource: /azp/agent/_work/3/s/cluster/overlays/EDIT/opentelemetry-operator
+Set the helmGlobals.configHome to the appropriate value.
+About to run kubectl kustomize
+error: trouble configuring builtin PatchTransformer with config: `
+path: issuer-cert.yaml
+target:
+  kind: Issuer
+  name: opentelemetry-operator-selfsigned-issuer
+`: unable to parse SM or JSON patch from [path: "issuer-cert.yaml"]
+DONE resource /azp/agent/_work/3/s/cluster/overlays/EDIT/opentelemetry-operator
+
+
+
+
+
 patches:
   - path: issuer.yaml
     target:
