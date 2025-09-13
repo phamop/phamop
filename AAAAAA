@@ -1,3 +1,13 @@
+# Where is the webhook service actually running?
+kubectl get svc -A | grep jaeger-operator-webhook-service
+
+# What do the cluster-scoped webhooks point to?
+kubectl get mutatingwebhookconfigurations mjaeger.kb.io -o yaml | grep -A4 clientConfig:
+kubectl get validatingwebhookconfigurations vjaeger.kb.io -o yaml | grep -A4 clientConfig:
+
+# Check cert secret & certificate objects in your operator ns (monitoring)
+kubectl get secret,certificate -n monitoring | grep jaeger-operator
+
 kubectl get validatingadmissionwebhooks -o yaml | grep jaeger
 kubectl edit validatingadmissionwebhooks mjaeger.kb.io
 
