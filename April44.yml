@@ -1,3 +1,12 @@
+resource mapping not found for name: "opentelemetry-operator-serving-cert" namespace: "monitoring" from "/azp/agent/_work/3/s/cluster/overlays/EDIT/opentelemetry-operator/kustomization-output.yaml": no matches for kind "Certificate" in version "cert-manager.io/v1"
+ensure CRDs are installed first
+resource mapping not found for name: "opentelemetry-operator-selfsigned-issuer" namespace: "monitoring" from "/azp/agent/_work/3/s/cluster/overlays/EDIT/opentelemetry-operator/kustomization-output.yaml": no matches for kind "Issuer" in version "cert-manager.io/v1"
+ensure CRDs are installed first
+
+
+
+
+
 @startuml
 !include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
 
