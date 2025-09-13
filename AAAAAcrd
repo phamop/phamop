@@ -1,3 +1,8 @@
+
+https://github.com/cert-manager/cert-manager/blob/master/deploy/charts/cert-manager/values.yaml
+kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.18.2/cert-manager.yaml
+
+
 https://github.com/jaegertracing/helm-charts/blob/main/charts/jaeger-operator/READ
 
 apiVersion: jaegertracing.io/v1
