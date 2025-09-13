@@ -1,3 +1,15 @@
+https://github.com/elastic/cloud-on-k8s/blob/3.1/deploy/eck-stack/charts/eck-elasticsearch/Chart.yaml
+https://github.com/jaegertracing/helm-charts/blob/main/charts/jaeger-operator/Chart.yaml
+
+https://github.com/elastic/cloud-on-k8s/blob/3.1/deploy/eck-stack/charts/eck-elasticsearch/values.yaml
+
+
+
+
+
+
+
+
 Current resource: /azp/agent/_work/3/s/cluster/overlays/EDIT/jaeger-operator
 Set the helmGlobals.configHome to the appropriate value.
 About to run kubectl kustomize
