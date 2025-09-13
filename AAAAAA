@@ -1,4 +1,85 @@
- Jaeger in version "v1" cannot be handled as a Jaeger: strict decoding error: unknown field "spec.storage.esRollover.enabled
+apiVersion: jaegertracing.io/v2
+kind: Jaeger
+metadata:
+  name: jaeger-eck
+  namespace: monitoring
+spec:
+  strategy: production   # production = separate collector and query
+  collector:
+    replicas: 2
+    resources:
+      requests:
+        cpu: "500m"
+        memory: "1Gi"
+      limits:
+        cpu: "1"
+        memory: "2Gi"
+  query:
+    replicas: 2
+    resources:
+      requests:
+        cpu: "500m"
+        memory: "1Gi"
+      limits:
+        cpu: "1"
+        memory: "2Gi"
+  storage:
+    type: elasticsearch
+    options:
+      es:
+        server-urls: http://eck-elasticsearch-es-http.monitoring.svc.cluster.local:9200
+    esIndexCleaner:
+      enabled: true
+      numberOfDays: 7   # keep 7 days of traces
+      schedule: "55 23 * * *"
+    esRollover:
+      schedule: "0 0 * * *"
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: jaeger-operator-mutating-webhook-configuration
+  annotations:
+    cert-manager.io/inject-ca-from: monitoring/jaeger-operator-service-cert
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Jaeger in version "v1" cannot be handled as a Jaeger: strict decoding error: unknown field "spec.storage.esRollover.enabled
 
 apiVersion: jaegertracing.io/v1
 kind: Jaeger
