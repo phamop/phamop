@@ -1,0 +1,581 @@
+https://www.elastic.co/docs/deploy-manage/deploy/cloud-on-k8s/managing-deployments-using-helm-chart
+
+# Jaeger v2 Operator with Elasticsearch Setup
+
+This guide provides the complete configuration structure for deploying Jaeger v2 Operator with Elasticsearch using Helm and Kustomize.
+
+## Directory Structure
+
+```
+├── cluster
+│   ├── base
+│   │   ├── cert-manager
+│   │   │   └── kustomization.yaml
+│   │   ├── elasticsearch
+│   │   │   └── kustomization.yaml
+│   │   └── jaeger
+│   │       └── kustomization.yaml
+│   └── overlays
+│       └── production
+│           ├── cert-manager
+│           │   └── kustomization.yaml
+│           ├── elasticsearch
+│           │   └── kustomization.yaml
+│           └── jaeger
+│               └── kustomization.yaml
+├── helm
+│   ├── source
+│   │   ├── cert-manager
+│   │   │   ├── Chart.yaml
+│   │   │   └── source.yaml
+│   │   ├── elasticsearch
+│   │   │   ├── Chart.yaml
+│   │   │   └── source.yaml
+│   │   └── jaeger
+│   │       ├── Chart.yaml
+│   │       └── source.yaml
+│   └── values
+│       ├── cert-manager
+│       │   ├── Chart.yaml
+│       │   ├── deploy.yaml
+│       │   └── values.yaml
+│       ├── elasticsearch
+│       │   ├── Chart.yaml
+│       │   ├── deploy.yaml
+│       │   └── values.yaml
+│       └── jaeger
+│           ├── Chart.yaml
+│           ├── deploy.yaml
+│           └── values.yaml
+└── kustomize
+    ├── base
+    │   ├── cert-manager
+    │   │   ├── crds.yaml
+    │   │   ├── kustomization.yaml
+    │   │   └── helm-values.yaml
+    │   ├── elasticsearch
+    │   │   ├── crds.yaml
+    │   │   ├── kustomization.yaml
+    │   │   └── helm-values.yaml
+    │   └── jaeger
+    │       ├── crds.yaml
+    │       ├── kustomization.yaml
+    │       └── helm-values.yaml
+    └── overlays
+        └── production
+            ├── cert-manager
+            │   └── kustomization.yaml
+            ├── elasticsearch
+            │   └── kustomization.yaml
+            └── jaeger
+                └── kustomization.yaml
+```
+
+## 1. Elasticsearch Configuration
+
+### helm/source/elasticsearch/Chart.yaml
+```yaml
+apiVersion: v2
+name: elasticsearch
+version: 1.0.0
+dependencies:
+  - name: elasticsearch
+    version: 8.5.1
+    repository: https://helm.elastic.co
+```
+
+### helm/source/elasticsearch/source.yaml
+```yaml
+apiVersion: source.toolkit.fluxcd.io/v1beta2
+kind: HelmRepository
+metadata:
+  name: elasticsearch
+  namespace: flux-system
+spec:
+  interval: 1m
+  url: https://helm.elastic.co
+```
+
+### helm/values/elasticsearch/Chart.yaml
+```yaml
+apiVersion: v2
+name: elasticsearch-values
+version: 1.0.0
+```
+
+### helm/values/elasticsearch/deploy.yaml
+```yaml
+apiVersion: helm.toolkit.fluxcd.io/v2beta1
+kind: HelmRelease
+metadata:
+  name: elasticsearch
+  namespace: elasticsearch
+spec:
+  interval: 10m
+  chart:
+    spec:
+      chart: elasticsearch
+      version: 8.5.1
+      sourceRef:
+        kind: HelmRepository
+        name: elasticsearch
+        namespace: flux-system
+  valuesFrom:
+    - kind: ConfigMap
+      name: elasticsearch-values
+```
+
+### helm/values/elasticsearch/values.yaml
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: elasticsearch-values
+  namespace: elasticsearch
+data:
+  values.yaml: |
+    replicas: 3
+    minimumMasterNodes: 2
+    
+    esConfig:
+      elasticsearch.yml: |
+        cluster.name: "elasticsearch"
+        network.host: 0.0.0.0
+        discovery.type: zen
+        discovery.zen.minimum_master_nodes: 2
+        discovery.zen.ping.unicast.hosts: elasticsearch-master-headless
+        xpack.security.enabled: false
+        xpack.monitoring.collection.enabled: true
+    
+    resources:
+      requests:
+        cpu: 1000m
+        memory: 2Gi
+      limits:
+        cpu: 2000m
+        memory: 4Gi
+    
+    volumeClaimTemplate:
+      accessModes: ["ReadWriteOnce"]
+      storageClassName: "standard"
+      resources:
+        requests:
+          storage: 30Gi
+    
+    service:
+      type: ClusterIP
+      port: 9200
+      targetPort: 9200
+```
+
+### kustomize/base/elasticsearch/kustomization.yaml
+```yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: elasticsearch
+
+resources:
+  - crds.yaml
+
+helmCharts:
+  - name: elasticsearch
+    repo: https://helm.elastic.co
+    version: 8.5.1
+    valuesFile: helm-values.yaml
+```
+
+### kustomize/base/elasticsearch/helm-values.yaml
+```yaml
+replicas: 3
+minimumMasterNodes: 2
+
+esConfig:
+  elasticsearch.yml: |
+    cluster.name: "elasticsearch"
+    network.host: 0.0.0.0
+    discovery.type: zen
+    discovery.zen.minimum_master_nodes: 2
+    discovery.zen.ping.unicast.hosts: elasticsearch-master-headless
+    xpack.security.enabled: false
+    xpack.monitoring.collection.enabled: true
+
+resources:
+  requests:
+    cpu: 500m
+    memory: 2Gi
+  limits:
+    cpu: 1000m
+    memory: 4Gi
+
+volumeClaimTemplate:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: "standard"
+  resources:
+    requests:
+      storage: 30Gi
+
+service:
+  type: ClusterIP
+  port: 9200
+```
+
+### kustomize/base/elasticsearch/crds.yaml
+```yaml
+# This file should contain Elasticsearch CRDs if any are required
+# For standard Elasticsearch deployment, this can be empty
+```
+
+## 2. Jaeger v2 Operator Configuration
+
+### helm/source/jaeger/Chart.yaml
+```yaml
+apiVersion: v2
+name: jaeger-operator
+version: 1.0.0
+dependencies:
+  - name: jaeger-operator
+    version: 2.49.0
+    repository: https://jaegertracing.github.io/helm-charts
+```
+
+### helm/source/jaeger/source.yaml
+```yaml
+apiVersion: source.toolkit.fluxcd.io/v1beta2
+kind: HelmRepository
+metadata:
+  name: jaeger
+  namespace: flux-system
+spec:
+  interval: 1m
+  url: https://jaegertracing.github.io/helm-charts
+```
+
+### helm/values/jaeger/Chart.yaml
+```yaml
+apiVersion: v2
+name: jaeger-values
+version: 1.0.0
+```
+
+### helm/values/jaeger/deploy.yaml
+```yaml
+apiVersion: helm.toolkit.fluxcd.io/v2beta1
+kind: HelmRelease
+metadata:
+  name: jaeger-operator
+  namespace: jaeger
+spec:
+  interval: 10m
+  dependsOn:
+    - name: elasticsearch
+      namespace: elasticsearch
+  chart:
+    spec:
+      chart: jaeger-operator
+      version: 2.49.0
+      sourceRef:
+        kind: HelmRepository
+        name: jaeger
+        namespace: flux-system
+  valuesFrom:
+    - kind: ConfigMap
+      name: jaeger-values
+  postRenderers:
+    - kustomize:
+        patches:
+          - target:
+              kind: Deployment
+              name: jaeger-operator
+            patch: |
+              - op: add
+                path: /spec/template/spec/containers/0/env/-
+                value:
+                  name: WATCH_NAMESPACE
+                  value: ""
+```
+
+### helm/values/jaeger/values.yaml
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: jaeger-values
+  namespace: jaeger
+data:
+  values.yaml: |
+    jaeger:
+      create: true
+      spec:
+        strategy: production
+        storage:
+          type: elasticsearch
+          elasticsearch:
+            serverUrls: http://elasticsearch-master.elasticsearch.svc.cluster.local:9200
+            indexPrefix: jaeger
+          options:
+            es:
+              server-urls: http://elasticsearch-master.elasticsearch.svc.cluster.local:9200
+              index-prefix: jaeger
+        
+        collector:
+          replicas: 3
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+        
+        query:
+          replicas: 2
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+        
+        ingester:
+          replicas: 2
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+    
+    rbac:
+      create: true
+      clusterRole: true
+    
+    serviceAccount:
+      create: true
+    
+    resources:
+      limits:
+        cpu: 100m
+        memory: 128Mi
+      requests:
+        cpu: 100m
+        memory: 128Mi
+```
+
+### kustomize/base/jaeger/kustomization.yaml
+```yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: jaeger
+
+resources:
+  - crds.yaml
+  - jaeger-instance.yaml
+
+helmCharts:
+  - name: jaeger-operator
+    repo: https://jaegertracing.github.io/helm-charts
+    version: 2.49.0
+    valuesFile: helm-values.yaml
+```
+
+### kustomize/base/jaeger/helm-values.yaml
+```yaml
+rbac:
+  create: true
+  clusterRole: true
+
+serviceAccount:
+  create: true
+
+resources:
+  limits:
+    cpu: 100m
+    memory: 128Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+env:
+  WATCH_NAMESPACE: ""
+```
+
+### kustomize/base/jaeger/jaeger-instance.yaml
+```yaml
+apiVersion: jaegertracing.io/v1
+kind: Jaeger
+metadata:
+  name: jaeger-production
+  namespace: jaeger
+spec:
+  strategy: production
+  
+  storage:
+    type: elasticsearch
+    elasticsearch:
+      serverUrls: http://elasticsearch-master.elasticsearch.svc.cluster.local:9200
+      indexPrefix: jaeger
+    options:
+      es:
+        server-urls: http://elasticsearch-master.elasticsearch.svc.cluster.local:9200
+        index-prefix: jaeger
+        num-shards: 1
+        num-replicas: 1
+  
+  collector:
+    replicas: 3
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+    config:
+      log-level: info
+  
+  query:
+    replicas: 2
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+    config:
+      log-level: info
+  
+  ingester:
+    replicas: 2
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+    config:
+      log-level: info
+```
+
+## 3. Cluster Configuration
+
+### cluster/base/elasticsearch/kustomization.yaml
+```yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../../kustomize/base/elasticsearch
+  - namespace.yaml
+
+patches:
+  - target:
+      kind: Namespace
+    patch: |
+      - op: add
+        path: /metadata/labels
+        value:
+          name: elasticsearch
+```
+
+### cluster/base/jaeger/kustomization.yaml
+```yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../../kustomize/base/jaeger
+  - namespace.yaml
+
+patches:
+  - target:
+      kind: Namespace
+    patch: |
+      - op: add
+        path: /metadata/labels
+        value:
+          name: jaeger
+```
+
+### cluster/overlays/production/elasticsearch/kustomization.yaml
+```yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../../base/elasticsearch
+
+patchesStrategicMerge:
+  - elasticsearch-production-patch.yaml
+```
+
+### cluster/overlays/production/jaeger/kustomization.yaml
+```yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../../base/jaeger
+
+patchesStrategicMerge:
+  - jaeger-production-patch.yaml
+```
+
+## 4. Deployment Order
+
+To ensure proper deployment order, create this deployment script:
+
+```bash
+#!/bin/bash
+
+# Deploy cert-manager first (if not already deployed)
+kubectl apply -k cluster/overlays/production/cert-manager
+
+# Wait for cert-manager to be ready
+kubectl wait --for=condition=available --timeout=300s deployment/cert-manager -n cert-manager
+
+# Deploy Elasticsearch
+kubectl apply -k cluster/overlays/production/elasticsearch
+
+# Wait for Elasticsearch to be ready
+kubectl wait --for=condition=ready --timeout=600s pod -l app=elasticsearch-master -n elasticsearch
+
+# Deploy Jaeger Operator and instance
+kubectl apply -k cluster/overlays/production/jaeger
+
+# Wait for Jaeger to be ready
+kubectl wait --for=condition=available --timeout=300s deployment/jaeger-operator -n jaeger
+```
+
+## 5. Verification
+
+After deployment, verify the setup:
+
+```bash
+# Check Elasticsearch
+kubectl get pods -n elasticsearch
+kubectl logs -f deployment/elasticsearch-master -n elasticsearch
+
+# Check Jaeger
+kubectl get pods -n jaeger
+kubectl get jaeger -n jaeger
+
+# Access Jaeger UI (port-forward)
+kubectl port-forward svc/jaeger-production-query 16686:16686 -n jaeger
+```
+
+## Notes
+
+1. **Dependencies**: Elasticsearch must be deployed and running before Jaeger
+2. **Storage**: Adjust storage class and size based on your requirements
+3. **Resources**: Modify CPU/memory limits based on your cluster capacity
+4. **Security**: Consider enabling TLS and authentication for production
+5. **Monitoring**: Add monitoring and alerting for both Elasticsearch and Jaeger
+6. **Backup**: Implement backup strategies for Elasticsearch data
+
+This setup provides a production-ready Jaeger v2 deployment with Elasticsearch backend using the GitOps approach with Helm and Kustomize.
