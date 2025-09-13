@@ -1,3 +1,6 @@
+kubectl get validatingadmissionwebhooks -o yaml | grep jaeger
+kubectl edit validatingadmissionwebhooks mjaeger.kb.io
+
 jaeger.jaegertracing.io/jaeger-eck created (dry run)
 2025-09-13T15:59:34.5030801Z *** DRY-RUN *** Done
 2025-09-13T15:59:34.5031514Z *** Start kubectl apply
