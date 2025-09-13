@@ -4,7 +4,7 @@ metadata:
   name: jaeger-eck
   namespace: monitoring
 spec:
-  strategy: production   # production = all-in-one separated into collectors, query, ingester
+  strategy: production   # separates collector, query, ingester
   collector:
     replicas: 2
     resources:
@@ -42,8 +42,15 @@ spec:
       numberOfDays: 7   # keep 7 days of traces
       schedule: "55 23 * * *"
     esRollover:
-   #   enabled: true
+      enabled: true
       schedule: "0 0 * * *"
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: jaeger-operator-mutating-webhook-configuration
+  annotations:
+    cert-manager.io/inject-ca-from: monitoring/jaeger-operator-service-cert
 
 
 
