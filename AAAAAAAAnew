@@ -1,3 +1,27 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: opentelemetry-operator-service-cert
+  namespace: monitoring
+spec:
+  secretName: opentelemetry-operator-service-cert
+  dnsNames:
+    # The real webhook Service name in monitoring
+    - my-opentelemetry-operator-webhook.monitoring.svc
+    - my-opentelemetry-operator-webhook.monitoring.svc.cluster.local
+    # (Optional) keep old SANs if operator might still be in eddv-bld
+    - opentelemetry-operator-webhook.eddv-bld.svc
+    - opentelemetry-operator-webhook.eddv-bld.svc.cluster.local
+  issuerRef:
+    name: otel-selfsigned-issuer
+    kind: Issuer
+
+
+
+
+
+
+
 Error from server (InternalError): error when applying patch:
 {"spec":{"ports":[{"name":"otlp-grpc","port":4317,"protocol":"TCP"},{"name":"otlp-http","port":4318,"protocol":"TCP"},{"name":"jaeger-grpc","port":14250,"protocol":"TCP"},{"name":"jaeger-thrift-c","port":6831,"protocol":"TCP"},{"name":"jaeger-thrift-h","port":14268,"protocol":"TCP"},{"name":"metrics","port":8888,"protocol":"TCP"},{"name":"prom-metrics","port":8889,"protocol":"TCP"},{"name":"health","port":13133,"protocol":"TCP"}],"resources":{"limits":{"cpu":"1000m"}}}}
 to:
