@@ -1,20 +1,47 @@
 apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingWebhookConfiguration
 metadata:
-  name: opentelemetry-operator-mutating-webhook-configuration
+  name: jaeger-operator-mutating-webhook-configuration
   annotations:
-    cert-manager.io/inject-ca-from: monitoring/opentelemetry-operator-service-cert
+    cert-manager.io/inject-ca-from: monitoring/jaeger-operator-service-cert
   labels:
     hbt.cmhc.schl.gc.ca/owner: devops
 webhooks:
-  - name: mopentelemetrycollectorbeta.kb.io
+  - name: mjaegeroperator.kb.io
     admissionReviewVersions: ["v1", "v1beta1"]
     sideEffects: None
     clientConfig:
       service:
-        name: opentelemetry-operator-webhook  # matches SAN in cert
+        name: jaeger-operator-webhook   # stable reference
         namespace: monitoring
-        path: /mutate-opentelemetry-io-v1beta1-opentelemetrycollector
+        path: /mutate-jaegertracing-io-v1-jaeger
+
+
+
+
+
+
+resources:
+  - ../../../../kustomize/base/jaeger
+
+patches:
+  - path: issuer.yaml
+    target:
+      kind: Issuer
+      name: jaeger-operator-selfsigned-issuer
+      namespace: monitoring
+
+  - path: certificate-multisan.yaml
+    target:
+      kind: Certificate
+      name: jaeger-operator-service-cert
+      namespace: monitoring
+
+  - path: jaeger-webhook-patch.yaml
+    target:
+      kind: MutatingWebhookConfiguration
+      name: jaeger-operator-mutating-webhook-configuration
+
 
 
 
