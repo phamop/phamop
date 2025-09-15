@@ -1,0 +1,34 @@
+# cluster/overlays/EDIT/certs/opentelemetry-certificate.yaml
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: otel-selfsigned-issuer
+  namespace: monitoring
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: opentelemetry-operator-service-cert
+  namespace: monitoring
+spec:
+  dnsNames:
+    - opentelemetry-operator-webhook-service.monitoring.svc
+    - opentelemetry-operator-webhook-service.monitoring.svc.cluster.local
+    - opentelemetry-operator-webhook-service.eddv-bld.svc
+    - opentelemetry-operator-webhook-service.eddv-bld.svc.cluster.local
+  secretName: opentelemetry-operator-service-cert
+  issuerRef:
+    name: otel-selfsigned-issuer
+    kind: Issuer
+
+
+
+#cluster/overlays/EDIT/certs/opentelemetry-webhook-patch.yaml
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: opentelemetry-operator-mutating-webhook-configuration
+  annotations:
+    cert-manager.io/inject-ca-from: monitoring/opentelemetry-operator-service-cert
