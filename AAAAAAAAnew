@@ -3,10 +3,10 @@ Error from server (InternalError): error when applying patch:
 to:
 Resource: "opentelemetry.io/v1beta1, Resource=opentelemetrycollectors", GroupVersionKind: "opentelemetry.io/v1beta1, Kind=OpenTelemetryCollector"
 
+Name: "otel-collector", Namespace: "monitoring"
+for: "/azp/agent/_work/25/s/kustomize/overlays/EDIT/05opentelemetry/kustomization-output.yaml": error when patching "/azp/agent/_work/25/s/kustomize/overlays/EDIT/05opentelemetry/kustomization-output.yaml": Internal error occurred: failed calling webhook "mopentelemetrycollectorbeta.kb.io": failed to call webhook: Post "https://my-opentelemetry-operator-webhook.monitoring.svc:443/mutate-opentelemetry-io-v1beta1-opentelemetrycollector?timeout=10s": tls: failed to verify certificate: x509: certificate is valid for opentelemetry-operator-webhook.eddv-bld.svc, opentelemetry-operator-webhook.eddv-bld.svc.cluster.local, not my-opentelemetry-operator-webhook.monitoring.svc
+*** Done
 
-# Warning: 'patchesStrategicMerge' is deprecated. Please use 'patches' instead. Run 'kustomize edit fix' to update your Kustomization automatically.
-error: no matches for Id MutatingWebhookConfiguration.v1.admissionregistration.k8s.io/opentelemetry-operator-mutating-webhook-configuration.[noNs]; failed to find unique target for patch MutatingWebhookConfiguration.v1.admissionregistration.k8s.io/opentelemetry-operator-mutating-webhook-configuration.[noNs]
-DONE resource /azp/agent/_work/3/s/cluster/overlays/EDIT/opentelemetry-operator
 
 
 ---
