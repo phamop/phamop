@@ -1,3 +1,4 @@
+for: "/azp/agent/_work/25/s/kustomize/overlays/EDIT/05opentelemetry/kustomization-output.yaml": error when patching "/azp/agent/_work/25/s/kustomize/overlays/EDIT/05opentelemetry/kustomization-output.yaml": Internal error occurred: failed calling webhook "mopentelemetrycollectorbeta.kb.io": failed to call webhook: Post "https://opentelemetry-operator-webhook.monitoring.svc:443/mutate-opentelemetry-io-v1beta1-opentelemetrycollector?timeout=10s": tls: failed to verify certificate: x509: certificate is valid for my-opentelemetry-operator-webhook.monitoring.svc, my-opentelemetry-operator-webhook.monitoring.svc.cluster.local, not opentelemetry-operator-webhook.monitoring.svc
 
 
 
