@@ -1,3 +1,7 @@
+
+
+
+error: accumulating resources: accumulation err='accumulating resources from '../../../base/jaeger': '/azp/agent/_work/25/s/kustomize/base/jaeger' must resolve to a file': recursed merging from path '/azp/agent/_work/25/s/kustomize/base/jaeger': may not add resource with an already registered id: Certificate.v1.cert-manager.io/jaeger-operator-service-cert.monitoring
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
