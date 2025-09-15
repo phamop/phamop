@@ -1,3 +1,28 @@
+resources:
+  - ../../../../kustomize/base/opentelemetry
+
+patches:
+  - path: issuer.yaml
+    target:
+      kind: Issuer
+      name: opentelemetry-operator-selfsigned-issuer
+      namespace: monitoring
+
+  - path: certifcate-multisan.yaml
+    target:
+      kind: Certificate
+      name: opentelemetry-operator-service-cert
+      namespace: monitoring
+
+  - path: opentelemetry-webhook-patch.yaml
+    target:
+      kind: MutatingWebhookConfiguration
+      name: opentelemetry-operator-mutating-webhook-configuration
+
+
+
+
+
 #kustomize/base/opentelemetry/certificate-multisan.yaml
 
 apiVersion: cert-manager.io/v1
