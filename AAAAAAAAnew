@@ -1,3 +1,9 @@
+Error from server (InternalError): error when applying patch:
+{"spec":{"ports":[{"name":"otlp-grpc","port":4317,"protocol":"TCP"},{"name":"otlp-http","port":4318,"protocol":"TCP"},{"name":"jaeger-grpc","port":14250,"protocol":"TCP"},{"name":"jaeger-thrift-c","port":6831,"protocol":"TCP"},{"name":"jaeger-thrift-h","port":14268,"protocol":"TCP"},{"name":"metrics","port":8888,"protocol":"TCP"},{"name":"prom-metrics","port":8889,"protocol":"TCP"},{"name":"health","port":13133,"protocol":"TCP"}],"resources":{"limits":{"cpu":"1000m"}}}}
+to:
+Resource: "opentelemetry.io/v1beta1, Resource=opentelemetrycollectors", GroupVersionKind: "opentelemetry.io/v1beta1, Kind=OpenTelemetryCollector"
+
+
 # Warning: 'patchesStrategicMerge' is deprecated. Please use 'patches' instead. Run 'kustomize edit fix' to update your Kustomization automatically.
 error: no matches for Id MutatingWebhookConfiguration.v1.admissionregistration.k8s.io/opentelemetry-operator-mutating-webhook-configuration.[noNs]; failed to find unique target for patch MutatingWebhookConfiguration.v1.admissionregistration.k8s.io/opentelemetry-operator-mutating-webhook-configuration.[noNs]
 DONE resource /azp/agent/_work/3/s/cluster/overlays/EDIT/opentelemetry-operator
