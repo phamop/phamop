@@ -1,3 +1,24 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: opentelemetry-operator-service-cert
+  namespace: monitoring
+spec:
+  secretName: opentelemetry-operator-service-cert
+  dnsNames:
+    # real service in monitoring
+    - opentelemetry-operator-webhook.monitoring.svc
+    - opentelemetry-operator-webhook.monitoring.svc.cluster.local
+    # keep legacy names if needed
+    - opentelemetry-operator-webhook.eddv-bld.svc
+    - opentelemetry-operator-webhook.eddv-bld.svc.cluster.local
+  issuerRef:
+    name: otel-selfsigned-issuer
+    kind: Issuer
+
+
+
+
 error: accumulating resources: accumulation err='accumulating resources from '../../../base/jaeger': '/azp/agent/_work/25/s/kustomize/base/jaeger' must resolve to a file': recursed merging from path '/azp/agent/_work/25/s/kustomize/base/jaeger': may not add resource with an already registered id: Issuer.v1.cert-manager.io/jaeger-selfsigned-issuer.monitoring
 DONE resource /azp/agent/_work/25/s/kustomize/overlays/EDIT/04jaeger
 Error from server (InternalError): error when applying patch:
