@@ -1,8 +1,17 @@
-#kustomize/base/jaeger/certificate-multisan.yaml
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: opentelemetry-operator-mutating-webhook-configuration
+  annotations:
+    cert-manager.io/inject-ca-from: monitoring/opentelemetry-operator-service-cert
+
+
+#kustomize/base/opentelemetry/certificate-multisan.yaml
+
 apiVersion: cert-manager.io/v1
 kind: Issuer
 metadata:
-  name: jaeger-selfsigned-issuer
+  name: otel-selfsigned-issuer
   namespace: monitoring
 spec:
   selfSigned: {}
@@ -10,18 +19,19 @@ spec:
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
-  name: jaeger-operator-service-cert
+  name: opentelemetry-operator-service-cert
   namespace: monitoring
 spec:
   dnsNames:
-    - jaeger-operator-webhook-service.monitoring.svc
-    - jaeger-operator-webhook-service.monitoring.svc.cluster.local
-    - jaeger-operator-webhook-service.eddv-bld.svc
-    - jaeger-operator-webhook-service.eddv-bld.svc.cluster.local
-  secretName: jaeger-operator-service-cert
+    - opentelemetry-operator-webhook-service.monitoring.svc
+    - opentelemetry-operator-webhook-service.monitoring.svc.cluster.local
+    - opentelemetry-operator-webhook-service.eddv-bld.svc
+    - opentelemetry-operator-webhook-service.eddv-bld.svc.cluster.local
+  secretName: opentelemetry-operator-service-cert
   issuerRef:
-    name: jaeger-selfsigned-issuer
+    name: otel-selfsigned-issuer
     kind: Issuer
+
 
 
 
