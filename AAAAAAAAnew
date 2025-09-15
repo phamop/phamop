@@ -1,3 +1,20 @@
+error: accumulating resources: accumulation err='accumulating resources from '../../../base/jaeger': '/azp/agent/_work/25/s/kustomize/base/jaeger' must resolve to a file': recursed merging from path '/azp/agent/_work/25/s/kustomize/base/jaeger': may not add resource with an already registered id: Issuer.v1.cert-manager.io/jaeger-selfsigned-issuer.monitoring
+DONE resource /azp/agent/_work/25/s/kustomize/overlays/EDIT/04jaeger
+Error from server (InternalError): error when applying patch:
+{"spec":{"ports":[{"name":"otlp-grpc","port":4317,"protocol":"TCP"},{"name":"otlp-http","port":4318,"protocol":"TCP"},{"name":"jaeger-grpc","port":14250,"protocol":"TCP"},{"name":"jaeger-thrift-c","port":6831,"protocol":"TCP"},{"name":"jaeger-thrift-h","port":14268,"protocol":"TCP"},{"name":"metrics","port":8888,"protocol":"TCP"},{"name":"prom-metrics","port":8889,"protocol":"TCP"},{"name":"health","port":13133,"protocol":"TCP"}],"resources":{"limits":{"cpu":"1000m"}}}}
+to:
+Resource: "opentelemetry.io/v1beta1, Resource=opentelemetrycollectors", GroupVersionKind: "opentelemetry.io/v1beta1, Kind=OpenTelemetryCollector"
+Name: "otel-collector", Namespace: "monitoring"
+for: "/azp/agent/_work/25/s/kustomize/overlays/EDIT/05opentelemetry/kustomization-output.yaml": error when patching "/azp/agent/_work/25/s/kustomize/overlays/EDIT/05opentelemetry/kustomization-output.yaml": Internal error occurred: failed calling webhook "mopentelemetrycollectorbeta.kb.io": failed to call webhook: Post "https://opentelemetry-operator-webhook.monitoring.svc:443/mutate-opentelemetry-io-v1beta1-opentelemetrycollector?timeout=10s": tls: failed to verify certificate: x509: certificate is valid for opentelemetry-operator-webhook.eddv-bld.svc, opentelemetry-operator-webhook.eddv-bld.svc.cluster.local, not opentelemetry-operator-webhook.monitoring.svc
+*** Done
+--- Current file: /azp/agent/_work/25/s/kustomize/overlays/EDIT/06grafana/kustomization-output.yaml ---
+*** DRY-RUN *** Start kubectl apply
+serviceaccount/grafana-sa configured (dry run)
+
+
+
+
+
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
