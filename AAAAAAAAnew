@@ -1,5 +1,7 @@
-error: invalid Kustomization: json: cannot unmarshal string into Go struct field Kustomization.patches of type types.Patch
-DONE resource /azp/agent/_work/25/s/cluster/overlays/EDIT/opentelemetry-operator
+# Warning: 'patchesStrategicMerge' is deprecated. Please use 'patches' instead. Run 'kustomize edit fix' to update your Kustomization automatically.
+error: no matches for Id MutatingWebhookConfiguration.v1.admissionregistration.k8s.io/opentelemetry-operator-mutating-webhook-configuration.[noNs]; failed to find unique target for patch MutatingWebhookConfiguration.v1.admissionregistration.k8s.io/opentelemetry-operator-mutating-webhook-configuration.[noNs]
+DONE resource /azp/agent/_work/3/s/cluster/overlays/EDIT/opentelemetry-operator
+
 
 ---
 namespace: monitoring
