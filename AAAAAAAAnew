@@ -1,20 +1,12 @@
-apiVersion: admissionregistration.k8s.io/v1
-kind: MutatingWebhookConfiguration
-metadata:
-  name: jaeger-operator-mutating-webhook-configuration
-  annotations:
-    cert-manager.io/inject-ca-from: monitoring/jaeger-operator-service-cert
-  labels:
-    hbt.cmhc.schl.gc.ca/owner: devops
-webhooks:
-  - name: mjaegeroperator.kb.io
-    admissionReviewVersions: ["v1", "v1beta1"]
-    sideEffects: None
-    clientConfig:
-      service:
-        name: jaeger-operator-webhook   # stable reference
-        namespace: monitoring
-        path: /mutate-jaegertracing-io-v1-jaeger
+mutatingwebhookconfiguration.admissionregistration.k8s.io/jaeger-operator-mutating-webhook-configuration configured
+Error from server (InternalError): error when creating "/azp/agent/_work/3/s/kustomize/overlays/EDIT/04jaeger/kustomization-output.yaml": Internal error occurred: failed calling webhook "mjaeger.kb.io": failed to call webhook: Post "https://jaeger-operator-webhook-service.monitoring.svc:443/mutate-jaegertracing-io-v1-jaeger?timeout=10s": tls: failed to verify certificate: x509: certificate is valid for jaeger-operator-webhook-service.eddv-bld.svc, jaeger-operator-webhook-service.eddv-bld.svc.cluster.local, not jaeger-operator-webhook-service.monitoring.svc
+
+Error from server (InternalError): error when applying patch:
+{"spec":{"ports":[{"name":"otlp-grpc","port":4317,"protocol":"TCP"},{"name":"otlp-http","port":4318,"protocol":"TCP"},{"name":"jaeger-grpc","port":14250,"protocol":"TCP"},{"name":"jaeger-thrift-c","port":6831,"protocol":"TCP"},{"name":"jaeger-thrift-h","port":14268,"protocol":"TCP"},{"name":"metrics","port":8888,"protocol":"TCP"},{"name":"prom-metrics","port":8889,"protocol":"TCP"},{"name":"health","port":13133,"protocol":"TCP"}],"resources":{"limits":{"cpu":"1000m"}}}}
+to:
+Resource: "opentelemetry.io/v1beta1, Resource=opentelemetrycollectors", GroupVersionKind: "opentelemetry.io/v1beta1, Kind=OpenTelemetryCollector"
+Name: "otel-collector", Namespace: "monitoring"
+for: "/azp/agent/_work/3/s/kustomize/overlays/EDIT/05opentelemetry/kustomization-output.yaml": error when patching "/azp/agent/_work/3/s/kustomize/overlays/EDIT/05opentelemetry/kustomization-output.yaml": Internal error occurred: failed calling webhook "mopentelemetrycollectorbeta.kb.io": failed to call webhook: Post "https://opentelemetry-operator-webhook.monitoring.svc:443/mutate-opentelemetry-io-v1beta1-opentelemetrycollector?timeout=10s": tls: failed to verify certificate: x509: certificate is valid for opentelemetry-operator-webhook.eddv-bld.svc, opentelemetry-operator-webhook.eddv-bld.svc.cluster.local, not opentelemetry-operator-webhook.monitoring.svc
 
 
 
