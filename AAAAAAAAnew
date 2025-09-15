@@ -1,14 +1,21 @@
-Resource: "opentelemetry.io/v1beta1, Resource=opentelemetrycollectors", GroupVersionKind: "opentelemetry.io/v1beta1, Kind=OpenTelemetryCollector"
-Name: "otel-collector", Namespace: "monitoring"
-for: "/azp/agent/_work/3/s/kustomize/overlays/EDIT/05opentelemetry/kustomization-output.yaml": error when patching "/azp/agent/_work/3/s/kustomize/overlays/EDIT/05opentelemetry/kustomization-output.yaml": Internal error occurred: failed calling webhook "mopentelemetrycollectorbeta.kb.io": failed to call webhook: Post "https://opentelemetry-operator-webhook.monitoring.svc:443/mutate-opentelemetry-io-v1beta1-opentelemetrycollector?timeout=10s": tls: failed to verify certificate: x509: certificate is valid for my-opentelemetry-operator-webhook.monitoring.svc, my-opentelemetry-operator-webhook.monitoring.svc.cluster.local, not opentelemetry-operator-webhook.monitoring.svc
-Error from server (Invalid): error when applying patch:
-{"metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"admissionregistration.k8s.io/v1\",\"kind\":\"MutatingWebhookConfiguration\",\"metadata\":{\"annotations\":{\"cert-manager.io/inject-ca-from\":\"monitoring/opentelemetry-operator-service-cert\"},\"labels\":{\"hbt.cmhc.schl.gc.ca/owner\":\"devops\"},\"name\":\"opentelemetry-operator-mutating-webhook-configuration\"},\"webhooks\":[{\"clientConfig\":{\"service\":{\"name\":\"opentelemetry-operator-webhook\",\"namespace\":\"monitoring\",\"path\":\"/mutate-opentelemetry-io-v1beta1-opentelemetrycollector\"}},\"name\":\"mopentelemetrycollectorbeta.kb.io\"}]}\n"}},"webhooks":[{"clientConfig":{"service":{"name":"opentelemetry-operator-webhook","namespace":"monitoring","path":"/mutate-opentelemetry-io-v1beta1-opentelemetrycollector"}},"name":"mopentelemetrycollectorbeta.kb.io"}]}
-to:
-Resource: "admissionregistration.k8s.io/v1, Resource=mutatingwebhookconfigurations", GroupVersionKind: "admissionregistration.k8s.io/v1, Kind=MutatingWebhookConfiguration"
-Name: "opentelemetry-operator-mutating-webhook-configuration", Namespace: ""
-for: "/azp/agent/_work/3/s/kustomize/overlays/EDIT/05opentelemetry/kustomization-output.yaml": error when patching "/azp/agent/_work/3/s/kustomize/overlays/EDIT/05opentelemetry/kustomization-output.yaml": MutatingWebhookConfiguration.admissionregistration.k8s.io "opentelemetry-operator-mutating-webhook-configuration" is invalid: [webhooks[0].sideEffects: Required value: must specify one of None, NoneOnDryRun, webhooks[0].admissionReviewVersions: Required value: must specify one of v1, v1beta1]
-*** Done
---- Current file: /azp/agent/_work/3/s/kustomize/overlays/EDIT/06grafana/kustomization-output.yaml ---
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: opentelemetry-operator-mutating-webhook-configuration
+  annotations:
+    cert-manager.io/inject-ca-from: monitoring/opentelemetry-operator-service-cert
+  labels:
+    hbt.cmhc.schl.gc.ca/owner: devops
+webhooks:
+  - name: mopentelemetrycollectorbeta.kb.io
+    admissionReviewVersions: ["v1", "v1beta1"]
+    sideEffects: None
+    clientConfig:
+      service:
+        name: opentelemetry-operator-webhook  # matches SAN in cert
+        namespace: monitoring
+        path: /mutate-opentelemetry-io-v1beta1-opentelemetrycollector
+
 
 
 
