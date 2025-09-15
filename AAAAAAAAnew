@@ -1,3 +1,54 @@
+error: invalid Kustomization: json: cannot unmarshal string into Go struct field Kustomization.patches of type types.Patch
+DONE resource /azp/agent/_work/25/s/cluster/overlays/EDIT/opentelemetry-operator
+
+---
+namespace: monitoring
+
+resources:
+- opentelemetry-certificate.yaml
+- ../../../base/opentelemetry-operator
+- clusterrolebinding.yaml
+
+patches:
+- opentelemetry-webhook-patch.yaml
+
+cluster/
+├── base
+│   ├── cert-manager-operator
+│   │   ├── kustomization.yaml
+│   │   └── namespace.yaml
+│   ├── eck-elasticsearch-operator
+│   │   ├── kustomization.yaml
+│   │   └── namespace.yaml
+│   ├── jaeger-operator
+│   │   ├── kustomization.yaml
+│   │   └── namespace.yaml
+│   └── opentelemetry-operator
+│       ├── clusterroles.yaml
+│       ├── kustomization.yaml
+│       ├── namespace.yaml
+│       └── serviceaccount.yaml
+└── overlays
+    ├── EDDV
+    │   ├── cert-manager-operator
+    │   │   └── kustomization.yaml
+    │   └── opentelemetry-operator
+    │       └── kustomization.yaml
+    └── EDIT
+        ├── cert-manager-operator
+        │   └── kustomization.yaml
+        ├── eck-elasticsearch-operator
+        │   └── kustomization.yaml
+        ├── jaeger-operator
+        │   └── kustomization.yaml
+        └── opentelemetry-operator
+            ├── clusterrolebinding.yaml
+            ├── kustomization.yaml
+            ├── opentelemetry-certificate.yaml
+            └── opentelemetry-webhook-patch.yaml
+
+
+
 # cluster/overlays/EDIT/certs/opentelemetry-certificate.yaml
 apiVersion: cert-manager.io/v1
 kind: Issuer
