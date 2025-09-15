@@ -1,4 +1,37 @@
-rror from server (InternalError): error when creating "/azp/agent/_work/25/s/kustomize/overlays/EDIT/04jaeger/kustomization-output.yaml": Internal error occurred: failed calling webhook "mjaeger.kb.io": failed to call webhook: Post "https://jaeger-operator-webhook-service.monitoring.svc:443/mutate-jaegertracing-io-v1-jaeger?timeou…: tls: failed to verify certificate: x509: certificate is valid for jaeger-operator-webhook-service.eddv-bld.svc, jaeger-operator-webhook-service.eddv-bld.svc.cluster.local, not jaeger-operator-webhook-service.monitoring.svc
+#kustomize/base/jaeger/certificate-multisan.yaml
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: jaeger-selfsigned-issuer
+  namespace: monitoring
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: jaeger-operator-service-cert
+  namespace: monitoring
+spec:
+  dnsNames:
+    - jaeger-operator-webhook-service.monitoring.svc
+    - jaeger-operator-webhook-service.monitoring.svc.cluster.local
+    - jaeger-operator-webhook-service.eddv-bld.svc
+    - jaeger-operator-webhook-service.eddv-bld.svc.cluster.local
+  secretName: jaeger-operator-service-cert
+  issuerRef:
+    name: jaeger-selfsigned-issuer
+    kind: Issuer
+
+
+
+
+
+
+
+
+
+
 
 kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.18.2/cert-manager.yaml
 
