@@ -1,3 +1,18 @@
+E0916 15:37:10.578806       1 indexers.go:61] "unable to fetch certificate that owns the secret" err="Certificate.cert-manager.io \"jaeger-operator-service-cert\" not found" logger="cert-manager" kind="validatingwebhookconfiguration" type="validatingwebhookconfiguration" secret="monitoring/jaeger-operator-webhook-cert" certificate="monitoring/jaeger-operator-service-cert"
+E0916 15:37:10.581993       1 indexers.go:61] "unable to fetch certificate that owns the secret" err="Certificate.cert-manager.io \"jaeger-operator-service-cert\" not found" logger="cert-manager" kind="apiservice" type="apiservice" secret="monitoring/jaeger-operator-webhook-cert" certificate="monitoring/jaeger-operator-service-cert"
+E0916 15:37:10.583247       1 indexers.go:61] "unable to fetch certificate that owns the secret" err="Certificate.cert-manager.io \"jaeger-operator-service-cert\" not found" logger="cert-manager" kind="mutatingwebhookconfiguration" type="mutatingwebhookconfiguration" secret="monitoring/jaeger-operator-webhook-cert" certificate="monitoring/jaeger-operator-service-cert"
+E0916 15:37:10.590702       1 sources.go:106] "unable to fetch associated certificate" err="Certificate.cert-manager.io \"jaeger-operator-service-cert\" not found" logger="cert-manager" kind="mutatingwebhookconfiguration" kind="mutatingwebhookconfiguration" name="jaeger-operator-mutating-webhook-configuration" certificate="monitoring/jaeger-operator-service-cert"
+I0916 15:37:10.590752       1 reconciler.go:117] "could not find any ca data in data source for target" logger="cert-manager" kind="mutatingwebhookconfiguration" kind="mutatingwebhookconfiguration" name="jaeger-operator-mutating-webhook-configuration"
+E0916 15:37:10.593897       1 indexers.go:61] "unable to fetch certificate that owns the secret" err="Certificate.cert-manager.io \"jaeger-operator-service-cert\" not found" logger="cert-manager" kind="customresourcedefinition" type="customresourcedefinition" secret="monitoring/jaeger-operator-webhook-cert" certificate="monitoring/jaeger-operator-service-cert"
+E0916 15:37:10.610945       1 sources.go:106] "unable to fetch associated certificate" err="Certificate.cert-manager.io \"jaeger-operator-service-cert\" not found" logger="cert-manager" kind="validatingwebhookconfiguration" kind="validatingwebhookconfiguration" name="jaeger-operator-validating-webhook-configuration" certificate="monitoring/jaeger-operator-service-cert"
+I0916 15:37:10.611517       1 reconciler.go:117] "could not find any ca data in data source for target" logger="cert-manager" kind="validatingwebhookconfiguration" kind="validatingwebhookconfiguration" name="jaeger-operator-validating-webhook-configuration"
+I0916 15:38:00.219437       1 reconciler.go:141] "Updated object" logger="cert-manager" kind="mutatingwebhookconfiguration" kind="mutatingwebhookconfiguration" name="jaeger-operator-mutating-webhook-configuration"
+I0916 15:38:00.223169       1 reconciler.go:141] "Updated object" logger="cert-manager" kind="validatingwebhookconfiguration" kind="validatingwebhookconfiguration" name="jaeger-operator-validating-webhook-configuration"
+I0916 15:38:00.248814       1 reconciler.go:141] "Updated object" logger="cert-manager" kind="mutatingwebhookconfiguration" kind="mutatingwebhookconfiguration" name="jaeger-operator-mutating-webhook-configuration"
+
+
+
+
 kubectl patch validatingwebhookconfiguration jaeger-operator-validating-webhook-configuration \
   --type=json \
   -p='[{"op":"replace","path":"/metadata/annotations/cert-manager.io~1inject-ca-from","value":"monitoring/jaeger-operator-service-cert"}]'
