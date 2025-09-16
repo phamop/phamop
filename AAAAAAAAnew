@@ -1,16 +1,50 @@
-apiVersion: admissionregistration.k8s.io/v1
-kind: MutatingWebhookConfiguration
+kubectl delete secret jaeger-operator-webhook-cert -n eddv-bld || true
+kubectl delete certificate jaeger-operator-service-cert -n eddv-bld || true
+kubectl delete secret opentelemetry-operator-serving-cert -n eddv-bld || true
+kubectl delete certificate opentelemetry-operator-serving-cert -n eddv-bld || true
+
+
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
 metadata:
-  name: opentelemetry-operator-mutation
+  name: opentelemetrycollectors.opentelemetry.io
   annotations:
     cert-manager.io/inject-ca-from: monitoring/opentelemetry-operator-serving-cert
 ---
-apiVersion: admissionregistration.k8s.io/v1
-kind: ValidatingWebhookConfiguration
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
 metadata:
-  name: opentelemetry-operator-validation
+  name: opampbridges.opentelemetry.io
   annotations:
     cert-manager.io/inject-ca-from: monitoring/opentelemetry-operator-serving-cert
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: targetallocators.opentelemetry.io
+  annotations:
+    cert-manager.io/inject-ca-from: monitoring/opentelemetry-operator-serving-cert
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: monitoring
+
+resources:
+  - ../../../base/opentelemetry-operator
+  - clusterrolebinding.yaml
+  - issuer.yaml
+  - opentelemetry-certificate.yaml   # Certificate is a resource
+
+patches:
+  - path: opentelemetry-webhook-patch.yaml
+  - path: opentelemetry-crd-patch.yaml
+
+
+
+
+kubectl get crd opentelemetrycollectors.opentelemetry.io -o yaml | grep inject-ca-from
+kubectl get crd opampbridges.opentelemetry.io -o yaml | grep inject-ca-from
+kubectl get crd targetallocators.opentelemetry.io -o yaml | grep inject-ca-from
+
 
 
 
