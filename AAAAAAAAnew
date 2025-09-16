@@ -1,7 +1,23 @@
- reconciler.go:137] "unable to update target object with new CA data" err="Operation cannot be fulfilled on mutatingwebhookconfigurations.admissionregistration.k8s.io \"jaeger-operator-mutating-webhook-configuration\": the object has been modified; please apply your changes to the latest version and try again" logger="cert-manager" kind="mutatingwebhookconfiguration" kind="mutatingwebhookconfiguration" name="jaeger-operator-mutating-webhook-configuration"
-E0916 14:27:15.461942       1 controller.go:316] "Reconciler error" err="Operation cannot be fulfilled on mutatingwebhookconfigurations.admissionregistration.k8s.io \"jaeger-operator-mutating-webhook-configuration\": the object has been modified; please apply your changes to the latest version and try again" logger="cert-manager" controller="mutatingwebhookconfiguration" controllerGroup="admissionregistration.k8s.io" controllerKind="MutatingWebhookConfiguration" MutatingWebhookConfiguration="jaeger-operator-mutating-webhook-configuration" namespace="" name="jaeger-operator-mutating-webhook-configuration" reconcileID="126dab80-663e-41f4-b194-b241284a5858"
-I0916 14:27:15.486347       1 reconciler.go:141] "Updated object" logger="cert-manager" kind="mutatingwebhookconfiguration" kind="mutatingwebhookconfiguration" name="jaeger-operator-mutating-webhook-configuration"
-I0916 14:27:15.501089       1 reconciler.go:141] "Updated object" logger="cert-manager" kind="mutatingwebhookconfiguration" kind="mutatingwebhookconfiguration" name="jaeger-operator-mutating-webhook-configuration"
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: jaeger-operator-mutating-webhook-configuration
+  annotations:
+    cert-manager.io/inject-ca-from: monitoring/jaeger-operator-service-cert
+webhooks:
+- name: mjaeger.kb.io
+  clientConfig:
+    service:
+      name: jaeger-operator-webhook-service
+      namespace: monitoring
+      path: /mutate-jaegertracing-io-v1-jaeger
+    # caBundle will be injected by cert-manager
+  admissionReviewVersions:
+  - v1
+  - v1beta1
+  # ... rest of your webhook configuration
+
+
 
 
 
