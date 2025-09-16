@@ -1,3 +1,6 @@
+kubectl rollout restart deploy -n cert-manager
+
+
 Error from server (InternalError): error when applying patch:
 {"metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"cert-manager.io/v1\",\"kind\":\"Certificate\",\"metadata\":{\"annotations\":{},\"labels\":{\"hbt.cmhc.schl.gc.ca/owner\":\"devops\"},\"name\":\"opentelemetry-operator-service-cert\",\"namespace\":\"monitoring\"},\"spec\":{\"dnsNames\":[\"opentelemetry-operator-webhook-service.monitoring.svc\",\"opentelemetry-operator-webhook-service.monitoring.svc.cluster.local\",\"opentelemetry-operator-webhook-service.eddv-bld.svc\",\"opentelemetry-operator-webhook-service.eddv-bld.svc.cluster.local\"],\"issuerRef\":{\"kind\":\"ClusterIssuer\",\"name\":\"selfsigned-issuer\"},\"secretName\":\"opentelemetry-operator-serving-cert\"}}\n"},"labels":{"hbt.cmhc.schl.gc.ca/owner":"devops"}}}
 to:
