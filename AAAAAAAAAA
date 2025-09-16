@@ -1,3 +1,164 @@
+cluster
+├── base
+│   ├── cert-manager-operator
+│   │   ├── issuer.yaml
+│   │   ├── kustomization.yaml
+│   │   └── namespace.yaml
+│   ├── eck-elasticsearch-operator
+│   │   ├── kustomization.yaml
+│   │   └── namespace.yaml
+│   ├── jaeger-operator
+│   │   ├── jaeger-certificate.yaml
+│   │   ├── kustomization.yaml
+│   │   └── namespace.yaml
+│   └── opentelemetry-operator
+│       ├── clusterroles.yaml
+│       ├── kustomization.yaml
+│       ├── namespace.yaml
+│       ├── opentelemetry-certificate.yaml
+│       └── serviceaccount.yaml
+└── overlays
+    ├── EDDV
+    │   ├── cert-manager-operator
+    │   │   └── kustomization.yaml
+    │   └── opentelemetry-operator
+    │       └── kustomization.yaml
+    └── EDIT
+        ├── cert-manager-operator
+        │   └── kustomization.yaml
+        ├── eck-elasticsearch-operator
+        │   └── kustomization.yaml
+        ├── jaeger-operator
+        │   ├── jaeger-certificate.yaml
+        │   ├── jaeger-mutating-webhook-patch.yaml
+        │   ├── jaeger-validating-webhook-patch.yaml
+        │   └── kustomization.yaml
+        └── opentelemetry-operator
+            ├── clusterrolebinding.yaml
+            ├── crd-patch.yaml
+            ├── kustomization.yaml
+            ├── opentelemetry-certificate.yaml
+            ├── opentelemetry-validating-webhook-patch.yaml
+            ├── opentelemetry-webhook-patch.yaml
+            ├── otel-mutating-webhook-patch.yaml
+            ├── otel-operator-cert-alias.yaml
+            └── otel-validating-webhook-patch.yaml
+helm
+├── README.md
+├── source
+│   ├── cert-manager
+│   │   ├── Chart.yaml
+│   │   └── source.yaml
+│   ├── crd-prometheus
+│   │   ├── Chart.yaml
+│   │   └── source.yaml
+│   ├── elasticsearch
+│   │   ├── Chart.yaml
+│   │   └── source.yaml
+│   ├── grafana
+│   │   ├── Chart.yaml
+│   │   └── source.yaml
+│   ├── jaeger
+│   │   ├── Chart.yaml
+│   │   └── source.yaml
+│   ├── otel-operator
+│   │   ├── Chart.yaml
+│   │   └── source.yaml
+│   └── prometheus
+│       ├── Chart.yaml
+│       └── source.yaml
+└── values
+    └── EDIT
+        ├── cert-manager-operator
+        │   ├── Chart.yaml
+        │   ├── deploy.yaml
+        │   └── values.yaml
+        └── opentelemetry-operator
+            ├── Chart.yaml
+            ├── deploy.yaml
+            └── values.yaml
+kustomize
+├── base
+│   ├── elasticsearch
+│   │   ├── helm-values.yaml
+│   │   └── kustomization.yaml
+│   ├── grafana
+│   │   ├── helm-values.yaml
+│   │   └── kustomization.yaml
+│   ├── jaeger
+│   │   ├── certificate-multisan.yaml
+│   │   ├── helm-values.yaml
+│   │   ├── issuer.yaml
+│   │   ├── jaeger.yaml
+│   │   └── kustomization.yaml
+│   ├── loki
+│   │   ├── helm-values.yaml
+│   │   └── kustomization.yaml
+│   ├── opentelemetry
+│   │   ├── certificate-multisan.yaml
+│   │   ├── collector.yaml
+│   │   ├── issuer.yaml
+│   │   ├── kustomization.yaml
+│   │   └── serviceMetric.yaml
+│   └── prometheus
+│       ├── helm-values.yaml
+│       └── kustomization.yaml
+└── overlays
+    ├── EDDV
+    │   ├── crd
+    │   │   ├── helm-values.yaml
+    │   │   └── kustomization.yaml
+    │   ├── grafana
+    │   │   ├── config-patch.yaml
+    │   │   ├── kustomization.yaml
+    │   │   └── serviceaccount.yaml
+    │   ├── jaeger
+    │   │   ├── helm-values.yaml
+    │   │   └── kustomization.yaml
+    │   ├── loki
+    │   │   ├── helm-values.yaml
+    │   │   └── kustomization.yaml
+    │   ├── opentelemetry
+    │   │   ├── collector-patch.yaml
+    │   │   ├── kustomization.yaml
+    │   │   ├── otel-collector-crd.yaml
+    │   │   └── serviceMonitor.yaml
+    │   └── prometheus
+    │       └── kustomization.yaml
+    └── EDIT
+        ├── 01crd
+        │   ├── helm-values.yaml
+        │   └── kustomization.yaml
+        ├── 02prometheus
+        │   └── kustomization.yaml
+        ├── 03elasticsearch
+        │   └── kustomization.yaml
+        ├── 03loki
+        │   └── kustomization.yaml
+        ├── 04jaeger
+        │   ├── certificate-multisan.yaml
+        │   ├── issuer.yaml
+        │   ├── jaeger-webhook-patch.yaml
+        │   ├── kustomization.yaml
+        │   └── namespace.yaml
+        ├── 05opentelemetry
+        │   ├── certifcate-multisan.yaml
+        │   ├── collector-patch.yaml
+        │   ├── issuer.yaml
+        │   ├── kustomization.yaml
+        │   ├── opentelemetry-webhook-patch.yaml
+        │   └── serviceMonitor.yaml
+        └── 06grafana
+            ├── config-patch.yaml
+            ├── kustomization.yaml
+            └── serviceaccount.yaml
+
+
+
+
+
+
+
 error: namespace transformation produces ID conflict: [{"apiVersion":"cert-manager.io/v1","kind":"Certificate","metadata":{"annotations":{"internal.config.kubernetes.io/previousKinds":"Certificate","internal.config.kubernetes.io/previousNames":"jaeger-operator-service-cert","internal.config.kubernetes.io/previousNamespaces":"monitoring"},"labels":{"hbt.cmhc.schl.gc.ca/owner":"devops"},"name":"jaeger-operator-service-cert","namespace":"monitoring"},"spec":{"dnsNames":["jaeger-operator-webhook-service.monitoring.svc","jaeger-operator-webhook-service.monitoring.svc.cluster.local","jaeger-operator-webhook-service.eddv-bld.svc","jaeger-operator-webhook-service.eddv-bld.svc.cluster.local"],"issuerRef":{"kind":"ClusterIssuer","name":"selfsigned-issuer"},"secretName":"jaeger-operator-webhook-cert"}} {"apiVersion":"cert-manager.io/v1","kind":"Certificate","metadata":{"annotations":{"internal.config.kubernetes.io/previousKinds":"Certificate","internal.config.kubernetes.io/previousNames":"jaeger-operator-service-cert","internal.config.kubernetes.io/previousNamespaces":"eddv-bld"},"labels":{"hbt.cmhc.schl.gc.ca/owner":"devops"},"name":"jaeger-operator-service-cert","namespace":"monitoring"},"spec":{"dnsNames":["jaeger-operator-webhook-service.eddv-bld.svc","jaeger-operator-webhook-service.eddv-bld.svc.cluster.local"],"issuerRef":{"kind":"Issuer","name":"selfsigned-issuer"},"secretName":"jaeger-operator-service-cert","subject":{"organizationalUnits":["jaeger-operator"]}}}]
 DONE resource /azp/agent/_work/5/s/cluster/overlays/EDIT/jaeger-operator
 Current resource: /azp/agent/_work/5/s/cluster/overlays/EDIT/opentelemetry-operator
