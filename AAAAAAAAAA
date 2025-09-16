@@ -1,0 +1,79 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: jaeger-operator-service-cert
+  namespace: monitoring
+spec:
+  secretName: jaeger-operator-webhook-cert
+  issuerRef:
+    name: selfsigned-issuer
+    kind: ClusterIssuer     # <-- reference the central ClusterIssuer
+  dnsNames:
+    - jaeger-operator-webhook-service.monitoring.svc
+    - jaeger-operator-webhook-service.monitoring.svc.cluster.local
+    - jaeger-operator-webhook-service.eddv-bld.svc
+    - jaeger-operator-webhook-service.eddv-bld.svc.cluster.local
+
+
+
+cluster/base/jaeger-operator/kustomization.yaml
+resources:
+  - namespace.yaml
+  - jaeger-certificate.yaml
+
+
+
+
+cluster/base/opentelemetry-operator/opentelemetry-certificate.yaml
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: opentelemetry-operator-service-cert
+  namespace: monitoring
+spec:
+  secretName: opentelemetry-operator-serving-cert
+  issuerRef:
+    name: selfsigned-issuer
+    kind: ClusterIssuer     # <-- same central issuer
+  dnsNames:
+    - opentelemetry-operator-webhook-service.monitoring.svc
+    - opentelemetry-operator-webhook-service.monitoring.svc.cluster.local
+    - opentelemetry-operator-webhook-service.eddv-bld.svc
+    - opentelemetry-operator-webhook-service.eddv-bld.svc.cluster.local
+
+
+cluster/base/opentelemetry-operator/kustomization.yaml
+resources:
+  - namespace.yaml
+  - serviceaccount.yaml
+  - clusterroles.yaml
+  - opentelemetry-certificate.yaml
+
+
+resources:
+  - ../../../base/jaeger-operator
+patches:
+  - path: jaeger-webhook-patch.yaml
+    target:
+      kind: MutatingWebhookConfiguration
+      name: jaeger-operator-mutating-webhook-configuration
+  - path: jaeger-webhook-patch.yaml
+    target:
+      kind: ValidatingWebhookConfiguration
+      name: jaeger-operator-validating-webhook-configuration
+
+
+
+cluster/overlays/EDIT/opentelemetry-operator/kustomization.yaml
+resources:
+  - ../../../base/opentelemetry-operator
+  - clusterrolebinding.yaml
+patches:
+  - path: opentelemetry-webhook-patch.yaml
+    target:
+      kind: MutatingWebhookConfiguration
+      name: opentelemetry-operator-mutation
+  - path: opentelemetry-validating-webhook-patch.yaml
+    target:
+      kind: ValidatingWebhookConfiguration
+      name: opentelemetry-operator-validation
