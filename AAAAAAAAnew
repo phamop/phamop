@@ -1,21 +1,5 @@
-apiVersion: admissionregistration.k8s.io/v1
-kind: MutatingWebhookConfiguration
-metadata:
-  name: jaeger-operator-mutating-webhook-configuration
-  annotations:
-    cert-manager.io/inject-ca-from: monitoring/jaeger-operator-service-cert
-webhooks:
-- name: mjaeger.kb.io
-  clientConfig:
-    service:
-      name: jaeger-operator-webhook-service
-      namespace: monitoring
-      path: /mutate-jaegertracing-io-v1-jaeger
-    # caBundle will be injected by cert-manager
-  admissionReviewVersions:
-  - v1
-  - v1beta1
-  # ... rest of your webhook configuration
+E0916 14:36:02.829035       1 sources.go:106] "unable to fetch associated certificate" err="Certificate.cert-manager.io \"jaeger-operator-service-cert\" not found" logger="cert-manager" kind="validatingwebhookconfiguration" kind="validatingwebhookconfiguration" name="jaeger-operator-validating-webhook-configuration" certificate="eddv-bld/jaeger-operator-service-cert"
+E0916 14:36:44.393385       1 reconciler.go:137] "unable to update target object with new CA data" err="Operation cannot be fulfilled on mutatingwebhookconfigurations.admissionregistration.k8s.io \"jaeger-operator-mutating-webhook-configuration\": the object has been modified; please apply your changes to the latest version and try again" logger="cert-manager" kind="mutatingwebhookconfiguration" kind="mutatingwebhookconfiguration" name="jaeger-operator-mutating-webhook-configuration"
 
 
 
