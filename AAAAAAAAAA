@@ -1,3 +1,15 @@
+opentelemetry-crd-patch.yaml
+
+metadata:
+  annotations:
+    cert-manager.io/inject-ca-from: monitoring/opentelemetry-operator-service-cert
+
+metadata:
+  annotations:
+    cert-manager.io/inject-ca-from: monitoring/otel-operator-serving-cert
+
+
+
 cluster/base/jaeger-operator/jaeger-certificate.yaml
 
 apiVersion: cert-manager.io/v1
