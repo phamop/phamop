@@ -1,3 +1,8 @@
+ kubectl get secret -n monitoring |  grep jaeger
+jaeger-operator-webhook-cert                                kubernetes.io/tls   3      82m
+$ kubectl get certificate -n monitoring |  grep jaeger
+jaeger-operator-service-cert             True    jaeger-operator-webhook-cert                                42m
+
 cluster
 ├── base
 │   ├── cert-manager-operator
