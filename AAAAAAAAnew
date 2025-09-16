@@ -1,14 +1,4 @@
-cluster/overlays/EDIT/jaeger-operator/jaeger-webhook-patch.yaml:    cert-manager.io/inject-ca-from: monitoring/jaeger-operator-service-cert
-cluster/overlays/EDIT/jaeger-operator/jaeger-webhook-patch.yaml:    cert-manager.io/inject-ca-from: monitoring/jaeger-operator-service-cert
-
-$ grep -i inject-ca -ir  cluster/overlays/EDIT/opentelemetry-operator/
-cluster/overlays/EDIT/opentelemetry-operator/crd-patch.yaml:    cert-manager.io/inject-ca-from: monitoring/opentelemetry-operator-serving-cert
-cluster/overlays/EDIT/opentelemetry-operator/crd-patch.yaml:    cert-manager.io/inject-ca-from: monitoring/opentelemetry-operator-serving-cert
-cluster/overlays/EDIT/opentelemetry-operator/crd-patch.yaml:    cert-manager.io/inject-ca-from: monitoring/opentelemetry-operator-serving-cert
-cluster/overlays/EDIT/opentelemetry-operator/opentelemetry-validating-webhook-patch.yaml:    cert-manager.io/inject-ca-from: monitoring/opentelemetry-operator-serving-cert
-cluster/overlays/EDIT/opentelemetry-operator/opentelemetry-webhook-patch.yaml:    cert-manager.io/inject-ca-from: monitoring/opentelemetry-operator-serving-cert
-cluster/overlays/EDIT/opentelemetry-operator/opentelemetry-webhook-patch.yaml:    cert-manager.io/inject-ca-from: monitoring/opentelemetry-operator-serving-cert
-#jaeger-cert-alias.yaml
+cat  cluster/overlays/EDIT/jaeger-operator/jaeger-cert*
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
@@ -24,9 +14,51 @@ spec:
     - jaeger-operator-webhook-service.monitoring.svc.cluster.local
     - jaeger-operator-webhook-service.eddv-bld.svc
     - jaeger-operator-webhook-service.eddv-bld.svc.cluster.local
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: jaeger-operator-service-cert
+  namespace: monitoring
+spec:
+  secretName: jaeger-operator-service-cert
+  dnsNames:
+  - jaeger-operator-webhook-service.monitoring.svc
+  - jaeger-operator-webhook-service.monitoring.svc.cluster.local
+  - jaeger-operator-webhook-service.eddv-bld.svc
+  - jaeger-operator-webhook-service.eddv-bld.svc.cluster.local
+  issuerRef:
+    name: selfsigned-issuer  # Use your issuer
+    kind: ClusterIssuer
+    group: cert-manager.io
 
-#otel-operator-cert-alias.yaml
 
+
+
+
+
+  
+$ cat  cluster/overlays/EDIT/opentelemetry-operator/opentelemetry-certificate.yaml 
+
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: opentelemetry-operator-service-cert
+  namespace: monitoring
+spec:
+  secretName: opentelemetry-operator-serving-cert
+  issuerRef:
+    name: selfsigned-issuer
+    kind: ClusterIssuer
+  dnsNames:
+    - opentelemetry-operator-webhook-service.monitoring.svc
+    - opentelemetry-operator-webhook-service.monitoring.svc.cluster.local
+    - opentelemetry-operator-webhook-service.eddv-bld.svc
+    - opentelemetry-operator-webhook-service.eddv-bld.svc.cluster.local
+
+
+$ cat  cluster/overlays/EDIT/opentelemetry-operator/otel-operator-cert-alias.yaml 
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
@@ -42,6 +74,9 @@ spec:
     - opentelemetry-operator-webhook-service.monitoring.svc.cluster.local
     - opentelemetry-operator-webhook-service.eddv-bld.svc
     - opentelemetry-operator-webhook-service.eddv-bld.svc.cluster.local
+
+
+
 
 
 
