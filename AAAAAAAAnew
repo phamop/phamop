@@ -1,3 +1,19 @@
+# Patch Certificate to add multiSAN + issuer
+  - path: jaeger-certificate-patch.yaml
+    target:
+      kind: Certificate
+      name: jaeger-operator-service-cert
+      namespace: monitoring
+
+  # Patch MutatingWebhookConfiguration to use monitoring svc + allow CA injection
+  - path: jaeger-webhook-patch.yaml
+    target:
+      kind: MutatingWebhookConfiguration
+      name: jaeger-operator-mutating-webhook-configuration
+
+
+
+
 certificate.cert-manager.io/jaeger-operator-service-cert configured
 mutatingwebhookconfiguration.admissionregistration.k8s.io/jaeger-operator-mutating-webhook-configuration configured
 Error from server (InternalError): error when creating "/azp/agent/_work/25/s/kustomize/overlays/EDIT/04jaeger/kustomization-output.yaml": Internal error occurred: failed calling webhook "mjaeger.kb.io": failed to call webhook: Post "https://jaeger-operator-webhook-service.monitoring.svc:443/mutate-jaegertracing-io-v1-jaeger?timeout=10s": tls: failed to verify certificate: x509: certificate is valid for jaeger-operator-webhook-service.eddv-bld.svc, jaeger-operator-webhook-service.eddv-bld.svc.cluster.local, not jaeger-operator-webhook-service.monitoring.svc
