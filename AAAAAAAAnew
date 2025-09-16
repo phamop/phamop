@@ -1,12 +1,15 @@
- kubectl get secret -n monitoring |  grep jaeger
-jaeger-operator-webhook-cert                                kubernetes.io/tls   3      82m
-$ kubectl get certificate -n monitoring |  grep jaeger
-jaeger-operator-service-cert             True    jaeger-operator-webhook-cert                                42m
-mutatingwebhookconfiguration.admissionregistration.k8s.io/jaeger-operator-mutating-webhook-configuration unchanged
-Error from server (InternalError): error when creating "/azp/agent/_work/5/s/kustomize/overlays/EDIT/04jaeger/kustomization-output.yaml": Internal error occurred: failed calling webhook "vjaeger.kb.io": failed to call webhook: Post "https://jaeger-operator-webhook-service.monitoring.svc:443/validate-jaegertracing-io-v1-jaeger?timeout=10s": tls: failed to verify certificate: x509: certificate is valid for jaeger-operator-webhook-service.eddv-bld.svc, jaeger-operator-webhook-service.eddv-bld.svc.cluster.local, not jaeger-operator-webhook-service.monitoring.svc
-
-
-
+ E0916 16:28:15.134708       1 sources.go:106] "unable to fetch associated certificate" err="Certificate.cert-manager.io \"opentelemetry-operator-serving-cert\" not found" logger="cert-manager" kind="customresourcedefinition" kind="customresourcedefinition" name="opentelemetrycollectors.opentelemetry.io" certificate="eddv-bld/opentelemetry-operator-serving-cert"
+I0916 16:28:15.134744       1 reconciler.go:117] "could not find any ca data in data source for target" logger="cert-manager" kind="customresourcedefinition" kind="customresourcedefinition" name="opentelemetrycollectors.opentelemetry.io"
+E0916 16:28:15.135618       1 sources.go:106] "unable to fetch associated certificate" err="Certificate.cert-manager.io \"opentelemetry-operator-serving-cert\" not found" logger="cert-manager" kind="customresourcedefinition" kind="customresourcedefinition" name="opampbridges.opentelemetry.io" certificate="eddv-bld/opentelemetry-operator-serving-cert"
+I0916 16:28:15.135651       1 reconciler.go:117] "could not find any ca data in data source for target" logger="cert-manager" kind="customresourcedefinition" kind="customresourcedefinition" name="opampbridges.opentelemetry.io"
+E0916 16:28:15.148714       1 sources.go:106] "unable to fetch associated certificate" err="Certificate.cert-manager.io \"opentelemetry-operator-serving-cert\" not found" logger="cert-manager" kind="customresourcedefinition" kind="customresourcedefinition" name="targetallocators.opentelemetry.io" certificate="eddv-bld/opentelemetry-operator-serving-cert"
+I0916 16:28:15.148760       1 reconciler.go:117] "could not find any ca data in data source for target" logger="cert-manager" kind="customresourcedefinition" kind="customresourcedefinition" name="targetallocators.opentelemetry.io"
+I0916 16:28:15.158825       1 reconciler.go:141] "Updated object" logger="cert-manager" kind="validatingwebhookconfiguration" kind="validatingwebhookconfiguration" name="my-opentelemetry-operator-validation"
+E0916 16:28:15.159230       1 sources.go:106] "unable to fetch associated certificate" err="Certificate.cert-manager.io \"otel-operator-serving-cert\" not found" logger="cert-manager" kind="validatingwebhookconfiguration" kind="validatingwebhookconfiguration" name="otel-operator-validation" certificate="opentelemetry/otel-operator-serving-cert"
+I0916 16:28:15.160414       1 reconciler.go:141] "Updated object" logger="cert-manager" kind="mutatingwebhookconfiguration" kind="mutatingwebhookconfiguration" name="my-opentelemetry-operator-mutation"
+E0916 16:28:15.160873       1 sources.go:106] "unable to fetch associated certificate" err="Certificate.cert-manager.io \"opentelemetry-operator-serving-cert\" not found" logger="cert-manager" kind="mutatingwebhookconfiguration" kind="mutatingwebhookconfiguration" name="opentelemetry-operator-mutation" certificate="eddv-bld/opentelemetry-operator-serving-cert"
+I0916 16:28:15.161127       1 reconciler.go:117] "could not find any ca data in data source for target" logger="cert-manager" kind="mutatingwebhookconfiguration" kind="mutatingwebhookconfiguration" name="opentelemetry-operator-mutation"
+E0916 16:28:15.175610       1 sources.go:106] "unable to fetch associated certificate" err="Certificate.cert-manager.io \"opentelemetry-operator-serving-cert\" not found" logger="cert-manager" kind="validatingwebhookconfiguration" kind="validatingwebhookconfiguration" name="opentelemetry-operator-validation" certificate="eddv-bld/opentelemetry-operator-serving-cert"
 
 
 
