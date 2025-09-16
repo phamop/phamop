@@ -1,3 +1,11 @@
+grep -ir eddv-bld . | grep jaeger
+./cluster/overlays/EDIT/jaeger-operator/jaeger-certificate.yaml:  - jaeger-operator-webhook-service.eddv-bld.svc
+./cluster/overlays/EDIT/jaeger-operator/jaeger-certificate.yaml:  - jaeger-operator-webhook-service.eddv-bld.svc.cluster.local
+./kustomize/base/jaeger/certificate-multisan.yaml:    # - jaeger-operator-webhook-service.eddv-bld.svc
+./kustomize/base/jaeger/certificate-multisan.yaml:    # - jaeger-operator-webhook-service.eddv-bld.svc.cluster.local
+./kustomize/overlays/EDIT/04jaeger/certificate-multisan.yaml:    - jaeger-operator-webhook-service.eddv-bld.svc
+./kustomize/overlays/EDIT/04jaeger/certificate-multisan.yaml:    - jaeger-operator-webhook-service.eddv-bld.svc.cluster.local
+
 error: namespace transformation produces ID conflict: [{"apiVersion":"cert-manager.io/v1","kind":"Certificate","metadata":{"annotations":{"internal.config.kubernetes.io/previousKinds":"Certificate","internal.config.kubernetes.io/previousNames":"jaeger-operator-service-cert","internal.config.kubernetes.io/previousNamespaces":"eddv-bld"},"labels":{"hbt.cmhc.schl.gc.ca/owner":"devops"},"name":"jaeger-operator-service-cert","namespace":"monitoring"},"spec":{"dnsNames":["jaeger-operator-webhook-service.eddv-bld.svc","jaeger-operator-webhook-service.eddv-bld.svc.cluster.local"],"issuerRef":{"kind":"Issuer","name":"selfsigned-issuer"},"secretName":"jaeger-operator-service-cert","subject":{"organizationalUnits":["jaeger-operator"]}}} {"apiVersion":"cert-manager.io/v1","kind":"Certificate","metadata":{"name":"jaeger-operator-service-cert","namespace":"monitoring"},"spec":{"dnsNames":["jaeger-operator-webhook-service.monitoring.svc","jaeger-operator-webhook-service.monitoring.svc.cluster.local","jaeger-operator-webhook-service.eddv-bld.svc","jaeger-operator-webhook-service.eddv-bld.svc.cluster.local"],"issuerRef":{"group":"cert-manager.io","kind":"ClusterIssuer","name":"selfsigned-issuer"},"secretName":"jaeger-operator-service-cert"}}]
 DONE resource /azp/agent/_work/6/s/cluster/overlays/EDIT/jaeger-operator
 
