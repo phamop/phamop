@@ -1,3 +1,20 @@
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: opentelemetry-operator-mutation
+  annotations:
+    cert-manager.io/inject-ca-from: monitoring/opentelemetry-operator-serving-cert
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: opentelemetry-operator-validation
+  annotations:
+    cert-manager.io/inject-ca-from: monitoring/opentelemetry-operator-serving-cert
+
+
+
+
 Current resource: /azp/agent/_work/5/s/cluster/overlays/EDIT/jaeger-operator
 Set the helmGlobals.configHome to the appropriate value.
 About to run kubectl kustomize
