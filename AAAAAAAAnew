@@ -1,30 +1,10 @@
-apiVersion: admissionregistration.k8s.io/v1
-kind: MutatingWebhookConfiguration
-metadata:
-  name: otel-operator-mutation
-  annotations:
-    cert-manager.io/inject-ca-from: monitoring/otel-operator-serving-cert
-webhooks:
-  - name: motelcollector.kb.io
-    clientConfig:
-      service:
-        name: otel-operator-webhook-service
-        namespace: monitoring
-        path: /mutate-opentelemetry-io-v1beta1-otelcollector
----
-apiVersion: admissionregistration.k8s.io/v1
-kind: ValidatingWebhookConfiguration
-metadata:
-  name: otel-operator-validation
-  annotations:
-    cert-manager.io/inject-ca-from: monitoring/otel-operator-serving-cert
-webhooks:
-  - name: votelcollector.kb.io
-    clientConfig:
-      service:
-        name: otel-operator-webhook-service
-        namespace: monitoring
-        path: /validate-opentelemetry-io-v1beta1-otelcollector
+error: Multiple Strategic-Merge Patches in one `patches` entry is not allowed to set `patches.target` field: [path: "jaeger-webhook-patch.yaml"]
+DONE resource /azp/agent/_work/6/s/cluster/overlays/EDIT/jaeger-operator
+Current resource: /azp/agent/_work/6/s/cluster/overlays/EDIT/opentelemetry-operator
+Set the helmGlobals.configHome to the appropriate value.
+About to run kubectl kustomize
+error: no resource matches strategic merge patch "MutatingWebhookConfiguration.v1.admissionregistration.k8s.io/otel-operator-mutation.[noNs]": no matches for Id MutatingWebhookConfiguration.v1.admissionregistration.k8s.io/otel-operator-mutation.[noNs]; failed to find unique target for patch MutatingWebhookConfiguration.v1.admissionregistration.k8s.io/otel-operator-mutation.[noNs]
+DONE resource /azp/agent/_work/6/s/cluster/overlays/EDIT/opentelemetry-operator
 
 
 
