@@ -1,3 +1,26 @@
+  # OpenTelemetry Operator webhooks
+  - path: opentelemetry-webhook-patch.yaml
+    target:
+      kind: MutatingWebhookConfiguration
+      name: opentelemetry-operator-mutation
+  - path: opentelemetry-validating-webhook-patch.yaml
+    target:
+      kind: ValidatingWebhookConfiguration
+      name: opentelemetry-operator-validation
+
+  # otel-operator legacy webhooks
+  - path: otel-mutating-webhook-patch.yaml
+    target:
+      kind: MutatingWebhookConfiguration
+      name: otel-operator-mutation
+  - path: otel-validating-webhook-patch.yaml
+    target:
+      kind: ValidatingWebhookConfiguration
+      name: otel-operator-validation
+
+
+
+
 namespace: monitoring
 
 resources:
