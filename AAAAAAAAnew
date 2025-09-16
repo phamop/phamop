@@ -1,10 +1,6 @@
-error: Multiple Strategic-Merge Patches in one `patches` entry is not allowed to set `patches.target` field: [path: "jaeger-webhook-patch.yaml"]
-DONE resource /azp/agent/_work/6/s/cluster/overlays/EDIT/jaeger-operator
-Current resource: /azp/agent/_work/6/s/cluster/overlays/EDIT/opentelemetry-operator
-Set the helmGlobals.configHome to the appropriate value.
-About to run kubectl kustomize
-error: no resource matches strategic merge patch "MutatingWebhookConfiguration.v1.admissionregistration.k8s.io/otel-operator-mutation.[noNs]": no matches for Id MutatingWebhookConfiguration.v1.admissionregistration.k8s.io/otel-operator-mutation.[noNs]; failed to find unique target for patch MutatingWebhookConfiguration.v1.admissionregistration.k8s.io/otel-operator-mutation.[noNs]
-DONE resource /azp/agent/_work/6/s/cluster/overlays/EDIT/opentelemetry-operator
+error: namespace transformation produces ID conflict: [{"apiVersion":"cert-manager.io/v1","kind":"Certificate","metadata":{"annotations":{"internal.config.kubernetes.io/previousKinds":"Certificate","internal.config.kubernetes.io/previousNames":"jaeger-operator-service-cert","internal.config.kubernetes.io/previousNamespaces":"eddv-bld"},"labels":{"hbt.cmhc.schl.gc.ca/owner":"devops"},"name":"jaeger-operator-service-cert","namespace":"monitoring"},"spec":{"dnsNames":["jaeger-operator-webhook-service.eddv-bld.svc","jaeger-operator-webhook-service.eddv-bld.svc.cluster.local"],"issuerRef":{"kind":"Issuer","name":"selfsigned-issuer"},"secretName":"jaeger-operator-service-cert","subject":{"organizationalUnits":["jaeger-operator"]}}} {"apiVersion":"cert-manager.io/v1","kind":"Certificate","metadata":{"name":"jaeger-operator-service-cert","namespace":"monitoring"},"spec":{"dnsNames":["jaeger-operator-webhook-service.monitoring.svc","jaeger-operator-webhook-service.monitoring.svc.cluster.local","jaeger-operator-webhook-service.eddv-bld.svc","jaeger-operator-webhook-service.eddv-bld.svc.cluster.local"],"issuerRef":{"group":"cert-manager.io","kind":"ClusterIssuer","name":"selfsigned-issuer"},"secretName":"jaeger-operator-service-cert"}}]
+DONE resource /azp/agent/_work/3/s/cluster/overlays/EDIT/jaeger-operator
+Current resource: /azp/agent/_work/3/s/cluster/overlays/EDIT/opentelemetry-operator
 
 
 
