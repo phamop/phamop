@@ -1,3 +1,14 @@
+patches:
+  - path: jaeger-mutating-webhook-patch.yaml
+    target:
+      kind: MutatingWebhookConfiguration
+      name: jaeger-operator-mutating-webhook-configuration
+  - path: jaeger-validating-webhook-patch.yaml
+    target:
+      kind: ValidatingWebhookConfiguration
+      name: jaeger-operator-validating-webhook-configuration
+
+
 cluster
 ├── base
 │   ├── cert-manager-operator
