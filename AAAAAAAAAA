@@ -1,25 +1,14 @@
-namespace: monitoring
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: jaeger-operator-service-cert
+  namespace: monitoring
+spec:
+  secretName: jaeger-operator-webhook-cert
+  issuerRef:
+    kind: Issuer     # ✅ changed from ClusterIssuer
+    name: selfsigned-issuer
 
-resources:
-  - ../../../base/jaeger-operator
-
-patches:
-  # Patch the Jaeger Certificate instead of duplicating
-  - path: jaeger-certificate.yaml
-    target:
-      kind: Certificate
-      name: jaeger-operator-service-cert
-
-  # Patch webhooks with CA injection
-  - path: jaeger-mutating-webhook-patch.yaml
-    target:
-      kind: MutatingWebhookConfiguration
-      name: jaeger-operator-mutating-webhook-configuration
-
-  - path: jaeger-validating-webhook-patch.yaml
-    target:
-      kind: ValidatingWebhookConfiguration
-      name: jaeger-operator-validating-webhook-configuration
 
 
 
