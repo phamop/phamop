@@ -1,8 +1,71 @@
-E0916 22:22:43.279891       1 sources.go:116] "unable to fetch associated secret" err="secrets \"opentelemetry-operator-serving-cert\" not found" logger="cert-manager" kind="validatingwebhookconfiguration" kind="validatingwebhookconfiguration" name="opentelemetry-operator-validation" certificate="monitoring/opentelemetry-operator-service-cert" secret="monitoring/opentelemetry-operator-serving-cert"
-E0916 22:22:43.282155       1 sources.go:116] "unable to fetch associated secret" err="secrets \"opentelemetry-operator-serving-cert\" not found" logger="cert-manager" kind="customresourcedefinition" kind="customresourcedefinition" name="opentelemetrycollectors.opentelemetry.io" certificate="monitoring/opentelemetry-operator-service-cert" secret="monitoring/opentelemetry-operator-serving-cert"
-E0916 22:22:43.283915       1 sources.go:106] "unable to fetch associated certificate" err="Certificate.cert-manager.io \"opentelemetry-operator-serving-cert\" not found" logger="cert-manager" kind="customresourcedefinition" kind="customresourcedefinition" name="targetallocators.opentelemetry.io" certificate="eddv-bld/opentelemetry-operator-serving-cert"
-E0916 22:22:43.297876       1 sources.go:116] "unable to fetch associated secret" err="secrets \"opentelemetry-operator-serving-cert\" not found" logger="cert-manager" kind="customresourcedefinition" kind="customresourcedefinition" name="opampbridges.opentelemetry.io" certificate="monitoring/otel-operator-serving-cert" secret="monitoring/opentelemetry-operator-serving-cert"
-E0916 22:22:43.313416       1 sources.go:116] "unable to fetch associated secret" err="secrets \"opentelemetry-operator-serving-cert\" not found" logger="cert-manager" kind="mutatingwebhookconfiguration" kind="mutatingwebhookconfiguration" name="opentelemetry-operator-mutation" certificate="monitoring/opentelemetry-operator-service-cert" secret="monitoring/opentelemetry-operator-serving-cert"
+cluster/base/opentelemetry-operator/opentelemetry-certificate.yaml
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: opentelemetry-operator-service-cert
+  namespace: monitoring
+spec:
+  secretName: opentelemetry-operator-serving-cert
+  issuerRef:
+    kind: Issuer   # default, overlays can patch this to ClusterIssuer
+    name: selfsigned-issuer
+  dnsNames:
+    - opentelemetry-operator-webhook-service.monitoring.svc
+    - opentelemetry-operator-webhook-service.monitoring.svc.cluster.local
+
+
+
+cluster/overlays/EDIT/opentelemetry-operator/opentelemetry-certificate-patch.yaml
+
+This patch makes it environment-specific. For example:
+
+Add eddv-bld SANs.
+
+Switch issuer to ClusterIssuer.
+
+Add team labels/annotations.
+
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: opentelemetry-operator-service-cert
+  namespace: monitoring
+  labels:
+    hbt.cmhc.schl.gc.ca/owner: devops
+spec:
+  issuerRef:
+    kind: ClusterIssuer
+    name: selfsigned-issuer
+  dnsNames:
+    - opentelemetry-operator-webhook-service.monitoring.svc
+    - opentelemetry-operator-webhook-service.monitoring.svc.cluster.local
+    - opentelemetry-operator-webhook-service.eddv-bld.svc
+    - opentelemetry-operator-webhook-service.eddv-bld.svc.cluster.local
+
+
+
+Reference it in cluster/overlays/EDIT/opentelemetry-operator/kustomization.yaml
+
+Replace old patchesStrategicMerge with the new patches format:
+
+resources:
+  - ../../../../base/opentelemetry-operator
+  - opentelemetry-certificate-patch.yaml
+
+patches:
+  - path: opentelemetry-certificate-patch.yaml
+    target:
+      kind: Certificate
+      name: opentelemetry-operator-service-cert
+
+
+
+
+
+
+
+
+
 
 
 
@@ -166,109 +229,6 @@ kustomize
 
 
 
-# OpenTelemetry Operator webhooks
-  - path: opentelemetry-webhook-patch.yaml
-    target:
-      kind: MutatingWebhookConfiguration
-      name: opentelemetry-operator-mutation
-  - path: opentelemetry-validating-webhook-patch.yaml
-    target:
-      kind: ValidatingWebhookConfiguration
-      name: opentelemetry-operator-validation
-
-  # otel-operator legacy webhooks
-  - path: otel-mutating-webhook-patch.yaml
-    target:
-      kind: MutatingWebhookConfiguration
-      name: otel-operator-mutation
-  - path: otel-validating-webhook-patch.yaml
-    target:
-      kind: ValidatingWebhookConfiguration
-      name: otel-operator-validation
-
-
-
-
-namespace: monitoring
-
-resources:
-  - ../../../base/opentelemetry-operator
-  - clusterrolebinding.yaml
-
-patches:
-  # Patch OpenTelemetry Certificate
-  - path: opentelemetry-certificate.yaml
-    target:
-      kind: Certificate
-      name: opentelemetry-operator-service-cert
-
-  # Patch webhooks with CA injection
-  - path: opentelemetry-webhook-patch.yaml
-    target:
-      kind: MutatingWebhookConfiguration
-      name: opentelemetry-operator-mutation
-
-  - path: opentelemetry-validating-webhook-patch.yaml
-    target:
-      kind: ValidatingWebhookConfiguration
-      name: opentelemetry-operator-validation
-
-  # If you need the CRD patches too
-  - path: crd-patch.yaml
-    target:
-      kind: CustomResourceDefinition
-
-
-
-apiVersion: cert-manager.io/v1
-kind: Certificate
-metadata:
-  name: otel-operator-serving-cert
-  namespace: monitoring
-spec:
-  secretName: opentelemetry-operator-serving-cert   # reuse existing secret
-  issuerRef:
-    kind: Issuer
-    name: selfsigned-issuer
-
-
-
-
-
-namespace: monitoring
-
-resources:
-  - ../../../base/opentelemetry-operator
-  - clusterrolebinding.yaml
-
-patches:
-  # Patch OpenTelemetry Certificate
-  - path: opentelemetry-certificate.yaml
-    target:
-      kind: Certificate
-      name: opentelemetry-operator-service-cert
-
-  # Patch legacy alias for otel-operator
-  - path: otel-operator-cert-alias.yaml
-    target:
-      kind: Certificate
-      name: otel-operator-serving-cert
-
-  # Patch webhooks with CA injection
-  - path: opentelemetry-webhook-patch.yaml
-    target:
-      kind: MutatingWebhookConfiguration
-      name: opentelemetry-operator-mutation
-
-  - path: opentelemetry-validating-webhook-patch.yaml
-    target:
-      kind: ValidatingWebhookConfiguration
-      name: opentelemetry-operator-validation
-
-  # If you need CRD patches
-  - path: crd-patch.yaml
-    target:
-      kind: CustomResourceDefinition
 
 
 
@@ -281,162 +241,6 @@ patches:
 
 
 
-
-
-cluster
-├── base
-│   ├── cert-manager-operator
-│   │   ├── issuer.yaml
-│   │   ├── kustomization.yaml
-│   │   └── namespace.yaml
-│   ├── eck-elasticsearch-operator
-│   │   ├── kustomization.yaml
-│   │   └── namespace.yaml
-│   ├── jaeger-operator
-│   │   ├── jaeger-certificate.yaml
-│   │   ├── kustomization.yaml
-│   │   └── namespace.yaml
-│   └── opentelemetry-operator
-│       ├── clusterroles.yaml
-│       ├── kustomization.yaml
-│       ├── namespace.yaml
-│       ├── opentelemetry-certificate.yaml
-│       └── serviceaccount.yaml
-└── overlays
-    ├── EDDV
-    │   ├── cert-manager-operator
-    │   │   └── kustomization.yaml
-    │   └── opentelemetry-operator
-    │       └── kustomization.yaml
-    └── EDIT
-        ├── cert-manager-operator
-        │   └── kustomization.yaml
-        ├── eck-elasticsearch-operator
-        │   └── kustomization.yaml
-        ├── jaeger-operator
-        │   ├── jaeger-certificate.yaml
-        │   ├── jaeger-mutating-webhook-patch.yaml
-        │   ├── jaeger-validating-webhook-patch.yaml
-        │   └── kustomization.yaml
-        └── opentelemetry-operator
-            ├── clusterrolebinding.yaml
-            ├── crd-patch.yaml
-            ├── kustomization.yaml
-            ├── opentelemetry-certificate.yaml
-            ├── opentelemetry-validating-webhook-patch.yaml
-            ├── opentelemetry-webhook-patch.yaml
-            ├── otel-mutating-webhook-patch.yaml
-            ├── otel-operator-cert-alias.yaml
-            └── otel-validating-webhook-patch.yaml
-helm
-├── README.md
-├── source
-│   ├── cert-manager
-│   │   ├── Chart.yaml
-│   │   └── source.yaml
-│   ├── crd-prometheus
-│   │   ├── Chart.yaml
-│   │   └── source.yaml
-│   ├── elasticsearch
-│   │   ├── Chart.yaml
-│   │   └── source.yaml
-│   ├── grafana
-│   │   ├── Chart.yaml
-│   │   └── source.yaml
-│   ├── jaeger
-│   │   ├── Chart.yaml
-│   │   └── source.yaml
-│   ├── otel-operator
-│   │   ├── Chart.yaml
-│   │   └── source.yaml
-│   └── prometheus
-│       ├── Chart.yaml
-│       └── source.yaml
-└── values
-    └── EDIT
-        ├── cert-manager-operator
-        │   ├── Chart.yaml
-        │   ├── deploy.yaml
-        │   └── values.yaml
-        └── opentelemetry-operator
-            ├── Chart.yaml
-            ├── deploy.yaml
-            └── values.yaml
-kustomize
-├── base
-│   ├── elasticsearch
-│   │   ├── helm-values.yaml
-│   │   └── kustomization.yaml
-│   ├── grafana
-│   │   ├── helm-values.yaml
-│   │   └── kustomization.yaml
-│   ├── jaeger
-│   │   ├── certificate-multisan.yaml
-│   │   ├── helm-values.yaml
-│   │   ├── issuer.yaml
-│   │   ├── jaeger.yaml
-│   │   └── kustomization.yaml
-│   ├── loki
-│   │   ├── helm-values.yaml
-│   │   └── kustomization.yaml
-│   ├── opentelemetry
-│   │   ├── certificate-multisan.yaml
-│   │   ├── collector.yaml
-│   │   ├── issuer.yaml
-│   │   ├── kustomization.yaml
-│   │   └── serviceMetric.yaml
-│   └── prometheus
-│       ├── helm-values.yaml
-│       └── kustomization.yaml
-└── overlays
-    ├── EDDV
-    │   ├── crd
-    │   │   ├── helm-values.yaml
-    │   │   └── kustomization.yaml
-    │   ├── grafana
-    │   │   ├── config-patch.yaml
-    │   │   ├── kustomization.yaml
-    │   │   └── serviceaccount.yaml
-    │   ├── jaeger
-    │   │   ├── helm-values.yaml
-    │   │   └── kustomization.yaml
-    │   ├── loki
-    │   │   ├── helm-values.yaml
-    │   │   └── kustomization.yaml
-    │   ├── opentelemetry
-    │   │   ├── collector-patch.yaml
-    │   │   ├── kustomization.yaml
-    │   │   ├── otel-collector-crd.yaml
-    │   │   └── serviceMonitor.yaml
-    │   └── prometheus
-    │       └── kustomization.yaml
-    └── EDIT
-        ├── 01crd
-        │   ├── helm-values.yaml
-        │   └── kustomization.yaml
-        ├── 02prometheus
-        │   └── kustomization.yaml
-        ├── 03elasticsearch
-        │   └── kustomization.yaml
-        ├── 03loki
-        │   └── kustomization.yaml
-        ├── 04jaeger
-        │   ├── certificate-multisan.yaml
-        │   ├── issuer.yaml
-        │   ├── jaeger-webhook-patch.yaml
-        │   ├── kustomization.yaml
-        │   └── namespace.yaml
-        ├── 05opentelemetry
-        │   ├── certifcate-multisan.yaml
-        │   ├── collector-patch.yaml
-        │   ├── issuer.yaml
-        │   ├── kustomization.yaml
-        │   ├── opentelemetry-webhook-patch.yaml
-        │   └── serviceMonitor.yaml
-        └── 06grafana
-            ├── config-patch.yaml
-            ├── kustomization.yaml
-            └── serviceaccount.yaml
 
 
 
