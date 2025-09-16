@@ -1,12 +1,37 @@
+namespace: monitoring
+
+resources:
+  - ../../../base/opentelemetry-operator
+  - clusterrolebinding.yaml
+  - opentelemetry-certificate.yaml
+  - otel-operator-cert-alias.yaml
+
 patches:
-  - path: jaeger-mutating-webhook-patch.yaml
+  # Patches for opentelemetry-operator webhooks
+  - path: opentelemetry-webhook-patch.yaml
     target:
       kind: MutatingWebhookConfiguration
-      name: jaeger-operator-mutating-webhook-configuration
-  - path: jaeger-validating-webhook-patch.yaml
+      name: opentelemetry-operator-mutation
+  - path: opentelemetry-validating-webhook-patch.yaml
     target:
       kind: ValidatingWebhookConfiguration
-      name: jaeger-operator-validating-webhook-configuration
+      name: opentelemetry-operator-validation
+
+  # Patches for otel-operator webhooks
+  - path: otel-mutating-webhook-patch.yaml
+    target:
+      kind: MutatingWebhookConfiguration
+      name: otel-operator-mutation
+  - path: otel-validating-webhook-patch.yaml
+    target:
+      kind: ValidatingWebhookConfiguration
+      name: otel-operator-validation
+
+  # Patch CRDs with CA injection annotations
+  - path: crd-patch.yaml
+    target:
+      kind: CustomResourceDefinition
+
 
 
 cluster
