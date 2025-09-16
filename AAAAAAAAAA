@@ -1,8 +1,8 @@
-Current resource: /azp/agent/_work/5/s/kustomize/overlays/EDIT/04jaeger
-Set the helmGlobals.configHome to the appropriate value.
-About to run kubectl kustomize
-error: Multiple Strategic-Merge Patches in one `patches` entry is not allowed to set `patches.target` field: [path: "jaeger-webhook-patch.yaml"]
-DONE resource /azp/agent/_work/5/s/kustomize/overlays/EDIT/04jaeger
+E0916 22:22:43.279891       1 sources.go:116] "unable to fetch associated secret" err="secrets \"opentelemetry-operator-serving-cert\" not found" logger="cert-manager" kind="validatingwebhookconfiguration" kind="validatingwebhookconfiguration" name="opentelemetry-operator-validation" certificate="monitoring/opentelemetry-operator-service-cert" secret="monitoring/opentelemetry-operator-serving-cert"
+E0916 22:22:43.282155       1 sources.go:116] "unable to fetch associated secret" err="secrets \"opentelemetry-operator-serving-cert\" not found" logger="cert-manager" kind="customresourcedefinition" kind="customresourcedefinition" name="opentelemetrycollectors.opentelemetry.io" certificate="monitoring/opentelemetry-operator-service-cert" secret="monitoring/opentelemetry-operator-serving-cert"
+E0916 22:22:43.283915       1 sources.go:106] "unable to fetch associated certificate" err="Certificate.cert-manager.io \"opentelemetry-operator-serving-cert\" not found" logger="cert-manager" kind="customresourcedefinition" kind="customresourcedefinition" name="targetallocators.opentelemetry.io" certificate="eddv-bld/opentelemetry-operator-serving-cert"
+E0916 22:22:43.297876       1 sources.go:116] "unable to fetch associated secret" err="secrets \"opentelemetry-operator-serving-cert\" not found" logger="cert-manager" kind="customresourcedefinition" kind="customresourcedefinition" name="opampbridges.opentelemetry.io" certificate="monitoring/otel-operator-serving-cert" secret="monitoring/opentelemetry-operator-serving-cert"
+E0916 22:22:43.313416       1 sources.go:116] "unable to fetch associated secret" err="secrets \"opentelemetry-operator-serving-cert\" not found" logger="cert-manager" kind="mutatingwebhookconfiguration" kind="mutatingwebhookconfiguration" name="opentelemetry-operator-mutation" certificate="monitoring/opentelemetry-operator-service-cert" secret="monitoring/opentelemetry-operator-serving-cert"
 
 
 
