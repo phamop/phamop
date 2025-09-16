@@ -1,3 +1,24 @@
+patches:
+  - target:
+      kind: Certificate
+      name: jaeger-operator-service-cert
+      namespace: monitoring
+    patch: |-
+      - op: replace
+        path: /spec/dnsNames
+        value:
+          - jaeger-operator-webhook-service.monitoring.svc
+          - jaeger-operator-webhook-service.monitoring.svc.cluster.local
+          - jaeger-operator-webhook-service.eddv-bld.svc
+          - jaeger-operator-webhook-service.eddv-bld.svc.cluster.local
+      - op: replace
+        path: /spec/issuerRef/name
+        value: jaeger-selfsigned-issuer
+
+
+
+
+
 Current resource: /azp/agent/_work/25/s/cluster/overlays/EDIT/jaeger-operator
 Set the helmGlobals.configHome to the appropriate value.
 About to run kubectl kustomize
