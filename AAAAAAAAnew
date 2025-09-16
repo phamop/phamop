@@ -1,3 +1,16 @@
+#webhook
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: opentelemetry-operator-mutating-webhook-configuration
+webhooks:
+  - name: mopentelemetrycollectorbeta.kb.io
+    clientConfig:
+      service:
+        name: opentelemetry-operator-webhook  # consistent reference
+        namespace: monitoring
+        path: /mutate-opentelemetry-io-v1beta1-opentelemetrycollector
+---
 apiVersion: cert-manager.io/v1
 kind: Issuer
 metadata:
