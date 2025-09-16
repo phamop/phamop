@@ -1,13 +1,92 @@
+namespace: monitoring
+
+resources:
+  - ../../../base/opentelemetry-operator
+  - clusterrolebinding.yaml
+
+patches:
+  # Patch OpenTelemetry Certificate
+  - path: opentelemetry-certificate.yaml
+    target:
+      kind: Certificate
+      name: opentelemetry-operator-service-cert
+
+  # Patch webhooks with CA injection
+  - path: opentelemetry-webhook-patch.yaml
+    target:
+      kind: MutatingWebhookConfiguration
+      name: opentelemetry-operator-mutation
+
+  - path: opentelemetry-validating-webhook-patch.yaml
+    target:
+      kind: ValidatingWebhookConfiguration
+      name: opentelemetry-operator-validation
+
+  # If you need the CRD patches too
+  - path: crd-patch.yaml
+    target:
+      kind: CustomResourceDefinition
+
+
+
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
-  name: jaeger-operator-service-cert
+  name: otel-operator-serving-cert
   namespace: monitoring
 spec:
-  secretName: jaeger-operator-webhook-cert
+  secretName: opentelemetry-operator-serving-cert   # reuse existing secret
   issuerRef:
-    kind: Issuer     # ✅ changed from ClusterIssuer
+    kind: Issuer
     name: selfsigned-issuer
+
+
+
+
+
+namespace: monitoring
+
+resources:
+  - ../../../base/opentelemetry-operator
+  - clusterrolebinding.yaml
+
+patches:
+  # Patch OpenTelemetry Certificate
+  - path: opentelemetry-certificate.yaml
+    target:
+      kind: Certificate
+      name: opentelemetry-operator-service-cert
+
+  # Patch legacy alias for otel-operator
+  - path: otel-operator-cert-alias.yaml
+    target:
+      kind: Certificate
+      name: otel-operator-serving-cert
+
+  # Patch webhooks with CA injection
+  - path: opentelemetry-webhook-patch.yaml
+    target:
+      kind: MutatingWebhookConfiguration
+      name: opentelemetry-operator-mutation
+
+  - path: opentelemetry-validating-webhook-patch.yaml
+    target:
+      kind: ValidatingWebhookConfiguration
+      name: opentelemetry-operator-validation
+
+  # If you need CRD patches
+  - path: crd-patch.yaml
+    target:
+      kind: CustomResourceDefinition
+
+
+
+
+
+
+
+
+
 
 
 
