@@ -7,6 +7,163 @@ error: Multiple Strategic-Merge Patches in one `patches` entry is not allowed to
 DONE resource /azp/agent/_work/3/s/cluster/overlays/EDIT/opentelemetry-operator
 
 
+cluster
+├── base
+│   ├── cert-manager-operator
+│   │   ├── issuer.yaml
+│   │   ├── kustomization.yaml
+│   │   └── namespace.yaml
+│   ├── eck-elasticsearch-operator
+│   │   ├── kustomization.yaml
+│   │   └── namespace.yaml
+│   ├── jaeger-operator
+│   │   ├── jaeger-certificate.yaml
+│   │   ├── kustomization.yaml
+│   │   └── namespace.yaml
+│   └── opentelemetry-operator
+│       ├── clusterroles.yaml
+│       ├── kustomization.yaml
+│       ├── namespace.yaml
+│       ├── opentelemetry-certificate.yaml
+│       ├── otel-operator-cert-alias.yaml
+│       └── serviceaccount.yaml
+└── overlays
+    ├── EDDV
+    │   ├── cert-manager-operator
+    │   │   └── kustomization.yaml
+    │   └── opentelemetry-operator
+    │       └── kustomization.yaml
+    └── EDIT
+        ├── cert-manager-operator
+        │   └── kustomization.yaml
+        ├── eck-elasticsearch-operator
+        │   └── kustomization.yaml
+        ├── jaeger-operator
+        │   ├── jaeger-certificate.yaml
+        │   ├── jaeger-mutating-webhook-patch.yaml
+        │   ├── jaeger-validating-webhook-patch.yaml
+        │   └── kustomization.yaml
+        └── opentelemetry-operator
+            ├── clusterrolebinding.yaml
+            ├── crd-patch.yaml
+            ├── kustomization.yaml
+            ├── opentelemetry-certificate.yaml
+            ├── opentelemetry-validating-webhook-patch.yaml
+            ├── opentelemetry-webhook-patch.yaml
+            ├── otel-mutating-webhook-patch.yaml
+            ├── otel-operator-cert-alias.yaml
+            └── otel-validating-webhook-patch.yaml
+helm
+├── README.md
+├── source
+│   ├── cert-manager
+│   │   ├── Chart.yaml
+│   │   └── source.yaml
+│   ├── crd-prometheus
+│   │   ├── Chart.yaml
+│   │   └── source.yaml
+│   ├── elasticsearch
+│   │   ├── Chart.yaml
+│   │   └── source.yaml
+│   ├── grafana
+│   │   ├── Chart.yaml
+│   │   └── source.yaml
+│   ├── jaeger
+│   │   ├── Chart.yaml
+│   │   └── source.yaml
+│   ├── otel-operator
+│   │   ├── Chart.yaml
+│   │   └── source.yaml
+│   └── prometheus
+│       ├── Chart.yaml
+│       └── source.yaml
+└── values
+    └── EDIT
+        ├── cert-manager-operator
+        │   ├── Chart.yaml
+        │   ├── deploy.yaml
+        │   └── values.yaml
+        └── opentelemetry-operator
+            ├── Chart.yaml
+            ├── deploy.yaml
+            └── values.yaml
+kustomize
+├── base
+│   ├── elasticsearch
+│   │   ├── helm-values.yaml
+│   │   └── kustomization.yaml
+│   ├── grafana
+│   │   ├── helm-values.yaml
+│   │   └── kustomization.yaml
+│   ├── jaeger
+│   │   ├── certificate-multisan.yaml
+│   │   ├── helm-values.yaml
+│   │   ├── issuer.yaml
+│   │   ├── jaeger.yaml
+│   │   └── kustomization.yaml
+│   ├── loki
+│   │   ├── helm-values.yaml
+│   │   └── kustomization.yaml
+│   ├── opentelemetry
+│   │   ├── certificate-multisan.yaml
+│   │   ├── collector.yaml
+│   │   ├── issuer.yaml
+│   │   ├── kustomization.yaml
+│   │   └── serviceMetric.yaml
+│   └── prometheus
+│       ├── helm-values.yaml
+│       └── kustomization.yaml
+└── overlays
+    ├── EDDV
+    │   ├── crd
+    │   │   ├── helm-values.yaml
+    │   │   └── kustomization.yaml
+    │   ├── grafana
+    │   │   ├── config-patch.yaml
+    │   │   ├── kustomization.yaml
+    │   │   └── serviceaccount.yaml
+    │   ├── jaeger
+    │   │   ├── helm-values.yaml
+    │   │   └── kustomization.yaml
+    │   ├── loki
+    │   │   ├── helm-values.yaml
+    │   │   └── kustomization.yaml
+    │   ├── opentelemetry
+    │   │   ├── collector-patch.yaml
+    │   │   ├── kustomization.yaml
+    │   │   ├── otel-collector-crd.yaml
+    │   │   └── serviceMonitor.yaml
+    │   └── prometheus
+    │       └── kustomization.yaml
+    └── EDIT
+        ├── 01crd
+        │   ├── helm-values.yaml
+        │   └── kustomization.yaml
+        ├── 02prometheus
+        │   └── kustomization.yaml
+        ├── 03elasticsearch
+        │   └── kustomization.yaml
+        ├── 03loki
+        │   └── kustomization.yaml
+        ├── 04jaeger
+        │   ├── certificate-multisan.yaml
+        │   ├── issuer.yaml
+        │   ├── jaeger-webhook-patch.yaml
+        │   ├── kustomization.yaml
+        │   └── namespace.yaml
+        ├── 05opentelemetry
+        │   ├── certifcate-multisan.yaml
+        │   ├── collector-patch.yaml
+        │   ├── issuer.yaml
+        │   ├── kustomization.yaml
+        │   ├── opentelemetry-webhook-patch.yaml
+        │   └── serviceMonitor.yaml
+        └── 06grafana
+            ├── config-patch.yaml
+            ├── kustomization.yaml
+            └── serviceaccount.yaml
+
+
 
 
 
