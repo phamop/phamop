@@ -1,3 +1,8 @@
+kubectl get mutatingwebhookconfiguration jaeger-operator-mutating-webhook-configuration -o yaml | grep caBundle
+kubectl get validatingwebhookconfiguration otel-operator-validation -o yaml | grep caBundle
+
+
+
 #jaeger-cert-alias.yaml
 apiVersion: cert-manager.io/v1
 kind: Certificate
