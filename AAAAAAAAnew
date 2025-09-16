@@ -1,3 +1,36 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: jaeger-operator-service-cert
+  namespace: monitoring  # This must match the annotation
+spec:
+  secretName: jaeger-operator-service-cert
+  duration: 2160h # 90d
+  renewBefore: 360h # 15d
+  subject:
+    organizations:
+    - jaeger-operator
+  commonName: jaeger-operator-webhook-service.monitoring.svc
+  isCA: false
+  privateKey:
+    algorithm: RSA
+    encoding: PKCS1
+    size: 2048
+  usages:
+  - server auth
+  - key encipherment
+  dnsNames:
+  - jaeger-operator-webhook-service.monitoring.svc
+  - jaeger-operator-webhook-service.monitoring.svc.cluster.local
+  issuerRef:
+    name: selfsigned-issuer  # Use your issuer
+    kind: ClusterIssuer
+    group: cert-manager.io
+
+
+
+
+
 apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingWebhookConfiguration
 metadata:
