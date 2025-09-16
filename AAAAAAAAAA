@@ -1,19 +1,8 @@
-kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.18.2/cert-manager.yaml
-
-Error from server (InternalError): error when applying patch:
-{"metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"cert-manager.io/v1\",\"kind\":\"Certificate\",\"metadata\":{\"annotations\":{},\"labels\":{\"hbt.cmhc.schl.gc.ca/owner\":\"devops\"},\"name\":\"opentelemetry-operator-service-cert\",\"namespace\":\"monitoring\"},\"spec\":{\"dnsNames\":[\"opentelemetry-operator-webhook-service.monitoring.svc\",\"opentelemetry-operator-webhook-service.monitoring.svc.cluster.local\",\"opentelemetry-operator-webhook-service.eddv-bld.svc\",\"opentelemetry-operator-webhook-service.eddv-bld.svc.cluster.local\"],\"issuerRef\":{\"kind\":\"Issuer\",\"name\":\"selfsigned-issuer\"},\"secretName\":\"opentelemetry-operator-serving-cert\"}}\n"},"labels":{"hbt.cmhc.schl.gc.ca/owner":"devops"}},"spec":{"issuerRef":{"kind":"Issuer"}}}
-to:
-Resource: "cert-manager.io/v1, Resource=certificates", GroupVersionKind: "cert-manager.io/v1, Kind=Certificate"
-Name: "opentelemetry-operator-service-cert", Namespace: "monitoring"
-for: "/azp/agent/_work/5/s/cluster/overlays/EDIT/opentelemetry-operator/kustomization-output.yaml": error when patching "/azp/agent/_work/5/s/cluster/overlays/EDIT/opentelemetry-operator/kustomization-output.yaml": Internal error occurred: failed calling webhook "webhook.cert-manager.io": failed to call webhook: Post "https://cert-manager-webhook.cert-manager.svc:443/validate?timeout=30s": tls: failed to verify certificate: x509: certificate signed by unknown authority
-Error from server (InternalError): error when applying patch:
-{"metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"cert-manager.io/v1\",\"kind\":\"Certificate\",\"metadata\":{\"annotations\":{},\"labels\":{\"hbt.cmhc.schl.gc.ca/owner\":\"devops\"},\"name\":\"otel-operator-serving-cert\",\"namespace\":\"monitoring\"},\"spec\":{\"dnsNames\":[\"opentelemetry-operator-webhook-service.monitoring.svc\",\"opentelemetry-operator-webhook-service.monitoring.svc.cluster.local\",\"opentelemetry-operator-webhook-service.eddv-bld.svc\",\"opentelemetry-operator-webhook-service.eddv-bld.svc.cluster.local\"],\"issuerRef\":{\"kind\":\"Issuer\",\"name\":\"selfsigned-issuer\"},\"secretName\":\"opentelemetry-operator-serving-cert\"}}\n"},"labels":{"hbt.cmhc.schl.gc.ca/owner":"devops"}},"spec":{"issuerRef":{"kind":"Issuer"}}}
-to:
-Resource: "cert-manager.io/v1, Resource=certificates", GroupVersionKind: "cert-manager.io/v1, Kind=Certificate"
-Name: "otel-operator-serving-cert", Namespace: "monitoring"
-for: "/azp/agent/_work/5/s/cluster/overlays/EDIT/opentelemetry-operator/kustomization-output.yaml": error when patching "/azp/agent/_work/5/s/cluster/overlays/EDIT/opentelemetry-operator/kustomization-output.yaml": Internal error occurred: failed calling webhook "webhook.cert-manager.io": failed to call webhook: Post "https://cert-manager-webhook.cert-manager.svc:443/validate?timeout=30s": tls: failed to verify certificate: x509: certificate signed by unknown authority
-*** Done
-
+Current resource: /azp/agent/_work/5/s/kustomize/overlays/EDIT/04jaeger
+Set the helmGlobals.configHome to the appropriate value.
+About to run kubectl kustomize
+error: Multiple Strategic-Merge Patches in one `patches` entry is not allowed to set `patches.target` field: [path: "jaeger-webhook-patch.yaml"]
+DONE resource /azp/agent/_work/5/s/kustomize/overlays/EDIT/04jaeger
 
 
 
