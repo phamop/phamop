@@ -1,63 +1,18 @@
-cluster/base/jaeger-operator/jaeger-certificate.yaml
-
-apiVersion: cert-manager.io/v1
-kind: Certificate
-metadata:
-  name: jaeger-operator-service-cert
-  namespace: monitoring
-spec:
-  secretName: jaeger-operator-webhook-cert
-  issuerRef:
-    kind: Issuer
-    name: selfsigned-issuer
-  dnsNames: []   # overlays will patch this
-
-
-cluster/overlays/EDIT/jaeger-operator/jaeger-certificate-patch.yaml
-
-apiVersion: cert-manager.io/v1
-kind: Certificate
-metadata:
-  name: jaeger-operator-service-cert
-spec:
-  dnsNames:
-    - jaeger-operator-webhook-service.monitoring.svc
-    - jaeger-operator-webhook-service.monitoring.svc.cluster.local
-    - jaeger-operator-webhook-service.eddv-bld.svc
-    - jaeger-operator-webhook-service.eddv-bld.svc.cluster.local
+Error from server (InternalError): error when applying patch:
+{"metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"cert-manager.io/v1\",\"kind\":\"Certificate\",\"metadata\":{\"annotations\":{},\"labels\":{\"hbt.cmhc.schl.gc.ca/owner\":\"devops\"},\"name\":\"opentelemetry-operator-service-cert\",\"namespace\":\"monitoring\"},\"spec\":{\"dnsNames\":[\"opentelemetry-operator-webhook-service.monitoring.svc\",\"opentelemetry-operator-webhook-service.monitoring.svc.cluster.local\",\"opentelemetry-operator-webhook-service.eddv-bld.svc\",\"opentelemetry-operator-webhook-service.eddv-bld.svc.cluster.local\"],\"issuerRef\":{\"kind\":\"ClusterIssuer\",\"name\":\"selfsigned-issuer\"},\"secretName\":\"opentelemetry-operator-serving-cert\"}}\n"},"labels":{"hbt.cmhc.schl.gc.ca/owner":"devops"}}}
+to:
+Resource: "cert-manager.io/v1, Resource=certificates", GroupVersionKind: "cert-manager.io/v1, Kind=Certificate"
+Name: "opentelemetry-operator-service-cert", Namespace: "monitoring"
+for: "/azp/agent/_work/5/s/cluster/overlays/EDIT/opentelemetry-operator/kustomization-output.yaml": error when patching "/azp/agent/_work/5/s/cluster/overlays/EDIT/opentelemetry-operator/kustomization-output.yaml": Internal error occurred: failed calling webhook "webhook.cert-manager.io": failed to call webhook: Post "https://cert-manager-webhook.cert-manager.svc:443/validate?timeout=30s": tls: failed to verify certificate: x509: certificate signed by unknown authority
+Error from server (InternalError): error when applying patch:
+{"metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"cert-manager.io/v1\",\"kind\":\"Certificate\",\"metadata\":{\"annotations\":{},\"labels\":{\"hbt.cmhc.schl.gc.ca/owner\":\"devops\"},\"name\":\"otel-operator-serving-cert\",\"namespace\":\"monitoring\"},\"spec\":{\"dnsNames\":[\"opentelemetry-operator-webhook-service.monitoring.svc\",\"opentelemetry-operator-webhook-service.monitoring.svc.cluster.local\",\"opentelemetry-operator-webhook-service.eddv-bld.svc\",\"opentelemetry-operator-webhook-service.eddv-bld.svc.cluster.local\"],\"issuerRef\":{\"kind\":\"Issuer\",\"name\":\"selfsigned-issuer\"},\"secretName\":\"opentelemetry-operator-serving-cert\"}}\n"},"labels":{"hbt.cmhc.schl.gc.ca/owner":"devops"}},"spec":{"issuerRef":{"kind":"Issuer"}}}
+to:
+Resource: "cert-manager.io/v1, Resource=certificates", GroupVersionKind: "cert-manager.io/v1, Kind=Certificate"
+Name: "otel-operator-serving-cert", Namespace: "monitoring"
+for: "/azp/agent/_work/5/s/cluster/overlays/EDIT/opentelemetry-operator/kustomization-output.yaml": error when patching "/azp/agent/_work/5/s/cluster/overlays/EDIT/opentelemetry-operator/kustomization-output.yaml": Internal error occurred: failed calling webhook "webhook.cert-manager.io": failed to call webhook: Post "https://cert-manager-webhook.cert-manager.svc:443/validate?timeout=30s": tls: failed to verify certificate: x509: certificate signed by unknown authority
+*** Done
 
 
-cluster/overlays/EDIT/jaeger-operator/kustomization.yaml
-
-namespace: monitoring
-
-resources:
-  - ../../../base/jaeger-operator
-
-patches:
-  - path: jaeger-certificate-patch.yaml
-    target:
-      kind: Certificate
-      name: jaeger-operator-service-cert
-  - path: jaeger-mutating-webhook-patch.yaml
-    target:
-      kind: MutatingWebhookConfiguration
-      name: jaeger-operator-mutating-webhook-configuration
-  - path: jaeger-validating-webhook-patch.yaml
-    target:
-      kind: ValidatingWebhookConfiguration
-      name: jaeger-operator-validating-webhook-configuration
-
-
-
-
-error: namespace transformation produces ID conflict: [{"apiVersion":"cert-manager.io/v1","kind":"Certificate","metadata":{"annotations":{"internal.config.kubernetes.io/previousKinds":"Certificate","internal.config.kubernetes.io/previousNames":"jaeger-operator-service-cert","internal.config.kubernetes.io/previousNamespaces":"monitoring"},"labels":{"hbt.cmhc.schl.gc.ca/owner":"devops"},"name":"jaeger-operator-service-cert","namespace":"monitoring"},"spec":{"dnsNames":["jaeger-operator-webhook-service.monitoring.svc","jaeger-operator-webhook-service.monitoring.svc.cluster.local","jaeger-operator-webhook-service.eddv-bld.svc","jaeger-operator-webhook-service.eddv-bld.svc.cluster.local"],"issuerRef":{"kind":"Issuer","name":"selfsigned-issuer"},"secretName":"jaeger-operator-webhook-cert"}} {"apiVersion":"cert-manager.io/v1","kind":"Certificate","metadata":{"annotations":{"internal.config.kubernetes.io/previousKinds":"Certificate","internal.config.kubernetes.io/previousNames":"jaeger-operator-service-cert","internal.config.kubernetes.io/previousNamespaces":"eddv-bld"},"labels":{"hbt.cmhc.schl.gc.ca/owner":"devops"},"name":"jaeger-operator-service-cert","namespace":"monitoring"},"spec":{"dnsNames":["jaeger-operator-webhook-service.eddv-bld.svc","jaeger-operator-webhook-service.eddv-bld.svc.cluster.local"],"issuerRef":{"kind":"Issuer","name":"selfsigned-issuer"},"secretName":"jaeger-operator-webhook-cert","subject":{"organizationalUnits":["jaeger-operator"]}}}]
-DONE resource /azp/agent/_work/3/s/cluster/overlays/EDIT/jaeger-operator
-Current resource: /azp/agent/_work/3/s/cluster/overlays/EDIT/opentelemetry-operator
-Set the helmGlobals.configHome to the appropriate value.
-About to run kubectl kustomize
-error: Multiple Strategic-Merge Patches in one `patches` entry is not allowed to set `patches.target` field: [path: "crd-patch.yaml"]
-DONE resource /azp/agent/_work/3/s/cluster/overlays/EDIT/opentelemetry-operator
 
 
 cluster
