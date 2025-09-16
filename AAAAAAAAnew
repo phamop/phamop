@@ -1,3 +1,6 @@
+I0916 18:02:27.697264       1 reconciler.go:141] "Updated object" logger="cert-manager" kind="validatingwebhookconfiguration" kind="validatingwebhookconfiguration" name="my-opentelemetry-operator-validation"
+I0916 18:02:27.710052       1 reconciler.go:141] "Updated object" logger="cert-manager" kind="mutatingwebhookconfiguration" kind="mutatingwebhookconfiguration" name="cert-manager-webhook"
+E0916 18:02:27.710583       1 sources.go:106] "unable to fetch associated certificate" err="Certificate.cert-manager.io \"jaeger-operator-service-cert\" not found" logger="cert-manager" kind="mutatingwebhookconfiguration" kind="mutatingwebhookconfiguration" name="jaeger-operator-mutating-webhook-configuration" certificate="monitoring/jaeger-operator-service-cert"
 I0916 18:02:27.710619       1 reconciler.go:117] "could not find any ca data in data source for target" logger="cert-manager" kind="mutatingwebhookconfiguration" kind="mutatingwebhookconfiguration" name="jaeger-operator-mutating-webhook-configuration"
 I0916 18:02:27.727698       1 reconciler.go:141] "Updated object" logger="cert-manager" kind="validatingwebhookconfiguration" kind="validatingwebhookconfiguration" name="opentelemetry-operator-validation"
 I0916 18:02:27.737583       1 reconciler.go:141] "Updated object" logger="cert-manager" kind="mutatingwebhookconfiguration" kind="mutatingwebhookconfiguration" name="my-opentelemetry-operator-mutation"
@@ -5,8 +8,7 @@ I0916 18:02:27.753416       1 reconciler.go:141] "Updated object" logger="cert-m
 E0916 18:02:27.753975       1 sources.go:106] "unable to fetch associated certificate" err="Certificate.cert-manager.io \"otel-operator-serving-cert\" not found" logger="cert-manager" kind="validatingwebhookconfiguration" kind="validatingwebhookconfiguration" name="otel-operator-validation" certificate="opentelemetry/otel-operator-serving-cert"
 I0916 18:02:27.754088       1 reconciler.go:117] "could not find any ca data in data source for target" logger="cert-manager" kind="validatingwebhookconfiguration" kind="validatingwebhookconfiguration" name="otel-operator-validation"
 I0916 18:02:27.754916       1 reconciler.go:141] "Updated object" logger="cert-manager" kind="mutatingwebhookconfiguration" kind="mutatingwebhookconfiguration" name="opentelemetry-operator-mutation"
-
-
+I0916 18:02:27.771021       1 reconciler.go:141] "Updated object" logger="cert-manager" kind="mutatingwebhookconfiguration" kind="mutatingwebhookconfiguration" name="cert-manager-webhook"
 
 #jaeger-cert-alias.yaml
 apiVersion: cert-manager.io/v1
