@@ -1,3 +1,40 @@
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: otel-operator-mutation
+  annotations:
+    cert-manager.io/inject-ca-from: monitoring/otel-operator-serving-cert
+webhooks:
+  - name: motelcollector.kb.io
+    clientConfig:
+      service:
+        name: otel-operator-webhook-service
+        namespace: monitoring
+        path: /mutate-opentelemetry-io-v1beta1-otelcollector
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: otel-operator-validation
+  annotations:
+    cert-manager.io/inject-ca-from: monitoring/otel-operator-serving-cert
+webhooks:
+  - name: votelcollector.kb.io
+    clientConfig:
+      service:
+        name: otel-operator-webhook-service
+        namespace: monitoring
+        path: /validate-opentelemetry-io-v1beta1-otelcollector
+
+
+
+
+
+
+
+
+
+
 cat  cluster/overlays/EDIT/jaeger-operator/jaeger-cert*
 apiVersion: cert-manager.io/v1
 kind: Certificate
