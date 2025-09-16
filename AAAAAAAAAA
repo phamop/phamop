@@ -1,31 +1,53 @@
-cluster/overlays/EDIT/opentelemetry-operator/opentelemetry-crd-patch.yaml
+cluster/base/jaeger-operator/jaeger-certificate.yaml
 
-apiVersion: apiextensions.k8s.io/v1
-kind: CustomResourceDefinition
+apiVersion: cert-manager.io/v1
+kind: Certificate
 metadata:
-  name: opentelemetrycollectors.opentelemetry.io
-  annotations:
-    cert-manager.io/inject-ca-from: monitoring/opentelemetry-operator-service-cert
+  name: jaeger-operator-service-cert
+  namespace: monitoring
+spec:
+  secretName: jaeger-operator-webhook-cert
+  issuerRef:
+    kind: Issuer
+    name: selfsigned-issuer
+  dnsNames: []   # overlays will patch this
 
 
-cluster/overlays/EDIT/opentelemetry-operator/otel-crd-patch.yaml
+cluster/overlays/EDIT/jaeger-operator/jaeger-certificate-patch.yaml
 
-apiVersion: apiextensions.k8s.io/v1
-kind: CustomResourceDefinition
+apiVersion: cert-manager.io/v1
+kind: Certificate
 metadata:
-  name: opampbridges.opentelemetry.io
-  annotations:
-    cert-manager.io/inject-ca-from: monitoring/otel-operator-serving-cert
+  name: jaeger-operator-service-cert
+spec:
+  dnsNames:
+    - jaeger-operator-webhook-service.monitoring.svc
+    - jaeger-operator-webhook-service.monitoring.svc.cluster.local
+    - jaeger-operator-webhook-service.eddv-bld.svc
+    - jaeger-operator-webhook-service.eddv-bld.svc.cluster.local
 
-# CRD patches (split)
-  - path: opentelemetry-crd-patch.yaml
+
+cluster/overlays/EDIT/jaeger-operator/kustomization.yaml
+
+namespace: monitoring
+
+resources:
+  - ../../../base/jaeger-operator
+
+patches:
+  - path: jaeger-certificate-patch.yaml
     target:
-      kind: CustomResourceDefinition
-      name: opentelemetrycollectors.opentelemetry.io
-  - path: otel-crd-patch.yaml
+      kind: Certificate
+      name: jaeger-operator-service-cert
+  - path: jaeger-mutating-webhook-patch.yaml
     target:
-      kind: CustomResourceDefinition
-      name: opampbridges.opentelemetry.io
+      kind: MutatingWebhookConfiguration
+      name: jaeger-operator-mutating-webhook-configuration
+  - path: jaeger-validating-webhook-patch.yaml
+    target:
+      kind: ValidatingWebhookConfiguration
+      name: jaeger-operator-validating-webhook-configuration
+
 
 
 
