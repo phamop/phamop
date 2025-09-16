@@ -1,4 +1,107 @@
- E0916 16:28:15.134708       1 sources.go:106] "unable to fetch associated certificate" err="Certificate.cert-manager.io \"opentelemetry-operator-serving-cert\" not found" logger="cert-manager" kind="customresourcedefinition" kind="customresourcedefinition" name="opentelemetrycollectors.opentelemetry.io" certificate="eddv-bld/opentelemetry-operator-serving-cert"
+1. Certificate (opentelemetry-certificate.yaml or certificate-multisan.yaml)
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: opentelemetry-operator-serving-cert
+  namespace: monitoring
+spec:
+  secretName: opentelemetry-operator-serving-cert
+  issuerRef:
+    name: selfsigned-issuer
+    kind: ClusterIssuer
+  dnsNames:
+    - opentelemetry-operator-webhook-service.monitoring.svc
+    - opentelemetry-operator-webhook-service.monitoring.svc.cluster.local
+    - opentelemetry-operator-webhook-service.eddv-bld.svc
+    - opentelemetry-operator-webhook-service.eddv-bld.svc.cluster.local
+
+2. Webhook patches (opentelemetry-webhook-patch.yaml)
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: opentelemetry-operator-mutation
+  annotations:
+    cert-manager.io/inject-ca-from: monitoring/opentelemetry-operator-serving-cert
+webhooks:
+  - name: mopentelemetrycollector.kb.io
+    clientConfig:
+      service:
+        name: opentelemetry-operator-webhook-service
+        namespace: monitoring
+        path: /mutate-opentelemetry-io-v1beta1-opentelemetrycollector
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: opentelemetry-operator-validation
+  annotations:
+    cert-manager.io/inject-ca-from: monitoring/opentelemetry-operator-serving-cert
+webhooks:
+  - name: vopentelemetrycollector.kb.io
+    clientConfig:
+      service:
+        name: opentelemetry-operator-webhook-service
+        namespace: monitoring
+        path: /validate-opentelemetry-io-v1beta1-opentelemetrycollector
+
+3. Kustomization (cluster/overlays/EDIT/opentelemetry-operator/kustomization.yaml)
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: monitoring
+
+resources:
+  - ../../../base/opentelemetry-operator
+
+patches:
+  - path: opentelemetry-certificate.yaml
+    target:
+      kind: Certificate
+      name: opentelemetry-operator-serving-cert
+      namespace: monitoring
+  - path: opentelemetry-webhook-patch.yaml
+    target:
+      kind: MutatingWebhookConfiguration
+      name: opentelemetry-operator-mutation
+  - path: opentelemetry-webhook-patch.yaml
+    target:
+      kind: ValidatingWebhookConfiguration
+      name: opentelemetry-operator-validation
+
+4. Cleanup required before applying
+
+Remove wrong certs/secrets in eddv-bld or opentelemetry namespaces:
+
+kubectl delete secret opentelemetry-operator-serving-cert -n eddv-bld || true
+kubectl delete certificate opentelemetry-operator-serving-cert -n eddv-bld || true
+kubectl delete secret otel-operator-serving-cert -n opentelemetry || true
+kubectl delete certificate otel-operator-serving-cert -n opentelemetry || true
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+E0916 16:28:15.134708       1 sources.go:106] "unable to fetch associated certificate" err="Certificate.cert-manager.io \"opentelemetry-operator-serving-cert\" not found" logger="cert-manager" kind="customresourcedefinition" kind="customresourcedefinition" name="opentelemetrycollectors.opentelemetry.io" certificate="eddv-bld/opentelemetry-operator-serving-cert"
 I0916 16:28:15.134744       1 reconciler.go:117] "could not find any ca data in data source for target" logger="cert-manager" kind="customresourcedefinition" kind="customresourcedefinition" name="opentelemetrycollectors.opentelemetry.io"
 E0916 16:28:15.135618       1 sources.go:106] "unable to fetch associated certificate" err="Certificate.cert-manager.io \"opentelemetry-operator-serving-cert\" not found" logger="cert-manager" kind="customresourcedefinition" kind="customresourcedefinition" name="opampbridges.opentelemetry.io" certificate="eddv-bld/opentelemetry-operator-serving-cert"
 I0916 16:28:15.135651       1 reconciler.go:117] "could not find any ca data in data source for target" logger="cert-manager" kind="customresourcedefinition" kind="customresourcedefinition" name="opampbridges.opentelemetry.io"
