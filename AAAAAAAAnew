@@ -1,7 +1,13 @@
-error: Multiple Strategic-Merge Patches in one `patches` entry is not allowed to set `patches.target` field: [path: "opentelemetry-webhook-patch.yaml"]
-DONE resource /azp/agent/_work/3/s/cluster/overlays/EDIT/opentelemetry-operator
-
-
+Current resource: /azp/agent/_work/5/s/cluster/overlays/EDIT/jaeger-operator
+Set the helmGlobals.configHome to the appropriate value.
+About to run kubectl kustomize
+error: Multiple Strategic-Merge Patches in one `patches` entry is not allowed to set `patches.target` field: [path: "jaeger-certificate.yaml"]
+DONE resource /azp/agent/_work/5/s/cluster/overlays/EDIT/jaeger-operator
+Current resource: /azp/agent/_work/5/s/cluster/overlays/EDIT/opentelemetry-operator
+Set the helmGlobals.configHome to the appropriate value.
+About to run kubectl kustomize
+error: accumulating resources: accumulation err='merging resources from 'opentelemetry-mutating-webhook-patch.yaml': may not add resource with an already registered id: MutatingWebhookConfiguration.v1.admissionregistration.k8s.io/opentelemetry-operator-mutation.[noNs]': must build at directory: '/azp/agent/_work/5/s/cluster/overlays/EDIT/opentelemetry-operator/opentelemetry-mutating-webhook-patch.yaml': file is not directory
+DONE resource /azp/agent/_work/5/s/cluster/overlays/EDIT/opentelemetry-operator
 
 
 
