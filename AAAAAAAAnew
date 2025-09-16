@@ -1,3 +1,50 @@
+# webhook
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: jaeger-operator-mutating-webhook-configuration
+webhooks:
+  - name: mjaeger.kb.io
+    clientConfig:
+      service:
+        name: jaeger-operator-webhook-service  # consistent reference
+        namespace: monitoring
+        path: /mutate-jaegertracing-io-v1-jaeger
+---
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: jaeger-selfsigned-issuer
+  namespace: monitoring
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: jaeger-operator-service-cert
+  namespace: monitoring
+spec:
+  dnsNames:
+    - jaeger-operator-webhook-service.monitoring.svc
+    - jaeger-operator-webhook-service.monitoring.svc.cluster.local
+    - jaeger-operator-webhook-service.eddv-bld.svc
+    - jaeger-operator-webhook-service.eddv-bld.svc.cluster.local
+  secretName: jaeger-operator-service-cert
+  issuerRef:
+    name: jaeger-selfsigned-issuer
+    kind: Issuer
+
+
+
+
+
+
+
+
+
+
+
 #webhook
 apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingWebhookConfiguration
