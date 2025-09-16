@@ -1,3 +1,10 @@
+error: Multiple Strategic-Merge Patches in one `patches` entry is not allowed to set `patches.target` field: [path: "opentelemetry-webhook-patch.yaml"]
+DONE resource /azp/agent/_work/3/s/cluster/overlays/EDIT/opentelemetry-operator
+
+
+
+
+
 1. Certificate (opentelemetry-certificate.yaml or certificate-multisan.yaml)
 apiVersion: cert-manager.io/v1
 kind: Certificate
