@@ -1,31 +1,4 @@
-apiVersion: cert-manager.io/v1
-kind: Certificate
-metadata:
-  name: jaeger-operator-service-cert
-  namespace: monitoring  # This must match the annotation
-spec:
-  secretName: jaeger-operator-service-cert
-  duration: 2160h # 90d
-  renewBefore: 360h # 15d
-  subject:
-    organizations:
-    - jaeger-operator
-  commonName: jaeger-operator-webhook-service.monitoring.svc
-  isCA: false
-  privateKey:
-    algorithm: RSA
-    encoding: PKCS1
-    size: 2048
-  usages:
-  - server auth
-  - key encipherment
-  dnsNames:
-  - jaeger-operator-webhook-service.monitoring.svc
-  - jaeger-operator-webhook-service.monitoring.svc.cluster.local
-  issuerRef:
-    name: selfsigned-issuer  # Use your issuer
-    kind: ClusterIssuer
-    group: cert-manager.io
+1 controller.go:316] "Reconciler error" err="Operation cannot be fulfilled on mutatingwebhookconfigurations.admissionregistration.k8s.io \"jaeger-operator-mutating-webhook-configuration\": the object has been modified; please apply your changes to the latest version and try again" logger="cert-manager" controller="mutatingwebhookconfiguration" controllerGroup="admissionregistration.k8s.io" controllerKind="MutatingWebhookConfiguration" MutatingWebhookConfiguration="jaeger-operator-mutating-webhook-configuration" namespace="" name="jaeger-operator-mutating-webhook-configuration" reconcileID="5c408cd8-6b90-419e-9ef8-3348e43900a9"
 
 
 
