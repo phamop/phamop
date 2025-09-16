@@ -1,3 +1,63 @@
+cluster/base/jaeger-operator/jaeger-certificate.yaml
+
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: jaeger-operator-service-cert
+  namespace: monitoring
+spec:
+  secretName: jaeger-operator-webhook-cert
+  issuerRef:
+    kind: Issuer
+    name: selfsigned-issuer
+  dnsNames: []  # overlays will patch this
+
+
+cluster/overlays/EDIT/jaeger-operator/jaeger-certificate-patch.yaml
+
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: jaeger-operator-service-cert
+spec:
+  dnsNames:
+    - jaeger-operator-webhook-service.monitoring.svc
+    - jaeger-operator-webhook-service.monitoring.svc.cluster.local
+    - jaeger-operator-webhook-service.eddv-bld.svc
+    - jaeger-operator-webhook-service.eddv-bld.svc.cluster.local
+
+
+cluster/overlays/EDIT/jaeger-operator/kustomization.yaml
+
+namespace: monitoring
+
+resources:
+  - ../../../base/jaeger-operator
+
+patches:
+  - path: jaeger-certificate-patch.yaml
+    target:
+      kind: Certificate
+      name: jaeger-operator-service-cert
+  - path: jaeger-mutating-webhook-patch.yaml
+    target:
+      kind: MutatingWebhookConfiguration
+      name: jaeger-operator-mutating-webhook-configuration
+  - path: jaeger-validating-webhook-patch.yaml
+    target:
+      kind: ValidatingWebhookConfiguration
+      name: jaeger-operator-validating-webhook-configuration
+
+
+
+
+Error:
+
+Multiple Strategic-Merge Patches in on
+
+
+
+
 error: namespace transformation produces ID conflict: [{"apiVersion":"cert-manager.io/v1","kind":"Certificate","metadata":{"annotations":{"internal.config.kubernetes.io/previousKinds":"Certificate","internal.config.kubernetes.io/previousNames":"jaeger-operator-service-cert","internal.config.kubernetes.io/previousNamespaces":"monitoring"},"labels":{"hbt.cmhc.schl.gc.ca/owner":"devops"},"name":"jaeger-operator-service-cert","namespace":"monitoring"},"spec":{"dnsNames":["jaeger-operator-webhook-service.monitoring.svc","jaeger-operator-webhook-service.monitoring.svc.cluster.local","jaeger-operator-webhook-service.eddv-bld.svc","jaeger-operator-webhook-service.eddv-bld.svc.cluster.local"],"issuerRef":{"kind":"Issuer","name":"selfsigned-issuer"},"secretName":"jaeger-operator-webhook-cert"}} {"apiVersion":"cert-manager.io/v1","kind":"Certificate","metadata":{"annotations":{"internal.config.kubernetes.io/previousKinds":"Certificate","internal.config.kubernetes.io/previousNames":"jaeger-operator-service-cert","internal.config.kubernetes.io/previousNamespaces":"eddv-bld"},"labels":{"hbt.cmhc.schl.gc.ca/owner":"devops"},"name":"jaeger-operator-service-cert","namespace":"monitoring"},"spec":{"dnsNames":["jaeger-operator-webhook-service.eddv-bld.svc","jaeger-operator-webhook-service.eddv-bld.svc.cluster.local"],"issuerRef":{"kind":"Issuer","name":"selfsigned-issuer"},"secretName":"jaeger-operator-webhook-cert","subject":{"organizationalUnits":["jaeger-operator"]}}}]
 DONE resource /azp/agent/_work/3/s/cluster/overlays/EDIT/jaeger-operator
 Current resource: /azp/agent/_work/3/s/cluster/overlays/EDIT/opentelemetry-operator
