@@ -1,6 +1,6 @@
-E0916 15:16:16.904868       1 sources.go:106] "unable to fetch associated certificate" err="Certificate.cert-manager.io \"jaeger-operator-service-cert\" not found" logger="cert-manager" kind="validatingwebhookconfiguration" kind="validatingwebhookconfiguration" name="jaeger-operator-validating-webhook-configuration" certificate="eddv-bld/jaeger-operator-service-cert"
-Error from server (InternalError): error when creating "/azp/agent/_work/5/s/kustomize/overlays/EDIT/04jaeger/kustomization-output.yaml": Internal error occurred: failed calling webhook "vjaeger.kb.io": failed to call webhook: Post "https://jaeger-operator-webhook-service.monitoring.svc:443/validate-jaegertracing-io-v1-jaeger?timeout=10s": tls: failed to verify certificate: x509: certificate is valid for jaeger-operator-webhook-service.eddv-bld.svc, jaeger-operator-webhook-service.eddv-bld.svc.cluster.local, not jaeger-operator-webhook-service.monitoring.svc
-*** Done
+kubectl get validatingwebhookconfiguration jaeger-operator-validating-webhook-configuration -o yaml
+
+
 
 
 
