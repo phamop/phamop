@@ -1,43 +1,3 @@
- cat cluster/base/jaeger-operator/jaeger-certificate.yaml 
-apiVersion: cert-manager.io/v1
-kind: Certificate
-metadata:
-  name: jaeger-operator-service-cert
-  namespace: monitoring
-spec:
-  secretName: jaeger-operator-webhook-cert
-  duration: 8760h 
-  renewBefore: 720h 
-  issuerRef:
-    kind: Issuer
-    name: selfsigned-issuer
-  dnsNames:
-    - jaeger-operator-webhook-service.monitoring.svc
-    - jaeger-operator-webhook-service.monitoring.svc.cluster.local
-
-
-$ cat cluster/overlays/EDIT/jaeger-operator/jaeger-certificate-patch.yaml 
-apiVersion: cert-manager.io/v1
-kind: Certificate
-metadata:
-  name: jaeger-operator-service-cert
-  namespace: monitoring
-spec:
-  issuerRef:
-    kind: ClusterIssuer
-    name: selfsigned-issuer
-  dnsNames:
-    - jaeger-operator-webhook-service.monitoring.svc
-    - jaeger-operator-webhook-service.monitoring.svc.cluster.local
-    - jaeger-operator-webhook-service.eddv-bld.svc
-    - jaeger-operator-webhook-service.eddv-bld.svc.cluster.local
-  subject:
-    organizationalUnits:
-      - jaeger-operator
-
-
-
-$ cat cluster/overlays/EDIT/jaeger-operator/kustomization.yaml 
 namespace: monitoring
 
 resources:
@@ -45,17 +5,26 @@ resources:
 
 patches:
   - path: jaeger-certificate-patch.yaml
-    # target:
-    #   kind: Certificate
-    #   name: jaeger-operator-service-cert
+    target:
+      group: cert-manager.io
+      version: v1
+      kind: Certificate
+      name: jaeger-operator-service-cert
+
   - path: jaeger-mutating-webhook-patch.yaml
-    # target:
-    #   kind: MutatingWebhookConfiguration
-    #   name: jaeger-operator-mutating-webhook-configuration
+    target:
+      group: admissionregistration.k8s.io
+      version: v1
+      kind: MutatingWebhookConfiguration
+      name: jaeger-operator-mutating-webhook-configuration
+
   - path: jaeger-validating-webhook-patch.yaml
-    # target:
-    #   kind: ValidatingWebhookConfiguration
-    #   name: jaeger-operator-validating-webhook-configuration
+    target:
+      group: admissionregistration.k8s.io
+      version: v1
+      kind: ValidatingWebhookConfiguration
+      name: jaeger-operator-validating-webhook-configuration
+
 
 
 
