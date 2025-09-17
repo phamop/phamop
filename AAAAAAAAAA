@@ -1,8 +1,34 @@
-Current resource: /azp/agent/_work/5/s/cluster/overlays/EDIT/jaeger-operator
-Set the helmGlobals.configHome to the appropriate value.
-About to run kubectl kustomize
-error: error in remove for path: '/': Unable to remove nonexistent key: : missing value
-DONE resource /azp/agent/_work/5/s/cluster/overlays/EDIT/jaeger-operator
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../../base/jaeger-operator
+  - jaeger-certificate-monitoring.yaml
+
+namespace: monitoring
+
+# Exclude all base certificates to avoid conflicts
+patches:
+  # Remove the base certificate completely
+  - target:
+      group: cert-manager.io
+      version: v1
+      kind: Certificate
+      name: jaeger-operator-service-cert
+    patch: |-
+      $patch: delete
+
+  - path: jaeger-mutating-webhook-patch.yaml
+    target:
+      group: admissionregistration.k8s.io
+      version: v1
+      kind: MutatingAdmissionWebhook
+
+  - path: jaeger-validating-webhook-patch.yaml
+    target:
+      group: admissionregistration.k8s.io
+      version: v1
+      kind: ValidatingAdmissionWebhook
 
 
 
