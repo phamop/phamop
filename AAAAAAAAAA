@@ -1,25 +1,15 @@
-apiVersion: cert-manager.io/v1
-kind: Certificate
-metadata:
+Current resource: /azp/agent/_work/5/s/cluster/overlays/EDIT/jaeger-operator
+Set the helmGlobals.configHome to the appropriate value.
+About to run kubectl kustomize
+error: trouble configuring builtin PatchTransformer with config: `
+patch: '$patch: delete'
+target:
+  group: cert-manager.io
+  kind: Certificate
   name: jaeger-operator-service-cert
-  namespace: monitoring
-  labels:
-    hbt.cmhc.schl.gc.ca/owner: devops
-spec:
-  secretName: jaeger-operator-webhook-cert
-  duration: 8760h
-  renewBefore: 720h
-  subject:
-    organizations:
-    - jaeger-operator
-    organizationalUnits:
-    - jaeger-operator
-  dnsNames:
-  - jaeger-operator-webhook-service.monitoring.svc
-  - jaeger-operator-webhook-service.monitoring.svc.cluster.local
-  issuerRef:
-    name: selfsigned-issuer
-    kind: Issuer
+  version: v1
+`: unable to parse SM or JSON patch from [patch: "$patch: delete"]
+DONE resource /azp/agent/_work/5/s/cluster/overlays/EDIT/jaeger-operator
 
 
 
