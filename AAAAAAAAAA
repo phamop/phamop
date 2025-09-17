@@ -1,7 +1,50 @@
+
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-# Only include specific resources from base, not the whole base
+resources:
+  - ../../../base/jaeger-operator
+
+namespace: monitoring
+
+patches:
+  # Delete existing certificate using modern patch syntax
+  - target:
+      group: cert-manager.io
+      version: v1
+      kind: Certificate
+      name: jaeger-operator-service-cert
+    patch: |-
+      $patch: delete
+  
+  # Delete existing secret
+  - target:
+      version: v1
+      kind: Secret
+      name: jaeger-operator-webhook-cert
+    patch: |-
+      $patch: delete
+  
+  # Delete any other conflicting certificates
+  - target:
+      group: cert-manager.io
+      version: v1
+      kind: Certificate
+      name: jaeger-certificate
+    patch: |-
+      $patch: delete
+
+
+
+
+
+
+
+
+
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
 resources:
   - ../../../base/jaeger-operator/namespace.yaml
   - jaeger-certificate-monitoring.yaml
@@ -20,6 +63,57 @@ patches:
       group: admissionregistration.k8s.io
       version: v1
       kind: ValidatingAdmissionWebhook
+
+# Clean approach - explicit cleanup in pipeline
+kubectl delete certificate jaeger-operator-service-cert --all-namespaces --ignore-not-found=true
+kubectl delete secret jaeger-operator-webhook-cert -n monitoring --ignore-not-found=true
+kubectl apply -k cluster/overlays/EDIT/jaeger-operator
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../../base/jaeger-operator
+
+namespace: monitoring
+
+patchesStrategicMerge:
+  - cleanup-certificates.yaml
+
+
+
+
 
 
 
