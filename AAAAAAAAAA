@@ -1,15 +1,230 @@
-Current resource: /azp/agent/_work/5/s/cluster/overlays/EDIT/jaeger-operator
-Set the helmGlobals.configHome to the appropriate value.
-About to run kubectl kustomize
-error: namespace transformation produces ID conflict: [{"apiVersion":"cert-manager.io/v1","kind":"Certificate","metadata":{"annotations":{"internal.config.kubernetes.io/previousKinds":"Certificate","internal.config.kubernetes.io/previousNames":"jaeger-operator-service-cert","internal.config.kubernetes.io/previousNamespaces":"monitoring"},"labels":{"hbt.cmhc.schl.gc.ca/owner":"devops"},"name":"jaeger-operator-service-cert","namespace":"monitoring"},"spec":{"dnsNames":["jaeger-operator-webhook-service.monitoring.svc","jaeger-operator-webhook-service.monitoring.svc.cluster.local","jaeger-operator-webhook-service.eddv-bld.svc","jaeger-operator-webhook-service.eddv-bld.svc.cluster.local"],"duration":"8760h","issuerRef":{"kind":"ClusterIssuer","name":"selfsigned-issuer"},"renewBefore":"720h","secretName":"jaeger-operator-webhook-cert","subject":{"organizationalUnits":["jaeger-operator"]}}} {"apiVersion":"cert-manager.io/v1","kind":"Certificate","metadata":{"annotations":{"internal.config.kubernetes.io/previousKinds":"Certificate","internal.config.kubernetes.io/previousNames":"jaeger-operator-service-cert","internal.config.kubernetes.io/previousNamespaces":"eddv-bld"},"labels":{"hbt.cmhc.schl.gc.ca/owner":"devops"},"name":"jaeger-operator-service-cert","namespace":"monitoring"},"spec":{"dnsNames":["jaeger-operator-webhook-service.monitoring.svc","jaeger-operator-webhook-service.monitoring.svc.cluster.local","jaeger-operator-webhook-service.eddv-bld.svc","jaeger-operator-webhook-service.eddv-bld.svc.cluster.local"],"issuerRef":{"kind":"ClusterIssuer","name":"selfsigned-issuer"},"secretName":"jaeger-operator-service-cert","subject":{"organizationalUnits":["jaeger-operator"]}}}]
-DONE resource /azp/agent/_work/5/s/cluster/overlays/EDIT/jaeger-operator
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Reference the base jaeger-operator
+resources:
+  - ../../../base/jaeger-operator
+  - jaeger-certificate.yaml
+
+# Apply namespace transformation to monitoring
+namespace: monitoring
+
+patches:
+  # Remove any existing certificates from other namespaces
+  - target:
+      group: cert-manager.io
+      version: v1
+      kind: Certificate
+      name: jaeger-operator-service-cert
+      annotationSelector: "internal.config.kubernetes.io/previousNamespaces!=monitoring"
+    patch: |-
+      - op: remove
+        path: /
+
+  # Apply webhook patches
+  - path: jaeger-mutating-webhook-patch.yaml
+    target:
+      group: admissionregistration.k8s.io
+      version: v1
+      kind: MutatingAdmissionWebhook
+      name: jaeger-operator-mutating-webhook-configuration
+
+  - path: jaeger-validating-webhook-patch.yaml
+    target:
+      group: admissionregistration.k8s.io
+      version: v1
+      kind: ValidatingAdmissionWebhook
+      name: jaeger-operator-validating-webhook-configuration
 
 
-Current resource: /azp/agent/_work/1/s/cluster/overlays/EDIT/jaeger-operator
-Set the helmGlobals.configHome to the appropriate value.
-About to run kubectl kustomize
-error: namespace transformation produces ID conflict: [{"apiVersion":"cert-manager.io/v1","kind":"Certificate","metadata":{"annotations":{"internal.config.kubernetes.io/previousKinds":"Certificate","internal.config.kubernetes.io/previousNames":"jaeger-operator-service-cert","internal.config.kubernetes.io/previousNamespaces":"monitoring"},"labels":{"hbt.cmhc.schl.gc.ca/owner":"devops"},"name":"jaeger-operator-service-cert","namespace":"monitoring"},"spec":{"dnsNames":["jaeger-operator-webhook-service.monitoring.svc","jaeger-operator-webhook-service.monitoring.svc.cluster.local"],"duration":"8760h","issuerRef":{"kind":"Issuer","name":"selfsigned-issuer"},"renewBefore":"720h","secretName":"jaeger-operator-webhook-cert"}} {"apiVersion":"cert-manager.io/v1","kind":"Certificate","metadata":{"annotations":{"internal.config.kubernetes.io/previousKinds":"Certificate","internal.config.kubernetes.io/previousNames":"jaeger-operator-service-cert","internal.config.kubernetes.io/previousNamespaces":"eddv-bld"},"labels":{"hbt.cmhc.schl.gc.ca/owner":"devops"},"name":"jaeger-operator-service-cert","namespace":"monitoring"},"spec":{"dnsNames":["jaeger-operator-webhook-service.eddv-bld.svc","jaeger-operator-webhook-service.eddv-bld.svc.cluster.local"],"issuerRef":{"kind":"Issuer","name":"selfsigned-issuer"},"secretName":"jaeger-operator-service-cert","subject":{"organizationalUnits":["jaeger-operator"]}}}]
-DONE resource /azp/agent/_work/1/s/cluster/overlays/EDIT/jaeger-operator
+
+
+
+
+
+# Complete Jaeger Certificate Solution
+
+## Files to Update/Create
+
+### 1. cluster/base/jaeger-operator/kustomization.yaml
+```yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - namespace.yaml
+  # Remove jaeger-certificate.yaml from base to avoid conflicts
+```
+
+### 2. cluster/overlays/EDIT/jaeger-operator/kustomization.yaml
+```yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Reference the base jaeger-operator
+resources:
+  - ../../../base/jaeger-operator
+  - jaeger-certificate.yaml
+
+# Apply namespace transformation to monitoring
+namespace: monitoring
+
+patches:
+  # Remove any existing certificates from other namespaces
+  - target:
+      group: cert-manager.io
+      version: v1
+      kind: Certificate
+      name: jaeger-operator-service-cert
+      annotationSelector: "internal.config.kubernetes.io/previousNamespaces!=monitoring"
+    patch: |-
+      - op: remove
+        path: /
+
+  # Apply webhook patches
+  - path: jaeger-mutating-webhook-patch.yaml
+    target:
+      group: admissionregistration.k8s.io
+      version: v1
+      kind: MutatingAdmissionWebhook
+      name: jaeger-operator-mutating-webhook-configuration
+
+  - path: jaeger-validating-webhook-patch.yaml
+    target:
+      group: admissionregistration.k8s.io
+      version: v1
+      kind: ValidatingAdmissionWebhook
+      name: jaeger-operator-validating-webhook-configuration
+```
+
+### 3. cluster/overlays/EDIT/jaeger-operator/jaeger-certificate.yaml
+```yaml
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: jaeger-operator-service-cert
+  namespace: monitoring
+  labels:
+    hbt.cmhc.schl.gc.ca/owner: devops
+  annotations:
+    internal.config.kubernetes.io/previousKinds: Certificate
+    internal.config.kubernetes.io/previousNames: jaeger-operator-service-cert
+    internal.config.kubernetes.io/previousNamespaces: monitoring
+spec:
+  secretName: jaeger-operator-webhook-cert
+  duration: 8760h
+  renewBefore: 720h
+  subject:
+    organizations:
+    - jaeger-operator
+    organizationalUnits:
+    - jaeger-operator
+  dnsNames:
+  - jaeger-operator-webhook-service.monitoring.svc
+  - jaeger-operator-webhook-service.monitoring.svc.cluster.local
+  issuerRef:
+    name: selfsigned-issuer
+    kind: Issuer
+```
+
+### 4. cluster/overlays/EDIT/jaeger-operator/jaeger-mutating-webhook-patch.yaml
+```yaml
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingAdmissionWebhook
+metadata:
+  name: jaeger-operator-mutating-webhook-configuration
+webhooks:
+- name: mutate.jaegertracing.io
+  clientConfig:
+    service:
+      name: jaeger-operator-webhook-service
+      namespace: monitoring
+      path: /mutate-jaegertracing-io-v1-jaeger
+  admissionReviewVersions:
+  - v1
+  - v1beta1
+  rules:
+  - operations: ["CREATE", "UPDATE"]
+    apiGroups: ["jaegertracing.io"]
+    apiVersions: ["v1"]
+    resources: ["jaegers"]
+  failurePolicy: Fail
+  sideEffects: None
+```
+
+### 5. cluster/overlays/EDIT/jaeger-operator/jaeger-validating-webhook-patch.yaml
+```yaml
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionWebhook
+metadata:
+  name: jaeger-operator-validating-webhook-configuration
+webhooks:
+- name: validate.jaegertracing.io
+  clientConfig:
+    service:
+      name: jaeger-operator-webhook-service
+      namespace: monitoring
+      path: /validate-jaegertracing-io-v1-jaeger
+  admissionReviewVersions:
+  - v1
+  - v1beta1
+  rules:
+  - operations: ["CREATE", "UPDATE"]
+    apiGroups: ["jaegertracing.io"]
+    apiVersions: ["v1"]
+    resources: ["jaegers"]
+  failurePolicy: Fail
+  sideEffects: None
+```
+
+## Cleanup Commands (Optional)
+
+If you need to manually remove existing conflicting certificates:
+
+```bash
+# Remove any existing jaeger certificates from other namespaces
+kubectl delete certificate jaeger-operator-service-cert --all-namespaces --ignore-not-found=true
+
+# Remove certificates specifically from eddv-bld namespace if it exists
+kubectl delete certificate jaeger-operator-service-cert -n eddv-bld --ignore-not-found=true
+```
+
+## Verification Commands
+
+After applying the kustomization:
+
+```bash
+# Verify certificate is created in monitoring namespace
+kubectl get certificate -n monitoring
+
+# Check certificate status
+kubectl describe certificate jaeger-operator-service-cert -n monitoring
+
+# Verify webhook configurations
+kubectl get mutatingwebhookconfiguration jaeger-operator-mutating-webhook-configuration
+kubectl get validatingwebhookconfiguration jaeger-operator-validating-webhook-configuration
+```
+
+## Apply the Configuration
+
+```bash
+# From the cluster/overlays/EDIT/jaeger-operator directory
+kubectl apply -k .
+
+# Or from the root cluster directory
+kubectl apply -k overlays/EDIT/jaeger-operator
+```
+
+## What This Solution Does
+
+1. **Removes base certificate** to prevent conflicts
+2. **Creates environment-specific certificate** in monitoring namespace only
+3. **Uses modern patches syntax** to handle conflicts and apply webhook configurations
+4. **Ensures proper DNS names** for monitoring namespace services
+5. **Removes any conflicting certificates** from other namespaces automatically
+6. **Maintains proper labels and annotations** for tracking and management
+
+This solution ensures that only one certificate exists with the name `jaeger-operator-service-cert` and it's properly configured for the monitoring namespace.
 
 
 
