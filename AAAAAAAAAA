@@ -1,34 +1,25 @@
-apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
-
-resources:
-  - ../../../base/jaeger-operator
-  - jaeger-certificate-monitoring.yaml
-
-namespace: monitoring
-
-# Exclude all base certificates to avoid conflicts
-patches:
-  # Remove the base certificate completely
-  - target:
-      group: cert-manager.io
-      version: v1
-      kind: Certificate
-      name: jaeger-operator-service-cert
-    patch: |-
-      $patch: delete
-
-  - path: jaeger-mutating-webhook-patch.yaml
-    target:
-      group: admissionregistration.k8s.io
-      version: v1
-      kind: MutatingAdmissionWebhook
-
-  - path: jaeger-validating-webhook-patch.yaml
-    target:
-      group: admissionregistration.k8s.io
-      version: v1
-      kind: ValidatingAdmissionWebhook
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: jaeger-operator-service-cert
+  namespace: monitoring
+  labels:
+    hbt.cmhc.schl.gc.ca/owner: devops
+spec:
+  secretName: jaeger-operator-webhook-cert
+  duration: 8760h
+  renewBefore: 720h
+  subject:
+    organizations:
+    - jaeger-operator
+    organizationalUnits:
+    - jaeger-operator
+  dnsNames:
+  - jaeger-operator-webhook-service.monitoring.svc
+  - jaeger-operator-webhook-service.monitoring.svc.cluster.local
+  issuerRef:
+    name: selfsigned-issuer
+    kind: Issuer
 
 
 
