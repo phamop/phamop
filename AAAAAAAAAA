@@ -1,15 +1,25 @@
-Current resource: /azp/agent/_work/5/s/cluster/overlays/EDIT/jaeger-operator
-Set the helmGlobals.configHome to the appropriate value.
-About to run kubectl kustomize
-error: trouble configuring builtin PatchTransformer with config: `
-patch: '$patch: delete'
-target:
-  group: cert-manager.io
-  kind: Certificate
-  name: jaeger-operator-service-cert
-  version: v1
-`: unable to parse SM or JSON patch from [patch: "$patch: delete"]
-DONE resource /azp/agent/_work/5/s/cluster/overlays/EDIT/jaeger-operator
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Only include specific resources from base, not the whole base
+resources:
+  - ../../../base/jaeger-operator/namespace.yaml
+  - jaeger-certificate-monitoring.yaml
+
+namespace: monitoring
+
+patches:
+  - path: jaeger-mutating-webhook-patch.yaml
+    target:
+      group: admissionregistration.k8s.io
+      version: v1
+      kind: MutatingAdmissionWebhook
+
+  - path: jaeger-validating-webhook-patch.yaml
+    target:
+      group: admissionregistration.k8s.io
+      version: v1
+      kind: ValidatingAdmissionWebhook
 
 
 
