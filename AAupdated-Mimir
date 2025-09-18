@@ -1,5 +1,4 @@
-there is an issue that is currently under review during the refactoring of the code. there is a namespace that  exist in deployment that is not both on the code and the AKS cluster. This 
-
+During refactoring, we've identified a discrepancy: a namespace exists in the deployment configuration but is missing from both the source code and the AKS cluster. This is currently under review to determine the resolution path
 # Discovery and Implementation Plan: AKS Observability Stack & Jaeger Refactoring
 
 **Document Title:** Discovery and Implementation Plan: AKS Observability Stack & Jaeger Refactoring  
