@@ -1,0 +1,194 @@
+Here’s a redefined, consolidated version of your **Internal License and Usage Document**. I merged the overlapping sections from both drafts you provided, streamlined the structure, and emphasized compliance, technical setup, and governance.
+
+---
+
+# **Internal License and Usage Document: Elasticsearch for Jaeger in AKS**
+
+**Document Owner:** \[Your Team/Department Name]
+**Document Version:** 1.0
+**Document Date:** September 17, 2025
+**Prepared For:** \[Organization Name]
+**Application:** Jaeger (Distributed Tracing)
+**Backend Storage:** Elasticsearch
+**Deployment Environment:** Azure Kubernetes Service (AKS)
+**License Tier:** Elasticsearch Basic (Self-Managed, Free)
+
+---
+
+## **1. Purpose**
+
+This document defines the licensing, compliance, and operational guidelines for deploying and maintaining a self-managed **Elasticsearch cluster** on **AKS** as backend storage for **Jaeger distributed tracing**. It ensures alignment with Elastic’s **Elastic License 2.0 (ELv2)** terms while supporting development and production environments.
+
+---
+
+## **2. License Overview**
+
+### 2.1 License Type
+
+* **Type:** Elasticsearch Basic License (Self-Managed)
+* **Cost:** Free of charge
+* **Distribution:** Deployed in AKS via Kubernetes pods/StatefulSets
+* **Vendor:** Elastic N.V.
+
+### 2.2 Scope
+
+The Basic license covers:
+
+* Internal use of Elasticsearch as Jaeger backend storage
+* Both **production** and **development** deployments in AKS
+* Data storage, indexing, and retrieval for distributed tracing
+
+### 2.3 Key Terms
+
+* **Permitted Use:** Internal consumption only (no managed service resale)
+* **Redistribution:** Prohibited except under ELv2 and SSPL terms
+* **Paid Features:** Advanced security, ML, and monitoring require commercial tiers
+* **Compliance:** Must maintain copyright and attribution
+
+---
+
+## **3. Deployment Architecture & Tools**
+
+### 3.1 Deployment Strategy
+
+* **Self-Managed:** Operated directly within AKS (no third-party hosted service)
+* **ECK Operator:** Used for lifecycle management of Elasticsearch, including provisioning, TLS, and upgrades
+* **Jaeger Integration:** Configured as the default backend for trace storage and queries
+
+### 3.2 Environment Specifications
+
+| Environment     | Platform                | Deployment                  | License Level | Data Classification       |
+| --------------- | ----------------------- | --------------------------- | ------------- | ------------------------- |
+| **Production**  | AKS dedicated node pool | ECK Operator + StatefulSets | Basic (Free)  | Observability/Operational |
+| **Development** | AKS shared or dedicated | ECK Operator                | Basic (Free)  | Development/Test          |
+
+---
+
+## **4. Technical Features (Basic License)**
+
+The **Basic** license enables:
+
+* ✅ Multi-node clustering with replicas for HA
+* ✅ Index Lifecycle Management (ILM) for Jaeger indices (rollover, shrink, delete)
+* ✅ TLS-secured communication
+* ✅ Role-Based Access Control (RBAC – limited)
+* ✅ Snapshot & Restore for backups
+* ✅ Kibana (basic features for visualization)
+
+**Not included in Basic:** advanced security (LDAP/SAML/SSO), anomaly detection, machine learning, advanced alerting.
+
+---
+
+## **5. Compliance Requirements**
+
+### 5.1 Legal/Attribution
+
+* Preserve Elastic copyright
+* Include license text in documentation and deployment manifests
+* Acknowledge Elasticsearch usage in observability documentation
+
+### 5.2 Technical Compliance
+
+* Deploy only official Elastic Docker images
+* Configure Elasticsearch with `xpack.license.self_generated.type: basic`
+* Monitor license status regularly via API
+* Keep license and configuration under version control
+
+### 5.3 Data Governance
+
+* Enforce retention policies (e.g., delete Jaeger data >30 days old)
+* Maintain backups via snapshots in production
+* Ensure TLS and RBAC in both environments
+
+---
+
+## **6. Monitoring & Compliance Verification**
+
+### 6.1 Monitoring
+
+```bash
+# Check license status
+curl -X GET "localhost:9200/_license"
+
+# Verify cluster health
+curl -X GET "localhost:9200/_cluster/health"
+```
+
+### 6.2 Compliance Checklist
+
+* [ ] Elasticsearch deployed with Basic license
+* [ ] Attribution preserved in manifests
+* [ ] Retention and snapshot policies applied
+* [ ] TLS enabled and enforced
+* [ ] No third-party redistribution
+
+---
+
+## **7. Risk Management**
+
+### 7.1 License Risks
+
+* **Accidental use of paid features** → Mitigate via CI/CD config validation
+* **License term updates** → Mitigate via annual compliance review
+
+### 7.2 Technical Risks
+
+* **Version compatibility issues** → Staged rollout and pre-prod testing
+* **Performance under Basic tier** → Capacity planning and monitoring
+
+---
+
+## **8. Support & Maintenance**
+
+* **Support Type:** Community only (no SLA)
+* **Maintenance:** Internal DevOps team responsible for upgrades, scaling, troubleshooting
+* **Upgrade Path:** Paid license if advanced features (e.g., ML, advanced security) are required
+
+---
+
+## **9. Roles & Responsibilities**
+
+| Area            | Production                          | Development            |
+| --------------- | ----------------------------------- | ---------------------- |
+| **Licensing**   | Basic license approved & documented | Basic license approved |
+| **Deployment**  | ECK Operator, IaC, reviewed configs | ECK Operator           |
+| **Maintenance** | Scaling, upgrades, troubleshooting  | Cluster management     |
+| **Backups**     | Regular snapshots                   | Optional               |
+| **Security**    | TLS + RBAC                          | TLS (basic)            |
+
+---
+
+## **10. Governance & Review**
+
+* **Internal Contacts:**
+
+  * Legal: \[[legal@organization.com](mailto:legal@organization.com)]
+  * DevOps: \[[devops@organization.com](mailto:devops@organization.com)]
+  * Compliance: \[[compliance@organization.com](mailto:compliance@organization.com)]
+
+* **Elastic References:**
+
+  * License Info: [https://www.elastic.co/licensing/](https://www.elastic.co/licensing/)
+  * Community Support: [https://discuss.elastic.co/](https://discuss.elastic.co/)
+
+* **Review Frequency:** Annual or upon major version/license changes
+
+* **Next Review Date:** September 17, 2026
+
+---
+
+## **Appendices**
+
+* **Appendix A:** Full ELv2 license text
+* **Appendix B:** Jaeger + Elasticsearch AKS architecture diagram
+* **Appendix C:** Kubernetes manifests (StatefulSet, ECK CRD, ConfigMap)
+* **Appendix D:** Compliance monitoring scripts
+
+---
+
+**Document Classification:** Internal Use Only
+**Approved By:** Legal, Technical Lead, DevOps Manager, Compliance Officer
+
+---
+
+👉 Would you like me to also **create a compliance-ready one-page summary** (executive briefing version) alongside this full document, so it’s easy for leadership/legal to quickly review?
