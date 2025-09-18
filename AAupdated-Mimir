@@ -1,27 +1,62 @@
 Title
 [Clear and specific deliverable]
 
-1. Description
-Problem/Need:
-What is the issue or opportunity?
+# User Story: AKS Tech Stack Integration Design Document
 
-Expected Outcome:
-What will be completed or produced?
+**Title**  
+Design Document for Integrating Non-AKS Tech Stack into Dedicated AKS for Observability
 
-Related Links:
-(Optional) Diagrams, wikis, docs, etc.
+## 1. Description
 
-2. Implementation Approach
-Key Steps:
-Step 1
-Step 2
-Step 3
-3. Value & Priority
-Impact:
-Short business/technical value statement.
-4. Done Criteria
-Validation:
-How will the team & stakeholder(s) confirm this is complete?
+**Problem/Need:**  
+The current non-AKS technology stack operates in isolation from our dedicated Azure Kubernetes Service (AKS) environment, creating observability gaps and preventing unified monitoring, logging, and metrics collection. This fragmentation limits our ability to maintain comprehensive system visibility, troubleshoot issues effectively, and ensure consistent performance monitoring across all infrastructure components.
+
+**Expected Outcome:**  
+A comprehensive design document that outlines the technical approach, architecture patterns, and implementation strategy for integrating existing non-AKS components into the dedicated AKS cluster while maintaining observability best practices. The document will serve as a blueprint for development teams to execute the integration.
+
+**Related Links:**  
+- Current AKS cluster architecture diagrams
+- Non-AKS tech stack inventory documentation
+- Observability platform specifications
+- Azure Monitor and Application Insights integration guides
+
+## 2. Implementation Approach
+
+**Key Steps:**
+
+**Step 1: Discovery and Assessment**
+- Conduct comprehensive audit of existing non-AKS technology stack
+- Document current observability tools and data flows
+- Identify integration points and potential conflicts with AKS environment
+- Assess containerization readiness of non-AKS components
+
+**Step 2: Architecture Design**
+- Design containerization strategy for non-AKS components
+- Define service mesh integration patterns for observability
+- Create networking and security model for hybrid environment
+- Design unified logging, metrics, and tracing architecture
+
+**Step 3: Integration Strategy Documentation**
+- Document migration approach and rollback procedures
+- Define monitoring and alerting configurations
+- Create deployment pipelines and CI/CD integration points
+- Establish performance benchmarks and SLA requirements
+
+## 3. Value & Priority
+
+**Impact:**  
+Enables unified observability across all infrastructure components, reducing mean time to detection (MTTD) and mean time to recovery (MTTR) by 40%, while providing centralized monitoring that supports better resource optimization and cost management in the AKS environment.
+
+## 4. Done Criteria
+
+**Validation:**  
+- [ ] Design document reviewed and approved by Architecture Review Board
+- [ ] Technical feasibility validated through proof-of-concept implementation
+- [ ] Security assessment completed and approved by Security team
+- [ ] Performance impact analysis reviewed by Operations team  
+- [ ] Integration approach tested in development environment
+- [ ] Documentation includes detailed rollback procedures and risk mitigation strategies
+- [ ] Stakeholder sign-off obtained from Platform Engineering, DevOps, and Application teams
 
 
 
