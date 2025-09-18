@@ -1,232 +1,92 @@
-# Mimir Backend Storage License Agreement
-## Azure Kubernetes Service (AKS) Deployment for Prometheus Observability
+Prep for Observability OSS Stack
 
-**Document Version:** 1.0  
-**Date:** September 18, 2025  
-**License Type:** Open Source Software (OSS) with Azure Subscription Components  
 
----
+Document Title: Discovery and Implementation Plan: AKS Observability Stack & Jaeger Refactoring
 
-## 1. Project Overview
+Version: 1.0
+Date: September 09, 2025
+Author: Oluwafemi - Femi
+Status: Draft for Review
 
-This license document governs the deployment and operation of **Grafana Mimir** as a backend storage solution for Prometheus metrics in Azure Kubernetes Service (AKS) environments, supporting both production and development workloads with long-term retention via Azure Blob Storage.
+### 1. Description
 
-### 1.1 Architecture Components
-- **Grafana Mimir**: OSS time-series database for Prometheus metrics
-- **Azure Kubernetes Service (AKS)**: Container orchestration platform
-- **Azure Blob Storage**: Long-term metric retention storage
-- **Prometheus**: Metrics collection and monitoring
-- **Development and Production Environments**: Dual deployment setup
+This document serves as a comprehensive discovery and planning artifact for the deployment and optimization of our observability stack on Azure Kubernetes Service (AKS). 
+The primary objectives are to ensure a seamless, secure, and production-ready deployment by gathering all necessary configuration details and requirements. 
+A specific focus is placed on refactoring the Jaeger tracing component from its current proof-of-concept (POC) `allInOne` configuration to a highly available, scalable, and durable `production` strategy.
 
----
+### 2. Implementation Approach
 
-## 2. Open Source Software Licenses
+#### 2.1. Shared Technology Integration
 
-### 2.1 Grafana Mimir
-**License:** GNU Affero General Public License v3.0 (AGPL-3.0)
-- **Source:** https://github.com/grafana/mimir
-- **Terms:** 
-  - Free to use, modify, and distribute
-  - Must provide source code for any modifications
-  - Network use constitutes distribution (AGPL clause)
-  - Commercial use permitted under AGPL terms
+##### i. Certificate Issuer (Complete)
 
-### 2.2 Prometheus
-**License:** Apache License 2.0
-- **Source:** https://github.com/prometheus/prometheus
-- **Terms:**
-  - Free to use, modify, and distribute
-  - Commercial use permitted
-  - No copyleft requirements
+To accelerate the initial setup of the Observability OSS stack, we will use a self-signed certificate for the development environment. 
+This is a temporary measure to unblock development and testing. Once the stack is operational, we will follow the formal process to migrate to a certificate from our official issuer for final state.
 
----
+Note:
+Self-Signed certificate - pipeline https://dev.azure.com/cmhcvsts/CMHC-SCHL%20-%20DevOps/_git/CMHC-SCHL-DEVOPS-BUILD-PLATFORM?path=/devops/pipelines/setup/generate-aks-tls-certificates
 
-## 3. Azure Cloud Services Licensing
 
-### 3.1 Azure Kubernetes Service (AKS)
-**License Model:** Pay-as-you-use Azure subscription
-- **Kubernetes Control Plane:** Free (Microsoft managed)
-- **Worker Nodes:** Standard Azure VM pricing applies
-- **Network Egress:** Standard Azure networking charges
-- **Load Balancers:** Standard Azure Load Balancer pricing
+Solution: cert-manager
 
-### 3.2 Azure Blob Storage
-**License Model:** Azure Storage Account subscription pricing
-- **Hot Tier:** For frequently accessed metrics (recent data)
-- **Cool Tier:** For infrequently accessed metrics (30+ days)
-- **Archive Tier:** For long-term retention (1+ years)
-- **Transaction Costs:** Per operation pricing
-- **Data Transfer:** Egress charges apply
+##### ii. Ingress Controller (Complete)
 
----
+   Solution: NGINX Ingress Controller (kubernetes.github.io/ingress-nginx)
+   Rationale: The NGINX Ingress Controller is mature, feature-rich, well-supported, and aligns with our current technology footprint. 
 
-## 4. Environment-Specific Licensing
+##### iii. Group Sync & RBAC (Complete)
 
-### 4.1 Development Environment
-**Resource Allocation:**
-- **AKS Node Pool:** 1-3 Standard_B4ms instances
-- **Blob Storage:** Standard_LRS replication
-- **Retention Period:** 30 days hot, 90 days cool
-- **Estimated Monthly Cost:** $150-300 USD
+   Method: Azure Active Directory (AAD) Integration with AKS.
+   Rationale: Leveraging AAD integration provides a seamless and secure identity layer for the cluster, eliminating the need for separate credential management and enabling centralized user and group lifecycle management.
+   Implementation Details:
+       AKS Cluster Configuration: The AKS cluster must be c reconfigured with the `--aad-admin-group-object-ids` parameter to grant specific AAD groups cluster-admin access.
+       Group Synchronization: Azure AD groups (e.g., `aks-observability-admins`, `aks-observability-viewers`) will be used to manage access.
+     
 
-**License Compliance:**
-- AGPL-3.0 compliance for Mimir development
-- Azure Dev/Test pricing eligible
-- No production SLA requirements
+#### 3.1. Jaeger Optimization & Transition (In progress)
 
-### 4.2 Production Environment
-**Resource Allocation:**
-- **AKS Node Pool:** 3-9 Standard_D4s_v3+ instances
-- **Blob Storage:** Standard_GRS replication
-- **Retention Period:** 7 days hot, 30 days cool, 2+ years archive
-- **Estimated Monthly Cost:** $800-2000 USD
+   Current State Analysis: The existing deployment uses the `allInOne` strategy, which combines agent, collector, query, and in a single pod with in-memory storage. This is unsuitable for production due to:
+       Data Loss: Traces are lost on pod restart.
+       Lack of Scalability: Components cannot be scaled independently.
+       No Persistence: In-memory storage is ephemeral.
+   Target State: `production` deployment strategy managed  by jaeger Operator
+   Implementation Details:
+       
+	Deployment Mode: production
 
-**License Compliance:**
-- AGPL-3.0 compliance for Mimir production deployment
-- Azure Production SLA pricing
-- High availability configuration required
+	Storage Backend: Elasticsearch. A highly available, persistent storage layer for trace data. (Complete)
 
----
+	Implementation: Use the official Elasticsearch ECK (Elastic Cloud on Kubernetes) Operator or a managed Azure 	Elasticsearch/OpenSearch service for reduced operational overhead. (Complete)
 
-## 5. Compliance Requirements
 
-### 5.1 Open Source Compliance
-```yaml
-# Required for AGPL-3.0 compliance
-license_compliance:
-  mimir:
-    source_code_availability: true
-    modification_disclosure: required
-    license_file_inclusion: mandatory
-    copyright_attribution: required
-  
-  deployment_disclosure:
-    network_service: true  # AGPL Section 13
-    source_access: "https://github.com/your-org/mimir-config"
-    modifications: "documented in CHANGES.md"
-```
+	Uses the Jaeger ES Index Cleaner: The official Jaeger image provides an es-index-cleaner tool that can be run as a CronJob to delete indices older than a certain period (e.g., 30 days). (pending)
 
-### 5.2 Azure Subscription Requirements
-- Valid Azure subscription with sufficient credits/budget
-- Appropriate Azure RBAC permissions for AKS and Storage
-- Compliance with Azure Acceptable Use Policy
-- Data residency and sovereignty considerations
+Current Risk in the testing stage.
+
+There seems to be namespace that exist on the deployment that does not exist in the AKS (eddv-bld)
+
+
+### 4 Value & Priority
+
+   High Priority. This proactive discovery directly addresses operational and security risks.
+   	Security Hardening: Defining RBAC and TLS upfront significantly reduces the attack surface and prevents unauthorized access to sensitive observability data.
+   	Increased Reliability: The highly available Jaeger deployment on Elasticsearch eliminates single points of failure, ensuring tracing data is not lost during node failures.
+	Operational Efficiency: Automation through the Jaeger Operator and Cert-Manager reduces manual toil and potential for human error.
+	Cost Management: The archiving strategy allows for cost-effective long-term retention of trace data in cheap blob storage while maintaining high-performance querying on recent data in Elasticsearch.
+   	Reduced Technical Debt: Replacing the POC Jaeger setup removes a significant anti-pattern and lays a foundation that is easier to maintain and support.
+
+### 4. Done Criteria
+
+A document is produced, cataloging all relevant AKS configuration details and the specific implementation details for:
+i.  Certificate Issuer (Complete: Section 2.1.i)
+ii. Ingress Controller (Complete: Section 2.1.ii)
+iii. Group Sync & RBAC configuration (Complete: Section 2.1.iii)
+ 
+Code verification is in the Repo - 
+
+Validation:
+The discovery document has been reviewed and signed off by the teams member.
 
 ---
 
-## 6. Data Retention and Storage Policy
-
-### 6.1 Metric Retention Schedule
-```yaml
-retention_policy:
-  development:
-    hot_storage: "7d"    # Azure Blob Hot tier
-    cool_storage: "30d"  # Azure Blob Cool tier
-    total_retention: "37d"
-  
-  production:
-    hot_storage: "15d"   # Azure Blob Hot tier
-    cool_storage: "90d"  # Azure Blob Cool tier
-    archive_storage: "2y" # Azure Blob Archive tier
-    total_retention: "2y"
-```
-
-### 6.2 Cost Optimization
-- Automated lifecycle policies for blob storage tiers
-- Compression enabled for archived metrics
-- Regular cleanup of temporary/debug data
-- Resource tagging for cost allocation
-
----
-
-## 7. Deployment Configuration
-
-### 7.1 Kubernetes Resources
-```yaml
-# Resource quotas per environment
-resource_limits:
-  development:
-    cpu: "4 cores"
-    memory: "16Gi"
-    storage: "100Gi"
-  
-  production:
-    cpu: "16 cores"
-    memory: "64Gi"
-    storage: "1Ti"
-```
-
-### 7.2 Azure Blob Storage Configuration
-```yaml
-storage_accounts:
-  mimir_metrics_dev:
-    replication: "Standard_LRS"
-    access_tier: "Hot"
-    lifecycle_management: enabled
-  
-  mimir_metrics_prod:
-    replication: "Standard_GRS"
-    access_tier: "Hot"
-    lifecycle_management: enabled
-    backup_enabled: true
-```
-
----
-
-## 8. Security and Access Control
-
-### 8.1 Azure RBAC Roles Required
-- **AKS Cluster Admin:** For Kubernetes management
-- **Storage Blob Data Contributor:** For Mimir blob access
-- **Monitoring Contributor:** For Azure Monitor integration
-
-### 8.2 Network Security
-- Private AKS clusters recommended for production
-- Network Security Groups (NSGs) configured
-- Azure Key Vault for secrets management
-- Managed Identity for Azure resource access
-
----
-
-## 9. Support and Maintenance
-
-### 9.1 Open Source Support
-- **Community Support:** GitHub issues and discussions
-- **Documentation:** Official Grafana Mimir documentation
-- **Updates:** Regular monitoring of security patches
-
-### 9.2 Azure Support
-- **Support Plan:** Basic (included) or higher as needed
-- **SLA:** 99.95% for production AKS clusters
-- **Monitoring:** Azure Monitor integration for infrastructure
-
----
-
-## 10. License Acceptance and Terms
-
-By deploying this Mimir backend storage solution, you acknowledge and agree to:
-
-1. **OSS License Compliance:** Full compliance with AGPL-3.0 and Apache 2.0 terms
-2. **Azure Terms of Service:** Adherence to Microsoft Azure terms and conditions
-3. **Cost Responsibility:** Understanding and acceptance of Azure consumption charges
-4. **Data Management:** Proper handling of metrics data according to retention policies
-5. **Security:** Implementation of appropriate security controls for both environments
-
-### 10.1 Disclaimer
-This solution combines open-source software with commercial cloud services. While the software components are free, Azure infrastructure costs will apply based on usage patterns and resource consumption.
-
----
-
-## 11. Contact and Governance
-
-**License Administrator:** [Your Organization Name]  
-**Technical Contact:** [Technical Lead Email]  
-**Azure Subscription Owner:** [Azure Admin Email]  
-**Review Cycle:** Quarterly license and cost review
-
-**Effective Date:** September 18, 2025  
-**Next Review:** December 18, 2025
-
----
-
-*This document serves as the governing license agreement for the Mimir backend storage deployment in Azure Kubernetes Service environments. Regular reviews ensure continued compliance and cost optimization.*
+Sign-off:
