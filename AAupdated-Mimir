@@ -1,3 +1,5 @@
+there is an issue that is currently under review during the refactoring of the code. there is a namespace that  exist in deployment that is not both on the code and the AKS cluster. This 
+
 # Discovery and Implementation Plan: AKS Observability Stack & Jaeger Refactoring
 
 **Document Title:** Discovery and Implementation Plan: AKS Observability Stack & Jaeger Refactoring  
