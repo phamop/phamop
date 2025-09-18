@@ -1,0 +1,232 @@
+# Mimir Backend Storage License Agreement
+## Azure Kubernetes Service (AKS) Deployment for Prometheus Observability
+
+**Document Version:** 1.0  
+**Date:** September 18, 2025  
+**License Type:** Open Source Software (OSS) with Azure Subscription Components  
+
+---
+
+## 1. Project Overview
+
+This license document governs the deployment and operation of **Grafana Mimir** as a backend storage solution for Prometheus metrics in Azure Kubernetes Service (AKS) environments, supporting both production and development workloads with long-term retention via Azure Blob Storage.
+
+### 1.1 Architecture Components
+- **Grafana Mimir**: OSS time-series database for Prometheus metrics
+- **Azure Kubernetes Service (AKS)**: Container orchestration platform
+- **Azure Blob Storage**: Long-term metric retention storage
+- **Prometheus**: Metrics collection and monitoring
+- **Development and Production Environments**: Dual deployment setup
+
+---
+
+## 2. Open Source Software Licenses
+
+### 2.1 Grafana Mimir
+**License:** GNU Affero General Public License v3.0 (AGPL-3.0)
+- **Source:** https://github.com/grafana/mimir
+- **Terms:** 
+  - Free to use, modify, and distribute
+  - Must provide source code for any modifications
+  - Network use constitutes distribution (AGPL clause)
+  - Commercial use permitted under AGPL terms
+
+### 2.2 Prometheus
+**License:** Apache License 2.0
+- **Source:** https://github.com/prometheus/prometheus
+- **Terms:**
+  - Free to use, modify, and distribute
+  - Commercial use permitted
+  - No copyleft requirements
+
+---
+
+## 3. Azure Cloud Services Licensing
+
+### 3.1 Azure Kubernetes Service (AKS)
+**License Model:** Pay-as-you-use Azure subscription
+- **Kubernetes Control Plane:** Free (Microsoft managed)
+- **Worker Nodes:** Standard Azure VM pricing applies
+- **Network Egress:** Standard Azure networking charges
+- **Load Balancers:** Standard Azure Load Balancer pricing
+
+### 3.2 Azure Blob Storage
+**License Model:** Azure Storage Account subscription pricing
+- **Hot Tier:** For frequently accessed metrics (recent data)
+- **Cool Tier:** For infrequently accessed metrics (30+ days)
+- **Archive Tier:** For long-term retention (1+ years)
+- **Transaction Costs:** Per operation pricing
+- **Data Transfer:** Egress charges apply
+
+---
+
+## 4. Environment-Specific Licensing
+
+### 4.1 Development Environment
+**Resource Allocation:**
+- **AKS Node Pool:** 1-3 Standard_B4ms instances
+- **Blob Storage:** Standard_LRS replication
+- **Retention Period:** 30 days hot, 90 days cool
+- **Estimated Monthly Cost:** $150-300 USD
+
+**License Compliance:**
+- AGPL-3.0 compliance for Mimir development
+- Azure Dev/Test pricing eligible
+- No production SLA requirements
+
+### 4.2 Production Environment
+**Resource Allocation:**
+- **AKS Node Pool:** 3-9 Standard_D4s_v3+ instances
+- **Blob Storage:** Standard_GRS replication
+- **Retention Period:** 7 days hot, 30 days cool, 2+ years archive
+- **Estimated Monthly Cost:** $800-2000 USD
+
+**License Compliance:**
+- AGPL-3.0 compliance for Mimir production deployment
+- Azure Production SLA pricing
+- High availability configuration required
+
+---
+
+## 5. Compliance Requirements
+
+### 5.1 Open Source Compliance
+```yaml
+# Required for AGPL-3.0 compliance
+license_compliance:
+  mimir:
+    source_code_availability: true
+    modification_disclosure: required
+    license_file_inclusion: mandatory
+    copyright_attribution: required
+  
+  deployment_disclosure:
+    network_service: true  # AGPL Section 13
+    source_access: "https://github.com/your-org/mimir-config"
+    modifications: "documented in CHANGES.md"
+```
+
+### 5.2 Azure Subscription Requirements
+- Valid Azure subscription with sufficient credits/budget
+- Appropriate Azure RBAC permissions for AKS and Storage
+- Compliance with Azure Acceptable Use Policy
+- Data residency and sovereignty considerations
+
+---
+
+## 6. Data Retention and Storage Policy
+
+### 6.1 Metric Retention Schedule
+```yaml
+retention_policy:
+  development:
+    hot_storage: "7d"    # Azure Blob Hot tier
+    cool_storage: "30d"  # Azure Blob Cool tier
+    total_retention: "37d"
+  
+  production:
+    hot_storage: "15d"   # Azure Blob Hot tier
+    cool_storage: "90d"  # Azure Blob Cool tier
+    archive_storage: "2y" # Azure Blob Archive tier
+    total_retention: "2y"
+```
+
+### 6.2 Cost Optimization
+- Automated lifecycle policies for blob storage tiers
+- Compression enabled for archived metrics
+- Regular cleanup of temporary/debug data
+- Resource tagging for cost allocation
+
+---
+
+## 7. Deployment Configuration
+
+### 7.1 Kubernetes Resources
+```yaml
+# Resource quotas per environment
+resource_limits:
+  development:
+    cpu: "4 cores"
+    memory: "16Gi"
+    storage: "100Gi"
+  
+  production:
+    cpu: "16 cores"
+    memory: "64Gi"
+    storage: "1Ti"
+```
+
+### 7.2 Azure Blob Storage Configuration
+```yaml
+storage_accounts:
+  mimir_metrics_dev:
+    replication: "Standard_LRS"
+    access_tier: "Hot"
+    lifecycle_management: enabled
+  
+  mimir_metrics_prod:
+    replication: "Standard_GRS"
+    access_tier: "Hot"
+    lifecycle_management: enabled
+    backup_enabled: true
+```
+
+---
+
+## 8. Security and Access Control
+
+### 8.1 Azure RBAC Roles Required
+- **AKS Cluster Admin:** For Kubernetes management
+- **Storage Blob Data Contributor:** For Mimir blob access
+- **Monitoring Contributor:** For Azure Monitor integration
+
+### 8.2 Network Security
+- Private AKS clusters recommended for production
+- Network Security Groups (NSGs) configured
+- Azure Key Vault for secrets management
+- Managed Identity for Azure resource access
+
+---
+
+## 9. Support and Maintenance
+
+### 9.1 Open Source Support
+- **Community Support:** GitHub issues and discussions
+- **Documentation:** Official Grafana Mimir documentation
+- **Updates:** Regular monitoring of security patches
+
+### 9.2 Azure Support
+- **Support Plan:** Basic (included) or higher as needed
+- **SLA:** 99.95% for production AKS clusters
+- **Monitoring:** Azure Monitor integration for infrastructure
+
+---
+
+## 10. License Acceptance and Terms
+
+By deploying this Mimir backend storage solution, you acknowledge and agree to:
+
+1. **OSS License Compliance:** Full compliance with AGPL-3.0 and Apache 2.0 terms
+2. **Azure Terms of Service:** Adherence to Microsoft Azure terms and conditions
+3. **Cost Responsibility:** Understanding and acceptance of Azure consumption charges
+4. **Data Management:** Proper handling of metrics data according to retention policies
+5. **Security:** Implementation of appropriate security controls for both environments
+
+### 10.1 Disclaimer
+This solution combines open-source software with commercial cloud services. While the software components are free, Azure infrastructure costs will apply based on usage patterns and resource consumption.
+
+---
+
+## 11. Contact and Governance
+
+**License Administrator:** [Your Organization Name]  
+**Technical Contact:** [Technical Lead Email]  
+**Azure Subscription Owner:** [Azure Admin Email]  
+**Review Cycle:** Quarterly license and cost review
+
+**Effective Date:** September 18, 2025  
+**Next Review:** December 18, 2025
+
+---
+
+*This document serves as the governing license agreement for the Mimir backend storage deployment in Azure Kubernetes Service environments. Regular reviews ensure continued compliance and cost optimization.*
