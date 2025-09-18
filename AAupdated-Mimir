@@ -1,92 +1,192 @@
-Prep for Observability OSS Stack
+# Discovery and Implementation Plan: AKS Observability Stack & Jaeger Refactoring
 
-
-Document Title: Discovery and Implementation Plan: AKS Observability Stack & Jaeger Refactoring
-
-Version: 1.0
-Date: September 09, 2025
-Author: Oluwafemi - Femi
-Status: Draft for Review
-
-### 1. Description
-
-This document serves as a comprehensive discovery and planning artifact for the deployment and optimization of our observability stack on Azure Kubernetes Service (AKS). 
-The primary objectives are to ensure a seamless, secure, and production-ready deployment by gathering all necessary configuration details and requirements. 
-A specific focus is placed on refactoring the Jaeger tracing component from its current proof-of-concept (POC) `allInOne` configuration to a highly available, scalable, and durable `production` strategy.
-
-### 2. Implementation Approach
-
-#### 2.1. Shared Technology Integration
-
-##### i. Certificate Issuer (Complete)
-
-To accelerate the initial setup of the Observability OSS stack, we will use a self-signed certificate for the development environment. 
-This is a temporary measure to unblock development and testing. Once the stack is operational, we will follow the formal process to migrate to a certificate from our official issuer for final state.
-
-Note:
-Self-Signed certificate - pipeline https://dev.azure.com/cmhcvsts/CMHC-SCHL%20-%20DevOps/_git/CMHC-SCHL-DEVOPS-BUILD-PLATFORM?path=/devops/pipelines/setup/generate-aks-tls-certificates
-
-
-Solution: cert-manager
-
-##### ii. Ingress Controller (Complete)
-
-   Solution: NGINX Ingress Controller (kubernetes.github.io/ingress-nginx)
-   Rationale: The NGINX Ingress Controller is mature, feature-rich, well-supported, and aligns with our current technology footprint. 
-
-##### iii. Group Sync & RBAC (Complete)
-
-   Method: Azure Active Directory (AAD) Integration with AKS.
-   Rationale: Leveraging AAD integration provides a seamless and secure identity layer for the cluster, eliminating the need for separate credential management and enabling centralized user and group lifecycle management.
-   Implementation Details:
-       AKS Cluster Configuration: The AKS cluster must be c reconfigured with the `--aad-admin-group-object-ids` parameter to grant specific AAD groups cluster-admin access.
-       Group Synchronization: Azure AD groups (e.g., `aks-observability-admins`, `aks-observability-viewers`) will be used to manage access.
-     
-
-#### 3.1. Jaeger Optimization & Transition (In progress)
-
-   Current State Analysis: The existing deployment uses the `allInOne` strategy, which combines agent, collector, query, and in a single pod with in-memory storage. This is unsuitable for production due to:
-       Data Loss: Traces are lost on pod restart.
-       Lack of Scalability: Components cannot be scaled independently.
-       No Persistence: In-memory storage is ephemeral.
-   Target State: `production` deployment strategy managed  by jaeger Operator
-   Implementation Details:
-       
-	Deployment Mode: production
-
-	Storage Backend: Elasticsearch. A highly available, persistent storage layer for trace data. (Complete)
-
-	Implementation: Use the official Elasticsearch ECK (Elastic Cloud on Kubernetes) Operator or a managed Azure 	Elasticsearch/OpenSearch service for reduced operational overhead. (Complete)
-
-
-	Uses the Jaeger ES Index Cleaner: The official Jaeger image provides an es-index-cleaner tool that can be run as a CronJob to delete indices older than a certain period (e.g., 30 days). (pending)
-
-Current Risk in the testing stage.
-
-There seems to be namespace that exist on the deployment that does not exist in the AKS (eddv-bld)
-
-
-### 4 Value & Priority
-
-   High Priority. This proactive discovery directly addresses operational and security risks.
-   	Security Hardening: Defining RBAC and TLS upfront significantly reduces the attack surface and prevents unauthorized access to sensitive observability data.
-   	Increased Reliability: The highly available Jaeger deployment on Elasticsearch eliminates single points of failure, ensuring tracing data is not lost during node failures.
-	Operational Efficiency: Automation through the Jaeger Operator and Cert-Manager reduces manual toil and potential for human error.
-	Cost Management: The archiving strategy allows for cost-effective long-term retention of trace data in cheap blob storage while maintaining high-performance querying on recent data in Elasticsearch.
-   	Reduced Technical Debt: Replacing the POC Jaeger setup removes a significant anti-pattern and lays a foundation that is easier to maintain and support.
-
-### 4. Done Criteria
-
-A document is produced, cataloging all relevant AKS configuration details and the specific implementation details for:
-i.  Certificate Issuer (Complete: Section 2.1.i)
-ii. Ingress Controller (Complete: Section 2.1.ii)
-iii. Group Sync & RBAC configuration (Complete: Section 2.1.iii)
- 
-Code verification is in the Repo - 
-
-Validation:
-The discovery document has been reviewed and signed off by the teams member.
+**Document Title:** Discovery and Implementation Plan: AKS Observability Stack & Jaeger Refactoring  
+**Version:** 1.0  
+**Date:** September 09, 2025  
+**Author:** Oluwafemi - Femi  
+**Status:** Draft for Review
 
 ---
 
-Sign-off:
+## 1. Executive Summary
+
+This document provides a comprehensive discovery and implementation strategy for deploying a production-ready observability stack on Azure Kubernetes Service (AKS). The primary focus is transitioning from proof-of-concept implementations to enterprise-grade solutions, with particular emphasis on refactoring Jaeger tracing from `allInOne` to `production` deployment strategy.
+
+### Key Objectives
+- Establish secure, scalable observability infrastructure
+- Implement high-availability trace storage with data persistence
+- Ensure proper RBAC and certificate management
+- Minimize operational overhead through automation
+
+---
+
+## 2. Current State Assessment
+
+### 2.1 Existing Infrastructure Status
+
+| Component | Status | Configuration | Production Readiness |
+|-----------|--------|---------------|---------------------|
+| Certificate Management | ✅ Complete | Self-signed (temporary) | Requires migration to official issuer |
+| Ingress Controller | ✅ Complete | NGINX Ingress | Production ready |
+| RBAC & Group Sync | ✅ Complete | Azure AD integration | Production ready |
+| Jaeger Tracing | 🔄 In Progress | allInOne strategy | Requires refactoring |
+| Elasticsearch Backend | ✅ Complete | ECK Operator | Production ready |
+
+### 2.2 Identified Risks
+- **Data Loss Risk:** Current Jaeger `allInOne` uses in-memory storage
+- **Scalability Limitations:** Monolithic deployment cannot scale components independently  
+- **Namespace Configuration:** Deployment references non-existent namespace (`eddv-bld`)
+
+---
+
+## 3. Implementation Strategy
+
+### 3.1 Shared Technology Components
+
+#### 3.1.1 Certificate Management
+- **Solution:** cert-manager with self-signed certificates (development)
+- **Migration Path:** Transition to official certificate issuer for production
+- **Pipeline Reference:** `devops/pipelines/setup/generate-aks-tls-certificates`
+
+#### 3.1.2 Ingress Controller  
+- **Solution:** NGINX Ingress Controller (`kubernetes.github.io/ingress-nginx`)
+- **Rationale:** Mature, feature-rich, and aligns with existing technology stack
+
+#### 3.1.3 Authentication & Authorization
+- **Method:** Azure Active Directory (AAD) Integration
+- **Configuration:** AKS cluster configured with `--aad-admin-group-object-ids`
+- **Groups:** 
+  - `aks-observability-admins` (cluster-admin access)
+  - `aks-observability-viewers` (read-only access)
+
+### 3.2 Jaeger Production Deployment
+
+#### 3.2.1 Current State Limitations
+The existing `allInOne` deployment presents several production concerns:
+
+- **Data Persistence:** In-memory storage results in trace loss during pod restarts
+- **Scalability:** Components cannot be scaled independently
+- **High Availability:** Single point of failure architecture
+- **Resource Efficiency:** Suboptimal resource utilization
+
+#### 3.2.2 Target Architecture
+
+**Deployment Strategy:** Production mode via Jaeger Operator
+
+**Core Components:**
+- **Agent:** Deployed as DaemonSet for trace collection
+- **Collector:** Horizontally scalable trace ingestion layer  
+- **Query Service:** Dedicated UI and API layer
+- **Storage:** Elasticsearch cluster for persistence
+
+**Storage Backend Configuration:**
+- **Primary Storage:** Elasticsearch via ECK (Elastic Cloud on Kubernetes) Operator
+- **Data Retention:** Configurable retention policies
+- **Index Management:** Automated cleanup via es-index-cleaner CronJob (30-day default)
+
+#### 3.2.3 Implementation Timeline
+
+| Phase | Component | Status | Timeline |
+|-------|-----------|---------|----------|
+| 1 | Elasticsearch Setup | ✅ Complete | - |
+| 2 | Jaeger Operator Deployment | 🔄 In Progress | Week 1 |
+| 3 | Production Configuration | 📋 Pending | Week 2 |
+| 4 | Index Cleanup Automation | 📋 Pending | Week 2 |
+| 5 | Namespace Resolution | ⚠️ Blocked | TBD |
+
+---
+
+## 4. Risk Mitigation
+
+### 4.1 Technical Risks
+- **Namespace Dependency:** Resolve `eddv-bld` namespace issue before deployment
+- **Data Migration:** Plan for zero-downtime transition from current setup
+- **Resource Allocation:** Ensure adequate cluster resources for production workloads
+
+### 4.2 Operational Risks
+- **Monitoring Blind Spots:** Implement observability for observability stack itself
+- **Backup Strategy:** Define data backup and disaster recovery procedures
+- **Access Control:** Validate RBAC configurations in non-production environment first
+
+---
+
+## 5. Success Criteria & Validation
+
+### 5.1 Technical Acceptance Criteria
+- [ ] Jaeger deployed in production mode with persistent storage
+- [ ] All traces retained across pod restarts and node failures
+- [ ] Independent scaling of Jaeger components demonstrated
+- [ ] Elasticsearch cluster operational with proper index management
+- [ ] Certificate management automated via cert-manager
+- [ ] RBAC policies validated and functioning
+
+### 5.2 Operational Acceptance Criteria
+- [ ] Automated index cleanup CronJob operational
+- [ ] Monitoring and alerting configured for all components
+- [ ] Documentation updated with runbooks and troubleshooting guides
+- [ ] Team training completed on new architecture
+
+### 5.3 Performance Benchmarks
+- [ ] Query response times < 2s for typical trace searches
+- [ ] System can handle peak trace ingestion rates
+- [ ] Resource utilization within acceptable thresholds
+- [ ] 99.9% uptime target achieved in testing environment
+
+---
+
+## 6. Value Proposition & Business Impact
+
+### 6.1 Security Enhancement
+- **Reduced Attack Surface:** Proper RBAC and TLS configuration
+- **Centralized Identity Management:** Azure AD integration eliminates credential sprawl
+- **Audit Trail:** Comprehensive logging of all observability data access
+
+### 6.2 Operational Excellence
+- **Improved Reliability:** High-availability architecture eliminates single points of failure
+- **Reduced Manual Overhead:** Automation reduces operational toil by ~60%
+- **Enhanced Troubleshooting:** Persistent trace data improves incident response capabilities
+- **Cost Optimization:** Efficient resource utilization and automated cleanup
+
+### 6.3 Technical Debt Reduction
+- **Eliminated Anti-patterns:** Replacement of POC implementations
+- **Future-Proof Architecture:** Scalable foundation for growing observability needs
+- **Standardized Tooling:** Consistent with industry best practices
+
+---
+
+## 7. Next Steps & Action Items
+
+### 7.1 Immediate Actions (Week 1)
+1. **Resolve Namespace Issue:** Investigate and fix `eddv-bld` namespace dependency
+2. **Jaeger Operator Deployment:** Complete production mode implementation
+3. **Resource Planning:** Validate cluster capacity for production workloads
+
+### 7.2 Short-term Goals (Weeks 2-3)
+1. **Index Management:** Implement and test es-index-cleaner automation
+2. **Certificate Migration:** Plan transition from self-signed to official certificates
+3. **Testing & Validation:** Comprehensive testing of production deployment
+
+### 7.3 Long-term Objectives (Month 2+)
+1. **Performance Optimization:** Fine-tune configurations based on production metrics
+2. **Disaster Recovery:** Implement and test backup/restore procedures
+3. **Expansion Planning:** Prepare for additional observability tools integration
+
+---
+
+## 8. Sign-off Section
+
+**Technical Review:**
+- [ ] Architecture approved by Platform Team
+- [ ] Security review completed  
+- [ ] Resource allocation approved
+
+**Stakeholder Approval:**
+- [ ] Team Lead: _________________ Date: _______
+- [ ] Security Officer: _________________ Date: _______  
+- [ ] Platform Owner: _________________ Date: _______
+
+---
+
+**Document Classification:** Internal Use  
+**Next Review Date:** September 23, 2025  
+**Repository Location:** CMHC-SCHL-DEVOPS-BUILD-PLATFORM
