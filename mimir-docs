@@ -1,0 +1,235 @@
+# Mimir Backend Storage License & Cost Analysis
+## For Prometheus in Azure Kubernetes Service (AKS)
+
+### Document Overview
+This document outlines the licensing requirements and cost analysis for implementing Grafana Mimir as backend storage for Prometheus in Azure Kubernetes Service (AKS) environments.
+
+---
+
+## 1. License Requirements
+
+### 1.1 Grafana Mimir Licensing
+- **License Type**: Apache License 2.0 (Open Source)
+- **Commercial Use**: Permitted without restrictions
+- **Distribution**: Allowed with proper attribution
+- **Modification**: Permitted
+- **Patent Grant**: Included
+- **Cost**: **FREE**
+
+### 1.2 Required License Compliance
+```
+Copyright 2021 Grafana Labs
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+```
+
+### 1.3 Third-Party Dependencies
+- **Prometheus**: Apache License 2.0
+- **Go Dependencies**: Various open-source licenses (MIT, BSD, Apache)
+- **Kubernetes**: Apache License 2.0
+
+---
+
+## 2. Architecture Components
+
+### 2.1 Mimir Components (Microservices)
+- **Distributor**: Receives metrics from Prometheus
+- **Ingester**: Writes metrics to long-term storage
+- **Query Frontend**: Handles PromQL queries
+- **Querier**: Executes queries against stored data
+- **Compactor**: Compacts and optimizes stored blocks
+- **Store Gateway**: Provides access to object storage
+- **Ruler**: Executes recording and alerting rules
+- **Alertmanager**: Handles alert notifications
+
+### 2.2 Storage Backend
+- **Object Storage**: Azure Blob Storage
+- **Metadata Storage**: Azure Blob Storage or Azure Database
+- **Ring Storage**: Kubernetes ConfigMaps or etcd
+
+---
+
+## 3. Environment Specifications
+
+### 3.1 Production Environment
+```yaml
+Environment: Production
+High Availability: Yes
+Retention Period: 90 days
+Expected Metrics Ingestion: 100,000 samples/sec
+Query Load: High
+Replication Factor: 3
+```
+
+### 3.2 Development Environment
+```yaml
+Environment: Development
+High Availability: No
+Retention Period: 30 days
+Expected Metrics Ingestion: 10,000 samples/sec
+Query Load: Low
+Replication Factor: 1
+```
+
+---
+
+## 4. Azure Blob Storage Cost Analysis
+
+### 4.1 Production Environment Costs
+
+#### Storage Requirements Calculation
+- **Ingestion Rate**: 100,000 samples/sec
+- **Sample Size**: ~24 bytes per sample (compressed)
+- **Daily Storage**: 100,000 × 24 × 86,400 = ~207 GB/day
+- **Monthly Storage**: 207 × 30 = ~6.2 TB/month
+- **90-day Retention**: 6.2 × 3 = ~18.6 TB total
+
+#### Monthly Costs (USD) - Production
+| Component | Specification | Monthly Cost |
+|-----------|---------------|--------------|
+| **Hot Blob Storage** | 2 TB (recent data) | $40.96 |
+| **Cool Blob Storage** | 16.6 TB (older data) | $166.00 |
+| **Transaction Costs** | PUT/GET operations | $25.00 |
+| **Data Transfer** | Outbound data | $15.00 |
+| **Metadata Storage** | 100 GB | $2.05 |
+| **Total Production** | | **$248.01** |
+
+### 4.2 Development Environment Costs
+
+#### Storage Requirements Calculation
+- **Ingestion Rate**: 10,000 samples/sec
+- **Sample Size**: ~24 bytes per sample (compressed)
+- **Daily Storage**: 10,000 × 24 × 86,400 = ~20.7 GB/day
+- **Monthly Storage**: 20.7 × 30 = ~620 GB/month
+- **30-day Retention**: 620 GB total
+
+#### Monthly Costs (USD) - Development
+| Component | Specification | Monthly Cost |
+|-----------|---------------|--------------|
+| **Hot Blob Storage** | 620 GB | $12.71 |
+| **Transaction Costs** | PUT/GET operations | $3.00 |
+| **Data Transfer** | Outbound data | $2.00 |
+| **Metadata Storage** | 10 GB | $0.21 |
+| **Total Development** | | **$17.92** |
+
+---
+
+## 5. Pod Resource Requirements
+
+### 5.1 Production Pod Specifications
+```yaml
+Distributors: 3 replicas × 2 CPU, 4GB RAM
+Ingesters: 6 replicas × 4 CPU, 8GB RAM
+Query Frontend: 2 replicas × 2 CPU, 4GB RAM
+Queriers: 4 replicas × 2 CPU, 4GB RAM
+Compactors: 2 replicas × 2 CPU, 4GB RAM
+Store Gateway: 3 replicas × 2 CPU, 4GB RAM
+Rulers: 2 replicas × 2 CPU, 4GB RAM
+
+Total Resources: 44 CPU, 96GB RAM
+```
+
+### 5.2 Development Pod Specifications
+```yaml
+Distributors: 1 replica × 1 CPU, 2GB RAM
+Ingesters: 2 replicas × 2 CPU, 4GB RAM
+Query Frontend: 1 replica × 1 CPU, 2GB RAM
+Queriers: 1 replica × 1 CPU, 2GB RAM
+Compactors: 1 replica × 1 CPU, 2GB RAM
+Store Gateway: 1 replica × 1 CPU, 2GB RAM
+Rulers: 1 replica × 1 CPU, 2GB RAM
+
+Total Resources: 8 CPU, 16GB RAM
+```
+
+---
+
+## 6. Total Cost Summary
+
+### 6.1 Monthly Costs (Excluding AKS)
+| Environment | Blob Storage | Total Monthly Cost |
+|-------------|--------------|-------------------|
+| **Production** | $248.01 | **$248.01** |
+| **Development** | $17.92 | **$17.92** |
+| **Combined** | $265.93 | **$265.93** |
+
+### 6.2 Annual Costs
+- **Production**: $2,976.12
+- **Development**: $215.04
+- **Combined**: $3,191.16
+
+---
+
+## 7. Cost Optimization Recommendations
+
+### 7.1 Storage Optimization
+1. **Lifecycle Policies**: Auto-tier data to Cool/Archive storage
+2. **Compression**: Enable advanced compression (saves 30-50%)
+3. **Retention Tuning**: Adjust retention periods per use case
+4. **Compaction**: Optimize compaction schedules
+
+### 7.2 Operational Optimization
+1. **Resource Scaling**: Use HPA for dynamic scaling
+2. **Query Optimization**: Cache frequently accessed data
+3. **Monitoring**: Implement cost monitoring dashboards
+4. **Reserved Capacity**: Consider Azure reserved instances for predictable workloads
+
+---
+
+## 8. Compliance & Security
+
+### 8.1 License Compliance Requirements
+- Include Apache License 2.0 notice in deployments
+- Maintain copyright notices in source modifications
+- Document any modifications to Mimir source code
+- Provide license text to end users if distributing
+
+### 8.2 Security Considerations
+- Enable encryption at rest for Blob Storage
+- Configure network security groups
+- Implement RBAC for Kubernetes access
+- Enable audit logging
+- Regular security updates for container images
+
+---
+
+## 9. Implementation Timeline
+
+### Phase 1: Development Environment (Week 1-2)
+- Deploy Mimir components
+- Configure Blob Storage
+- Basic monitoring setup
+
+### Phase 2: Production Environment (Week 3-4)
+- High availability deployment
+- Security hardening
+- Performance tuning
+- Disaster recovery setup
+
+### Phase 3: Optimization (Week 5-6)
+- Cost optimization implementation
+- Advanced monitoring
+- Documentation completion
+
+---
+
+## Document Control
+- **Version**: 1.0
+- **Created**: 2025
+- **Classification**: Internal Use
+- **Review Cycle**: Quarterly
+- **Next Review**: Q1 2026
+
+---
+
+*Note: Costs are estimates based on Azure pricing as of 2025 and may vary based on actual usage patterns, regional pricing, and Azure pricing changes. Regular cost monitoring is recommended.*
