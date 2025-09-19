@@ -1,3 +1,304 @@
+# AKS Service Naming Convention Standards
+
+## Overview
+This document establishes standardized naming conventions for Azure Kubernetes Service (AKS) resources to ensure consistency, clarity, and maintainability across all environments.
+
+## General Naming Principles
+
+### Core Guidelines
+- Use lowercase letters, numbers, and hyphens only
+- No spaces or special characters except hyphens
+- Keep names concise but descriptive
+- Maintain consistency across all environments
+- Follow Azure resource naming restrictions
+- Use abbreviations sparingly and only when widely understood
+
+### Character Limits
+- AKS Cluster Name: 63 characters maximum
+- Resource Group: 90 characters maximum
+- Node Pool Name: 12 characters maximum (Windows), 63 characters (Linux)
+
+## Standard Naming Pattern
+
+### AKS Cluster Naming Convention
+```
+{company}-{environment}-{workload}-{location}-{instance}-aks
+```
+
+**Components:**
+- `company`: 3-4 letter organization abbreviation
+- `environment`: Environment identifier (dev, test, stage, prod)
+- `workload`: Application/workload identifier
+- `location`: Azure region abbreviation
+- `instance`: Sequential number (01, 02, etc.)
+- `aks`: Resource type suffix
+
+**Examples:**
+- `acme-prod-webapp-eus2-01-aks`
+- `acme-dev-api-wus2-01-aks`
+- `acme-stage-ecom-cus-01-aks`
+
+### Resource Group Naming Convention
+```
+rg-{company}-{environment}-{workload}-{location}-{instance}
+```
+
+**Examples:**
+- `rg-acme-prod-webapp-eus2-01`
+- `rg-acme-dev-api-wus2-01`
+
+### Node Pool Naming Convention
+```
+{purpose}{instance}
+```
+
+**Standard Node Pools:**
+- `system01` - System node pool
+- `worker01` - General workload node pool
+- `gpu01` - GPU-enabled node pool
+- `spot01` - Spot instance node pool
+- `mem01` - Memory-optimized node pool
+
+## Environment Abbreviations
+
+| Environment | Abbreviation |
+|-------------|--------------|
+| Development | dev |
+| Testing | test |
+| Staging | stage |
+| Production | prod |
+| Sandbox | sand |
+| Quality Assurance | qa |
+| User Acceptance Testing | uat |
+
+## Azure Region Abbreviations
+
+| Region | Abbreviation |
+|--------|--------------|
+| East US | eus |
+| East US 2 | eus2 |
+| West US | wus |
+| West US 2 | wus2 |
+| Central US | cus |
+| North Central US | ncus |
+| South Central US | scus |
+| West Central US | wcus |
+| Canada Central | cac |
+| Canada East | cae |
+| Brazil South | brs |
+| UK South | uks |
+| UK West | ukw |
+| West Europe | weu |
+| North Europe | neu |
+| France Central | frc |
+| Germany West Central | gwc |
+| Switzerland North | swn |
+| Norway East | noe |
+| UAE North | uan |
+| South Africa North | san |
+| Australia East | aue |
+| Australia Southeast | ause |
+| East Asia | ea |
+| Southeast Asia | sea |
+| Japan East | jpe |
+| Japan West | jpw |
+| Korea Central | krc |
+| Korea South | krs |
+| Central India | inc |
+| South India | ins |
+| West India | inw |
+
+## Additional Resource Naming
+
+### Associated Resources
+
+#### Azure Container Registry
+```
+{company}{environment}{workload}{location}{instance}acr
+```
+Example: `acmeprodwebappeus201acr`
+
+#### Log Analytics Workspace
+```
+law-{company}-{environment}-{workload}-{location}-{instance}
+```
+Example: `law-acme-prod-webapp-eus2-01`
+
+#### Key Vault
+```
+kv-{company}-{environment}-{workload}-{location}-{instance}
+```
+Example: `kv-acme-prod-webapp-eus2-01`
+
+#### Storage Account
+```
+st{company}{environment}{workload}{location}{instance}
+```
+Example: `stacmeprodwebappeus201`
+
+#### Network Security Group
+```
+nsg-{company}-{environment}-{workload}-{location}-{instance}
+```
+Example: `nsg-acme-prod-webapp-eus2-01`
+
+#### Virtual Network
+```
+vnet-{company}-{environment}-{workload}-{location}-{instance}
+```
+Example: `vnet-acme-prod-webapp-eus2-01`
+
+#### Subnet
+```
+snet-{purpose}-{instance}
+```
+Examples:
+- `snet-aks-01`
+- `snet-gateway-01`
+- `snet-private-endpoints-01`
+
+## Tagging Strategy
+
+### Mandatory Tags
+```yaml
+Environment: prod|test|dev|stage
+Owner: team-name
+Project: project-name
+CostCenter: cost-center-code
+CreatedDate: YYYY-MM-DD
+```
+
+### Optional Tags
+```yaml
+Application: application-name
+Workload: workload-type
+Backup: true|false
+Monitoring: enabled|disabled
+Compliance: required-compliance-standard
+```
+
+## Implementation Examples
+
+### Production E-commerce Platform
+```yaml
+AKS Cluster: acme-prod-ecom-eus2-01-aks
+Resource Group: rg-acme-prod-ecom-eus2-01
+Node Pools:
+  - system01 (system workloads)
+  - worker01 (application workloads)
+  - worker02 (background jobs)
+Associated Resources:
+  - ACR: acmeprodecomeus201acr
+  - Key Vault: kv-acme-prod-ecom-eus2-01
+  - Log Analytics: law-acme-prod-ecom-eus2-01
+```
+
+### Development API Service
+```yaml
+AKS Cluster: acme-dev-api-wus2-01-aks
+Resource Group: rg-acme-dev-api-wus2-01
+Node Pools:
+  - system01
+  - worker01
+Associated Resources:
+  - ACR: acmedevapiwus201acr
+  - Key Vault: kv-acme-dev-api-wus2-01
+  - Log Analytics: law-acme-dev-api-wus2-01
+```
+
+## Validation Rules
+
+### Pre-deployment Checklist
+- [ ] Name follows standard pattern
+- [ ] All components are lowercase
+- [ ] No spaces or invalid characters
+- [ ] Within character limits
+- [ ] Environment matches actual deployment target
+- [ ] Location matches Azure region
+- [ ] Instance number is sequential and unique
+- [ ] All mandatory tags are applied
+
+### Common Mistakes to Avoid
+- Using uppercase letters
+- Including spaces in names
+- Exceeding character limits
+- Inconsistent abbreviations
+- Missing environment indicators
+- Duplicate instance numbers
+- Missing mandatory tags
+
+## Governance and Compliance
+
+### Azure Policy Integration
+Consider implementing Azure Policies to enforce naming conventions:
+- Require specific naming patterns
+- Validate tag compliance
+- Prevent deployment of non-compliant resources
+- Automatically apply mandatory tags
+
+### Exception Process
+For cases requiring deviation from standard naming:
+1. Document business justification
+2. Get approval from architecture team
+3. Update naming convention documentation
+4. Communicate changes to all stakeholders
+
+## Maintenance and Updates
+
+### Review Schedule
+- Quarterly review of naming conventions
+- Annual assessment of abbreviations and patterns
+- Update based on new Azure regions or services
+- Incorporate feedback from development teams
+
+### Version Control
+- Maintain naming convention documentation in version control
+- Track changes and rationale
+- Communicate updates to all teams
+- Provide migration guidance for existing resources
+
+---
+
+*Last Updated: September 2025*
+*Version: 1.0*
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingWebhookConfiguration
 metadata:
