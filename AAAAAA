@@ -1,3 +1,11 @@
+Front Door
+Azure APIM
+App Gateway
+Azure function
+Logic Apps
+Frontend Stack
+
+
 app-<purpose>-<environment>-<region>-<instance>
 Confirming that the issue has been resolved by adding the missing namespace definition directly to the Helm chart. This is the correct approach and successfully aligns our source code with the deployment configuration.
 
