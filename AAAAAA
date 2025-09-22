@@ -1,3 +1,6 @@
+ During refactoring, we I  identified a discrepancy: a namespace exists in the deployment configuration but is missing from both the source code and the AKS cluster. This is currently under review by Devops Team -Saqib
+
+
 # AKS Service Naming Convention Standards
 
 ## Overview
