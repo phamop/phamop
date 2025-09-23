@@ -1,54 +1,12 @@
-# apiVersion: jaegertracing.io/v2
-# kind: Jaeger
-# metadata:
-#   name: jaeger-eck
-#   namespace: monitoring
-# spec:
-#   strategy: production   # production = separate collector and query
-#   collector:
-#     replicas: 2
-#     resources:
-#       requests:
-#         cpu: "500m"
-#         memory: "1Gi"
-#       limits:
-#         cpu: "1"
-#         memory: "2Gi"
-#   query:
-#     replicas: 2
-#     resources:
-#       requests:
-#         cpu: "500m"
-#         memory: "1Gi"
-#       limits:
-#         cpu: "1"
-#         memory: "2Gi"
-#   storage:
-#     type: elasticsearch
-#     options:
-#       es:
-#         server-urls: http://eck-elasticsearch-es-http.monitoring.svc.cluster.local:9200
-#     esIndexCleaner:
-#       enabled: true
-#       numberOfDays: 7   # keep 7 days of traces
-#       schedule: "55 23 * * *"
-#     esRollover:
-#       schedule: "0 0 * * *"
-# ---
-# apiVersion: admissionregistration.k8s.io/v1
-# kind: MutatingWebhookConfiguration
-# metadata:
-#   name: jaeger-operator-mutating-webhook-configuration
-#   annotations:
-#     cert-manager.io/inject-ca-from: monitoring/jaeger-operator-service-cert
-
 apiVersion: jaegertracing.io/v1
 kind: Jaeger
 metadata:
   name: jaeger-eck
   namespace: monitoring
 spec:
-  strategy: production   # separates collector, query, ingester
+  strategy: production   # separates collector, query, and ingester components
+  
+  # Collector configuration with Elasticsearch backend
   collector:
     replicas: 2
     resources:
@@ -58,6 +16,41 @@ spec:
       limits:
         cpu: "1"
         memory: "2Gi"
+    config:
+      receivers:
+        otlp:
+          protocols:
+            grpc:
+              endpoint: 0.0.0.0:14317
+            http:
+              endpoint: 0.0.0.0:14318
+        jaeger:
+          protocols:
+            grpc:
+              endpoint: 0.0.0.0:14250
+            thrift_http:
+              endpoint: 0.0.0.0:14268
+            thrift_compact:
+              endpoint: 0.0.0.0:6831
+            thrift_binary:
+              endpoint: 0.0.0.0:6832
+      processors:
+        batch:
+      exporters:
+        elasticsearch:
+          endpoints:
+            - http://eck-elasticsearch-es-http.monitoring.svc.cluster.local:9200
+          index: jaeger-span
+          mapping:
+            enabled: false
+      service:
+        pipelines:
+          traces:
+            receivers: [otlp, jaeger]
+            processors: [batch]
+            exporters: [elasticsearch]
+  
+  # Query service configuration with Elasticsearch backend
   query:
     replicas: 2
     resources:
@@ -67,6 +60,22 @@ spec:
       limits:
         cpu: "1"
         memory: "2Gi"
+    options:
+      query:
+        base-path: /
+      es:
+        server-urls: http://eck-elasticsearch-es-http.monitoring.svc.cluster.local:9200
+        max-span-age: 168h  # 7 days
+        num-shards: 5
+        num-replicas: 1
+        timeout: 20s
+        sniffer: false
+        username: ""
+        password: ""
+        tls:
+          enabled: false
+
+  # Ingester configuration for production setup
   ingester:
     replicas: 1
     resources:
@@ -76,21 +85,109 @@ spec:
       limits:
         cpu: "1"
         memory: "2Gi"
+  
+  # Storage configuration with Elasticsearch
   storage:
     type: elasticsearch
     options:
       es:
         server-urls: http://eck-elasticsearch-es-http.monitoring.svc.cluster.local:9200
+        timeout: 20s
+        num-shards: 5
+        num-replicas: 1
+        max-span-age: 168h
+        sniffer: false
+        username: ""
+        password: ""
+        tls:
+          enabled: false
+    # Index management configuration
     esIndexCleaner:
       enabled: true
       numberOfDays: 7   # keep 7 days of traces
-      schedule: "55 23 * * *"
+      schedule: "55 23 * * *"  # Fixed cron syntax
     esRollover:
-      schedule: "0 0 * * *"
-# ---
-# apiVersion: admissionregistration.k8s.io/v1
-# kind: MutatingWebhookConfiguration
-# metadata:
-#   name: jaeger-operator-mutating-webhook-configuration
-#   annotations:
-#     cert-manager.io/inject-ca-from: monitoring/jaeger-operator-service-cert
+      enabled: true
+      schedule: "0 0 * * *"    # Fixed cron syntax
+      conditions:
+        maxAge: "1d"
+        maxSize: "50gb"
+
+---
+# Service configuration to expose Jaeger components with ClusterIP
+apiVersion: v1
+kind: Service
+metadata:
+  name: jaeger-collector-service
+  namespace: monitoring
+  labels:
+    app: jaeger
+    component: collector
+spec:
+  type: ClusterIP
+  selector:
+    app: jaeger
+    component: collector
+  ports:
+    - name: grpc-otlp
+      port: 14317
+      targetPort: 14317
+      protocol: TCP
+    - name: http-otlp
+      port: 14318
+      targetPort: 14318
+      protocol: TCP
+    - name: grpc-jaeger
+      port: 14250
+      targetPort: 14250
+      protocol: TCP
+    - name: http-jaeger
+      port: 14268
+      targetPort: 14268
+      protocol: TCP
+    - name: thrift-compact
+      port: 6831
+      targetPort: 6831
+      protocol: UDP
+    - name: thrift-binary
+      port: 6832
+      targetPort: 6832
+      protocol: UDP
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: jaeger-query-service
+  namespace: monitoring
+  labels:
+    app: jaeger
+    component: query
+spec:
+  type: ClusterIP
+  selector:
+    app: jaeger
+    component: query
+  ports:
+    - name: http-query
+      port: 16686
+      targetPort: 16686
+      protocol: TCP
+
+---
+# ConfigMap for additional Elasticsearch configuration if needed
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: jaeger-elasticsearch-config
+  namespace: monitoring
+data:
+  elasticsearch.yml: |
+    es:
+      server-urls: http://eck-elasticsearch-es-http.monitoring.svc.cluster.local:9200
+      timeout: 20s
+      sniffer: false
+      max-span-age: 168h
+      num-shards: 5
+      num-replicas: 1
+      create-index-templates: true
