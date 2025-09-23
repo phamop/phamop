@@ -1,640 +1,96 @@
-
-apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
-
-resources:
-  - ../../../base/jaeger-operator
-
-namespace: monitoring
-
-patches:
-  # Delete existing certificate using modern patch syntax
-  - target:
-      group: cert-manager.io
-      version: v1
-      kind: Certificate
-      name: jaeger-operator-service-cert
-    patch: |-
-      $patch: delete
-  
-  # Delete existing secret
-  - target:
-      version: v1
-      kind: Secret
-      name: jaeger-operator-webhook-cert
-    patch: |-
-      $patch: delete
-  
-  # Delete any other conflicting certificates
-  - target:
-      group: cert-manager.io
-      version: v1
-      kind: Certificate
-      name: jaeger-certificate
-    patch: |-
-      $patch: delete
-
-
-
-
-
-
-
-
-
-apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
-
-resources:
-  - ../../../base/jaeger-operator/namespace.yaml
-  - jaeger-certificate-monitoring.yaml
-
-namespace: monitoring
-
-patches:
-  - path: jaeger-mutating-webhook-patch.yaml
-    target:
-      group: admissionregistration.k8s.io
-      version: v1
-      kind: MutatingAdmissionWebhook
-
-  - path: jaeger-validating-webhook-patch.yaml
-    target:
-      group: admissionregistration.k8s.io
-      version: v1
-      kind: ValidatingAdmissionWebhook
-
-# Clean approach - explicit cleanup in pipeline
-kubectl delete certificate jaeger-operator-service-cert --all-namespaces --ignore-not-found=true
-kubectl delete secret jaeger-operator-webhook-cert -n monitoring --ignore-not-found=true
-kubectl apply -k cluster/overlays/EDIT/jaeger-operator
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
-
-resources:
-  - ../../../base/jaeger-operator
-
-namespace: monitoring
-
-patchesStrategicMerge:
-  - cleanup-certificates.yaml
-
-
-
-
-
-
-
-
-
-
-
-# Complete Jaeger Certificate Solution
-
-## Files to Update/Create
-
-### 1. cluster/base/jaeger-operator/kustomization.yaml
-```yaml
-apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
-
-resources:
-  - namespace.yaml
-  # Remove jaeger-certificate.yaml from base to avoid conflicts
-```
-
-### 2. cluster/overlays/EDIT/jaeger-operator/kustomization.yaml
-```yaml
-apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
-
-# Reference the base jaeger-operator
-resources:
-  - ../../../base/jaeger-operator
-  - jaeger-certificate.yaml
-
-# Apply namespace transformation to monitoring
-namespace: monitoring
-
-patches:
-  # Remove any existing certificates from other namespaces
-  - target:
-      group: cert-manager.io
-      version: v1
-      kind: Certificate
-      name: jaeger-operator-service-cert
-      annotationSelector: "internal.config.kubernetes.io/previousNamespaces!=monitoring"
-    patch: |-
-      - op: remove
-        path: /
-
-  # Apply webhook patches
-  - path: jaeger-mutating-webhook-patch.yaml
-    target:
-      group: admissionregistration.k8s.io
-      version: v1
-      kind: MutatingAdmissionWebhook
-      name: jaeger-operator-mutating-webhook-configuration
-
-  - path: jaeger-validating-webhook-patch.yaml
-    target:
-      group: admissionregistration.k8s.io
-      version: v1
-      kind: ValidatingAdmissionWebhook
-      name: jaeger-operator-validating-webhook-configuration
-```
-
-### 3. cluster/overlays/EDIT/jaeger-operator/jaeger-certificate.yaml
-```yaml
-apiVersion: cert-manager.io/v1
-kind: Certificate
+# apiVersion: jaegertracing.io/v2
+# kind: Jaeger
+# metadata:
+#   name: jaeger-eck
+#   namespace: monitoring
+# spec:
+#   strategy: production   # production = separate collector and query
+#   collector:
+#     replicas: 2
+#     resources:
+#       requests:
+#         cpu: "500m"
+#         memory: "1Gi"
+#       limits:
+#         cpu: "1"
+#         memory: "2Gi"
+#   query:
+#     replicas: 2
+#     resources:
+#       requests:
+#         cpu: "500m"
+#         memory: "1Gi"
+#       limits:
+#         cpu: "1"
+#         memory: "2Gi"
+#   storage:
+#     type: elasticsearch
+#     options:
+#       es:
+#         server-urls: http://eck-elasticsearch-es-http.monitoring.svc.cluster.local:9200
+#     esIndexCleaner:
+#       enabled: true
+#       numberOfDays: 7   # keep 7 days of traces
+#       schedule: "55 23 * * *"
+#     esRollover:
+#       schedule: "0 0 * * *"
+# ---
+# apiVersion: admissionregistration.k8s.io/v1
+# kind: MutatingWebhookConfiguration
+# metadata:
+#   name: jaeger-operator-mutating-webhook-configuration
+#   annotations:
+#     cert-manager.io/inject-ca-from: monitoring/jaeger-operator-service-cert
+
+apiVersion: jaegertracing.io/v1
+kind: Jaeger
 metadata:
-  name: jaeger-operator-service-cert
-  namespace: monitoring
-  labels:
-    hbt.cmhc.schl.gc.ca/owner: devops
-  annotations:
-    internal.config.kubernetes.io/previousKinds: Certificate
-    internal.config.kubernetes.io/previousNames: jaeger-operator-service-cert
-    internal.config.kubernetes.io/previousNamespaces: monitoring
-spec:
-  secretName: jaeger-operator-webhook-cert
-  duration: 8760h
-  renewBefore: 720h
-  subject:
-    organizations:
-    - jaeger-operator
-    organizationalUnits:
-    - jaeger-operator
-  dnsNames:
-  - jaeger-operator-webhook-service.monitoring.svc
-  - jaeger-operator-webhook-service.monitoring.svc.cluster.local
-  issuerRef:
-    name: selfsigned-issuer
-    kind: Issuer
-```
-
-### 4. cluster/overlays/EDIT/jaeger-operator/jaeger-mutating-webhook-patch.yaml
-```yaml
-apiVersion: admissionregistration.k8s.io/v1
-kind: MutatingAdmissionWebhook
-metadata:
-  name: jaeger-operator-mutating-webhook-configuration
-webhooks:
-- name: mutate.jaegertracing.io
-  clientConfig:
-    service:
-      name: jaeger-operator-webhook-service
-      namespace: monitoring
-      path: /mutate-jaegertracing-io-v1-jaeger
-  admissionReviewVersions:
-  - v1
-  - v1beta1
-  rules:
-  - operations: ["CREATE", "UPDATE"]
-    apiGroups: ["jaegertracing.io"]
-    apiVersions: ["v1"]
-    resources: ["jaegers"]
-  failurePolicy: Fail
-  sideEffects: None
-```
-
-### 5. cluster/overlays/EDIT/jaeger-operator/jaeger-validating-webhook-patch.yaml
-```yaml
-apiVersion: admissionregistration.k8s.io/v1
-kind: ValidatingAdmissionWebhook
-metadata:
-  name: jaeger-operator-validating-webhook-configuration
-webhooks:
-- name: validate.jaegertracing.io
-  clientConfig:
-    service:
-      name: jaeger-operator-webhook-service
-      namespace: monitoring
-      path: /validate-jaegertracing-io-v1-jaeger
-  admissionReviewVersions:
-  - v1
-  - v1beta1
-  rules:
-  - operations: ["CREATE", "UPDATE"]
-    apiGroups: ["jaegertracing.io"]
-    apiVersions: ["v1"]
-    resources: ["jaegers"]
-  failurePolicy: Fail
-  sideEffects: None
-```
-
-## Cleanup Commands (Optional)
-
-If you need to manually remove existing conflicting certificates:
-
-```bash
-# Remove any existing jaeger certificates from other namespaces
-kubectl delete certificate jaeger-operator-service-cert --all-namespaces --ignore-not-found=true
-
-# Remove certificates specifically from eddv-bld namespace if it exists
-kubectl delete certificate jaeger-operator-service-cert -n eddv-bld --ignore-not-found=true
-```
-
-## Verification Commands
-
-After applying the kustomization:
-
-```bash
-# Verify certificate is created in monitoring namespace
-kubectl get certificate -n monitoring
-
-# Check certificate status
-kubectl describe certificate jaeger-operator-service-cert -n monitoring
-
-# Verify webhook configurations
-kubectl get mutatingwebhookconfiguration jaeger-operator-mutating-webhook-configuration
-kubectl get validatingwebhookconfiguration jaeger-operator-validating-webhook-configuration
-```
-
-## Apply the Configuration
-
-```bash
-# From the cluster/overlays/EDIT/jaeger-operator directory
-kubectl apply -k .
-
-# Or from the root cluster directory
-kubectl apply -k overlays/EDIT/jaeger-operator
-```
-
-## What This Solution Does
-
-1. **Removes base certificate** to prevent conflicts
-2. **Creates environment-specific certificate** in monitoring namespace only
-3. **Uses modern patches syntax** to handle conflicts and apply webhook configurations
-4. **Ensures proper DNS names** for monitoring namespace services
-5. **Removes any conflicting certificates** from other namespaces automatically
-6. **Maintains proper labels and annotations** for tracking and management
-
-This solution ensures that only one certificate exists with the name `jaeger-operator-service-cert` and it's properly configured for the monitoring namespace.
-
-
-
-
-
-
-
-
-
-
-
-
-cluster/base/opentelemetry-operator/opentelemetry-certificate.yaml
-apiVersion: cert-manager.io/v1
-kind: Certificate
-metadata:
-  name: opentelemetry-operator-service-cert
+  name: jaeger-eck
   namespace: monitoring
 spec:
-  secretName: opentelemetry-operator-serving-cert
-  issuerRef:
-    kind: Issuer   # default, overlays can patch this to ClusterIssuer
-    name: selfsigned-issuer
-  dnsNames:
-    - opentelemetry-operator-webhook-service.monitoring.svc
-    - opentelemetry-operator-webhook-service.monitoring.svc.cluster.local
-
-
-
-cluster/overlays/EDIT/opentelemetry-operator/opentelemetry-certificate-patch.yaml
-
-This patch makes it environment-specific. For example:
-
-Add eddv-bld SANs.
-
-Switch issuer to ClusterIssuer.
-
-Add team labels/annotations.
-
-apiVersion: cert-manager.io/v1
-kind: Certificate
-metadata:
-  name: opentelemetry-operator-service-cert
-  namespace: monitoring
-  labels:
-    hbt.cmhc.schl.gc.ca/owner: devops
-spec:
-  issuerRef:
-    kind: ClusterIssuer
-    name: selfsigned-issuer
-  dnsNames:
-    - opentelemetry-operator-webhook-service.monitoring.svc
-    - opentelemetry-operator-webhook-service.monitoring.svc.cluster.local
-    - opentelemetry-operator-webhook-service.eddv-bld.svc
-    - opentelemetry-operator-webhook-service.eddv-bld.svc.cluster.local
-
-
-
-Reference it in cluster/overlays/EDIT/opentelemetry-operator/kustomization.yaml
-
-Replace old patchesStrategicMerge with the new patches format:
-
-resources:
-  - ../../../../base/opentelemetry-operator
-  - opentelemetry-certificate-patch.yaml
-
-patches:
-  - path: opentelemetry-certificate-patch.yaml
-    target:
-      kind: Certificate
-      name: opentelemetry-operator-service-cert
-
-
-
-
-
-
-
-
-
-
-
-
-cluster
-├── base
-│   ├── cert-manager-operator
-│   │   ├── issuer.yaml
-│   │   ├── kustomization.yaml
-│   │   └── namespace.yaml
-│   ├── eck-elasticsearch-operator
-│   │   ├── kustomization.yaml
-│   │   └── namespace.yaml
-│   ├── jaeger-operator
-│   │   ├── jaeger-certificate.yaml
-│   │   ├── kustomization.yaml
-│   │   └── namespace.yaml
-│   └── opentelemetry-operator
-│       ├── clusterroles.yaml
-│       ├── kustomization.yaml
-│       ├── namespace.yaml
-│       ├── opentelemetry-certificate.yaml
-│       ├── otel-operator-cert-alias.yaml
-│       └── serviceaccount.yaml
-└── overlays
-    ├── EDDV
-    │   ├── cert-manager-operator
-    │   │   └── kustomization.yaml
-    │   └── opentelemetry-operator
-    │       └── kustomization.yaml
-    └── EDIT
-        ├── cert-manager-operator
-        │   └── kustomization.yaml
-        ├── eck-elasticsearch-operator
-        │   └── kustomization.yaml
-        ├── jaeger-operator
-        │   ├── jaeger-certificate.yaml
-        │   ├── jaeger-mutating-webhook-patch.yaml
-        │   ├── jaeger-validating-webhook-patch.yaml
-        │   └── kustomization.yaml
-        └── opentelemetry-operator
-            ├── clusterrolebinding.yaml
-            ├── crd-patch.yaml
-            ├── kustomization.yaml
-            ├── opentelemetry-certificate.yaml
-            ├── opentelemetry-validating-webhook-patch.yaml
-            ├── opentelemetry-webhook-patch.yaml
-            ├── otel-mutating-webhook-patch.yaml
-            ├── otel-operator-cert-alias.yaml
-            └── otel-validating-webhook-patch.yaml
-helm
-├── README.md
-├── source
-│   ├── cert-manager
-│   │   ├── Chart.yaml
-│   │   └── source.yaml
-│   ├── crd-prometheus
-│   │   ├── Chart.yaml
-│   │   └── source.yaml
-│   ├── elasticsearch
-│   │   ├── Chart.yaml
-│   │   └── source.yaml
-│   ├── grafana
-│   │   ├── Chart.yaml
-│   │   └── source.yaml
-│   ├── jaeger
-│   │   ├── Chart.yaml
-│   │   └── source.yaml
-│   ├── otel-operator
-│   │   ├── Chart.yaml
-│   │   └── source.yaml
-│   └── prometheus
-│       ├── Chart.yaml
-│       └── source.yaml
-└── values
-    └── EDIT
-        ├── cert-manager-operator
-        │   ├── Chart.yaml
-        │   ├── deploy.yaml
-        │   └── values.yaml
-        └── opentelemetry-operator
-            ├── Chart.yaml
-            ├── deploy.yaml
-            └── values.yaml
-kustomize
-├── base
-│   ├── elasticsearch
-│   │   ├── helm-values.yaml
-│   │   └── kustomization.yaml
-│   ├── grafana
-│   │   ├── helm-values.yaml
-│   │   └── kustomization.yaml
-│   ├── jaeger
-│   │   ├── certificate-multisan.yaml
-│   │   ├── helm-values.yaml
-│   │   ├── issuer.yaml
-│   │   ├── jaeger.yaml
-│   │   └── kustomization.yaml
-│   ├── loki
-│   │   ├── helm-values.yaml
-│   │   └── kustomization.yaml
-│   ├── opentelemetry
-│   │   ├── certificate-multisan.yaml
-│   │   ├── collector.yaml
-│   │   ├── issuer.yaml
-│   │   ├── kustomization.yaml
-│   │   └── serviceMetric.yaml
-│   └── prometheus
-│       ├── helm-values.yaml
-│       └── kustomization.yaml
-└── overlays
-    ├── EDDV
-    │   ├── crd
-    │   │   ├── helm-values.yaml
-    │   │   └── kustomization.yaml
-    │   ├── grafana
-    │   │   ├── config-patch.yaml
-    │   │   ├── kustomization.yaml
-    │   │   └── serviceaccount.yaml
-    │   ├── jaeger
-    │   │   ├── helm-values.yaml
-    │   │   └── kustomization.yaml
-    │   ├── loki
-    │   │   ├── helm-values.yaml
-    │   │   └── kustomization.yaml
-    │   ├── opentelemetry
-    │   │   ├── collector-patch.yaml
-    │   │   ├── kustomization.yaml
-    │   │   ├── otel-collector-crd.yaml
-    │   │   └── serviceMonitor.yaml
-    │   └── prometheus
-    │       └── kustomization.yaml
-    └── EDIT
-        ├── 01crd
-        │   ├── helm-values.yaml
-        │   └── kustomization.yaml
-        ├── 02prometheus
-        │   └── kustomization.yaml
-        ├── 03elasticsearch
-        │   └── kustomization.yaml
-        ├── 03loki
-        │   └── kustomization.yaml
-        ├── 04jaeger
-        │   ├── certificate-multisan.yaml
-        │   ├── issuer.yaml
-        │   ├── jaeger-webhook-patch.yaml
-        │   ├── kustomization.yaml
-        │   └── namespace.yaml
-        ├── 05opentelemetry
-        │   ├── certifcate-multisan.yaml
-        │   ├── collector-patch.yaml
-        │   ├── issuer.yaml
-        │   ├── kustomization.yaml
-        │   ├── opentelemetry-webhook-patch.yaml
-        │   └── serviceMonitor.yaml
-        └── 06grafana
-            ├── config-patch.yaml
-            ├── kustomization.yaml
-            └── serviceaccount.yaml
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-error: namespace transformation produces ID conflict: [{"apiVersion":"cert-manager.io/v1","kind":"Certificate","metadata":{"annotations":{"internal.config.kubernetes.io/previousKinds":"Certificate","internal.config.kubernetes.io/previousNames":"jaeger-operator-service-cert","internal.config.kubernetes.io/previousNamespaces":"monitoring"},"labels":{"hbt.cmhc.schl.gc.ca/owner":"devops"},"name":"jaeger-operator-service-cert","namespace":"monitoring"},"spec":{"dnsNames":["jaeger-operator-webhook-service.monitoring.svc","jaeger-operator-webhook-service.monitoring.svc.cluster.local","jaeger-operator-webhook-service.eddv-bld.svc","jaeger-operator-webhook-service.eddv-bld.svc.cluster.local"],"issuerRef":{"kind":"ClusterIssuer","name":"selfsigned-issuer"},"secretName":"jaeger-operator-webhook-cert"}} {"apiVersion":"cert-manager.io/v1","kind":"Certificate","metadata":{"annotations":{"internal.config.kubernetes.io/previousKinds":"Certificate","internal.config.kubernetes.io/previousNames":"jaeger-operator-service-cert","internal.config.kubernetes.io/previousNamespaces":"eddv-bld"},"labels":{"hbt.cmhc.schl.gc.ca/owner":"devops"},"name":"jaeger-operator-service-cert","namespace":"monitoring"},"spec":{"dnsNames":["jaeger-operator-webhook-service.eddv-bld.svc","jaeger-operator-webhook-service.eddv-bld.svc.cluster.local"],"issuerRef":{"kind":"Issuer","name":"selfsigned-issuer"},"secretName":"jaeger-operator-service-cert","subject":{"organizationalUnits":["jaeger-operator"]}}}]
-DONE resource /azp/agent/_work/5/s/cluster/overlays/EDIT/jaeger-operator
-Current resource: /azp/agent/_work/5/s/cluster/overlays/EDIT/opentelemetry-operator
-Set the helmGlobals.configHome to the appropriate value.
-About to run kubectl kustomize
-error: no resource matches strategic merge patch "MutatingWebhookConfiguration.v1.admissionregistration.k8s.io/otel-operator-mutation.[noNs]": no matches for Id MutatingWebhookConfiguration.v1.admissionregistration.k8s.io/otel-operator-mutation.[noNs]; failed to find unique target for patch MutatingWebhookConfiguration.v1.admissionregistration.k8s.io/otel-operator-mutation.[noNs]
-DONE resource /azp/agent/_work/5/s/cluster/overlays/EDIT/opentelemetry-operator
-
-
-
-
-cluster/base/jaeger-operator/kustomization.yaml
-resources:
-  - namespace.yaml
-  - jaeger-certificate.yaml
-
-
-
-
-cluster/base/opentelemetry-operator/opentelemetry-certificate.yaml
-apiVersion: cert-manager.io/v1
-kind: Certificate
-metadata:
-  name: opentelemetry-operator-service-cert
-  namespace: monitoring
-spec:
-  secretName: opentelemetry-operator-serving-cert
-  issuerRef:
-    name: selfsigned-issuer
-    kind: ClusterIssuer     # <-- same central issuer
-  dnsNames:
-    - opentelemetry-operator-webhook-service.monitoring.svc
-    - opentelemetry-operator-webhook-service.monitoring.svc.cluster.local
-    - opentelemetry-operator-webhook-service.eddv-bld.svc
-    - opentelemetry-operator-webhook-service.eddv-bld.svc.cluster.local
-
-
-cluster/base/opentelemetry-operator/kustomization.yaml
-resources:
-  - namespace.yaml
-  - serviceaccount.yaml
-  - clusterroles.yaml
-  - opentelemetry-certificate.yaml
-
-
-resources:
-  - ../../../base/jaeger-operator
-patches:
-  - path: jaeger-webhook-patch.yaml
-    target:
-      kind: MutatingWebhookConfiguration
-      name: jaeger-operator-mutating-webhook-configuration
-  - path: jaeger-webhook-patch.yaml
-    target:
-      kind: ValidatingWebhookConfiguration
-      name: jaeger-operator-validating-webhook-configuration
-
-
-
-cluster/overlays/EDIT/opentelemetry-operator/kustomization.yaml
-resources:
-  - ../../../base/opentelemetry-operator
-  - clusterrolebinding.yaml
-patches:
-  - path: opentelemetry-webhook-patch.yaml
-    target:
-      kind: MutatingWebhookConfiguration
-      name: opentelemetry-operator-mutation
-  - path: opentelemetry-validating-webhook-patch.yaml
-    target:
-      kind: ValidatingWebhookConfiguration
-      name: opentelemetry-operator-validation
+  strategy: production   # separates collector, query, ingester
+  collector:
+    replicas: 2
+    resources:
+      requests:
+        cpu: "500m"
+        memory: "1Gi"
+      limits:
+        cpu: "1"
+        memory: "2Gi"
+  query:
+    replicas: 2
+    resources:
+      requests:
+        cpu: "500m"
+        memory: "1Gi"
+      limits:
+        cpu: "1"
+        memory: "2Gi"
+  ingester:
+    replicas: 1
+    resources:
+      requests:
+        cpu: "500m"
+        memory: "1Gi"
+      limits:
+        cpu: "1"
+        memory: "2Gi"
+  storage:
+    type: elasticsearch
+    options:
+      es:
+        server-urls: http://eck-elasticsearch-es-http.monitoring.svc.cluster.local:9200
+    esIndexCleaner:
+      enabled: true
+      numberOfDays: 7   # keep 7 days of traces
+      schedule: "55 23 * * *"
+    esRollover:
+      schedule: "0 0 * * *"
+# ---
+# apiVersion: admissionregistration.k8s.io/v1
+# kind: MutatingWebhookConfiguration
+# metadata:
+#   name: jaeger-operator-mutating-webhook-configuration
+#   annotations:
+#     cert-manager.io/inject-ca-from: monitoring/jaeger-operator-service-cert
