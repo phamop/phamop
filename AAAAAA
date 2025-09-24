@@ -1,3 +1,26 @@
+redefine structure "Optional1: propose will be to re-introduce Azure monitor and app insight directly to grafana; this will allow to captured all the 3 component of the observability; logs, traces and metrics.
+
+Optional2: propose will be to re-introduce Azure monitor and app insight integrate with otel collector ; this will allow to captured all the 3 component of the observability; logs, traces and metrics.
+
+Option3: will be using Azure Event Hub, Otel-collector and azure monitor to capture the 3 component of the observability; logs, traces and metrics.
+
+Optional4: propose will be to use event hub and log forwarder to ; this will allow to captured only  logs.
+               Azure monitor for metrics. 
+"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 Observability Architecture Options
 Option 1: Direct Integration with Grafana
 
