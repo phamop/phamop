@@ -1,12 +1,111 @@
-redefine structure "Optional1: propose will be to re-introduce Azure monitor and app insight directly to grafana; this will allow to captured all the 3 component of the observability; logs, traces and metrics.
+**Document Title**: Azure Service  Observability Architecture Proposal - Non-AkS\
+**Date**: September 24, 2025\
+**Author**: Oluwafemi - Femi\
+**Document Version:** 1.0
 
-Optional2: propose will be to re-introduce Azure monitor and app insight integrate with otel collector ; this will allow to captured all the 3 component of the observability; logs, traces and metrics.
+[[_TOC_]]  
 
-Option3: will be using Azure Event Hub, Otel-collector and azure monitor to capture the 3 component of the observability; logs, traces and metrics.
 
-Optional4: propose will be to use event hub and log forwarder to ; this will allow to captured only  logs.
-               Azure monitor for metrics. 
-"
+##Description for Option 1:
+- **Option 1**: Direct Integration with Grafana\
+Re-introduce Azure Monitor and Application Insights directly as data sources in Grafana.
+
+**Coverage**:
+
+Logs: via Application Insights + Azure Monitor data source
+
+Metrics: via Azure Monitor metrics API
+
+Traces: via Application Insights distributed tracing
+
+Advantages:
+
+Simplest setup (no additional middleware like OTel Collector needed).
+
+Low operational overhead.
+
+Limitations:
+
+Vendor lock-in (direct dependency on Azure Monitor).
+
+Less flexibility for routing data to OSS backends (Loki, Jaeger).
+
+
+
+##Description for Option 2
+- **Option 2**: Azure Monitor + Application Insights via OTel Collector\
+Integrate Azure Monitor and Application Insights with the OpenTelemetry Collector, then export into OSS tools (Loki, Prometheus, Jaeger) or Grafana.
+
+**Coverage**:
+
+Logs: Azure Monitor → OTel → Loki
+
+Metrics: Azure Monitor → OTel → Prometheus
+
+Traces: Application Insights → OTel → Jaeger
+
+Advantages:
+
+Full control of telemetry pipelines (transform, enrich, route).
+
+Flexibility to store data in OSS or cloud-native backends.
+
+Limitations:
+
+Slightly higher complexity (must manage OTel pipeline).
+
+Azure Monitor costs still apply for ingestion.
+
+
+##Description for Option 3
+- **Option 3**: Hybrid with Event Hub + OTel Collector + Azure Monitor\
+Use Azure Event Hub to stream logs, combined with OTel Collector for routing, while continuing to leverage Azure Monitor for metrics.
+
+**Coverage**:
+
+Logs: Event Hub → OTel → Loki
+
+Metrics: Azure Monitor → Prometheus
+
+Traces: OTel Collector → Jaeger
+
+Advantages:
+
+Balanced model leveraging both OSS and Azure services.
+
+Event Hub provides reliable, scalable log ingestion.
+
+Limitations:
+
+Dual management (Event Hub + Azure Monitor).
+
+Some duplication of telemetry paths (Azure Monitor + Event Hub).
+
+
+
+##Description for Option 4
+- **Option 4**: Logs Only via Event Hub + Log Forwarder\
+Use Event Hub + Log Forwarder ( Alloy) only for logs, while metrics remain in Azure Monitor.
+
+**Coverage**:
+
+Logs: Event Hub  → Loki
+
+Metrics: Azure Monitor (native)
+
+Traces: Not included in OSS stack
+
+Advantages:
+
+Simple design for organizations prioritizing logs only.
+
+Reduced operational overhead.
+
+Limitations:
+
+Incomplete observability (no unified tracing, metrics remain siloed).
+
+Limited correlation across logs, traces, and metrics.
 
 
 
