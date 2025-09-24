@@ -3,106 +3,146 @@
 
 
 
-##Description for Option 1:
-- **Option 1**: Direct Integration with Grafana\
-Re-introduce Azure Monitor and Application Insights directly as data sources in Grafana.
+Perfect 👍 — I’ll transform this into a **wiki-style document** that is structured, professional, and ready for stakeholder review. It will align with your requirement of **dedicated AKS for observability** (Grafana, Loki, Jaeger, Prometheus, OTel Collector).
 
-**Coverage**:
+---
 
-Logs: via Application Insights + Azure Monitor data source
+# **Document Title**: Azure Service Observability Architecture Proposal
 
-Metrics: via Azure Monitor metrics API
+**Date**: September 24, 2025
 
-Traces: via Application Insights distributed tracing
+---
 
-Advantages:
+## 📘 **Overview**
 
-Simplest setup (no additional middleware like OTel Collector needed).
+This document proposes multiple architectural options for implementing **observability** (logs, metrics, traces) for Azure services using a **Dedicated AKS cluster**. The OSS stack considered includes **Grafana, Loki, Jaeger, Prometheus, and OpenTelemetry Collector (OTel Collector)**.
 
-Low operational overhead.
+The goal is to evaluate integration models between **Azure-native telemetry sources** (Azure Monitor, Application Insights, Event Hub) and the OSS observability stack, considering trade-offs in **coverage, complexity, cost, and flexibility**.
 
-Limitations:
+---
 
-Vendor lock-in (direct dependency on Azure Monitor).
+## 🏗 **OSS Observability Components (on Dedicated AKS)**
 
-Less flexibility for routing data to OSS backends (Loki, Jaeger).
+* **Grafana**: Visualization & dashboards (single pane of glass).
+* **Loki**: Centralized log aggregation and querying.
+* **Prometheus**: Metrics collection and time-series database (with remote\_write enabled).
+* **Jaeger**: Distributed tracing backend (queried via Grafana datasource).
+* **OTel Collector**: Normalizes, enriches, and routes telemetry (logs, metrics, traces).
+* **Fluent Bit / Grafana Alloy**: Log forwarding agents (replacement for Promtail).
 
+---
 
+## 🔹 **Description for Option 1**
 
-##Description for Option 2
-- **Option 2**: Azure Monitor + Application Insights via OTel Collector\
-Integrate Azure Monitor and Application Insights with the OpenTelemetry Collector, then export into OSS tools (Loki, Prometheus, Jaeger) or Grafana.
+### **Option 1: Direct Integration with Grafana**
 
-**Coverage**:
+Re-introduce **Azure Monitor** and **Application Insights** directly as data sources in Grafana.
 
-Logs: Azure Monitor → OTel → Loki
+**Coverage**
 
-Metrics: Azure Monitor → OTel → Prometheus
+* Logs: via Application Insights + Azure Monitor data source
+* Metrics: via Azure Monitor metrics API
+* Traces: via Application Insights distributed tracing
 
-Traces: Application Insights → OTel → Jaeger
+**Advantages**
 
-Advantages:
+* Simplest setup (no OTel Collector required).
+* Low operational overhead.
 
-Full control of telemetry pipelines (transform, enrich, route).
+**Limitations**
 
-Flexibility to store data in OSS or cloud-native backends.
+* Vendor lock-in (direct dependency on Azure Monitor).
+* Limited ability to forward telemetry to OSS backends (Loki, Jaeger).
 
-Limitations:
+---
 
-Slightly higher complexity (must manage OTel pipeline).
+## 🔹 **Description for Option 2**
 
-Azure Monitor costs still apply for ingestion.
+### **Option 2: Azure Monitor + Application Insights via OTel Collector**
 
+Integrate **Azure Monitor** and **Application Insights** with the **OTel Collector**, exporting into OSS tools running on AKS.
 
-##Description for Option 3
-- **Option 3**: Hybrid with Event Hub + OTel Collector + Azure Monitor\
-Use Azure Event Hub to stream logs, combined with OTel Collector for routing, while continuing to leverage Azure Monitor for metrics.
+**Coverage**
 
-**Coverage**:
+* Logs: Azure Monitor → OTel → Loki
+* Metrics: Azure Monitor → OTel → Prometheus
+* Traces: Application Insights → OTel → Jaeger
 
-Logs: Event Hub → OTel → Loki
+**Advantages**
 
-Metrics: Azure Monitor → Prometheus
+* Full control of telemetry pipelines (transform, enrich, route).
+* Flexibility to store data in OSS or cloud-native backends.
 
-Traces: OTel Collector → Jaeger
+**Limitations**
 
-Advantages:
+* Higher complexity (must manage OTel Collector in AKS).
+* Azure Monitor ingestion charges still apply.
 
-Balanced model leveraging both OSS and Azure services.
+---
 
-Event Hub provides reliable, scalable log ingestion.
+## 🔹 **Description for Option 3**
 
-Limitations:
+### **Option 3: Hybrid with Event Hub + OTel Collector + Azure Monitor**
 
-Dual management (Event Hub + Azure Monitor).
+Use **Azure Event Hub** for logs, combined with **OTel Collector** for routing, while relying on **Azure Monitor** for metrics.
 
-Some duplication of telemetry paths (Azure Monitor + Event Hub).
+**Coverage**
 
+* Logs: Event Hub → OTel → Loki
+* Metrics: Azure Monitor → Prometheus
+* Traces: OTel Collector → Jaeger
 
+**Advantages**
 
-##Description for Option 4
-- **Option 4**: Logs Only via Event Hub + Log Forwarder\
-Use Event Hub + Log Forwarder ( Alloy) only for logs, while metrics remain in Azure Monitor.
+* Balanced model leveraging both OSS and Azure-native services.
+* Event Hub provides scalable, decoupled log ingestion.
 
-**Coverage**:
+**Limitations**
 
-Logs: Event Hub  → Loki
+* Dual management (Event Hub + Azure Monitor).
+* Potential duplication of telemetry pipelines.
 
-Metrics: Azure Monitor (native)
+---
 
-Traces: Not included in OSS stack
+## 🔹 **Description for Option 4**
 
-Advantages:
+### **Option 4: Logs Only via Event Hub + Log Forwarder**
 
-Simple design for organizations prioritizing logs only.
+Use **Event Hub + Log Forwarder (Fluent Bit / Alloy)** only for logs, while metrics remain in Azure Monitor.
 
-Reduced operational overhead.
+**Coverage**
 
-Limitations:
+* Logs: Event Hub → Loki
+* Metrics: Azure Monitor (native)
+* Traces: ❌ Not included in OSS stack
 
-Incomplete observability (no unified tracing, metrics remain siloed).
+**Advantages**
 
-Limited correlation across logs, traces, and metrics.
+* Simplified design for log-centric observability.
+* Lower operational overhead.
+
+**Limitations**
+
+* Incomplete observability (metrics remain siloed, no tracing).
+* Limited correlation across logs, metrics, and traces.
+
+---
+
+## 📊 **Comparison Summary**
+
+| Option                                       | Logs | Metrics    | Traces | Complexity | Flexibility | Notes                   |
+| -------------------------------------------- | ---- | ---------- | ------ | ---------- | ----------- | ----------------------- |
+| **1. Direct Grafana Integration**            | ✅    | ✅          | ✅      | Low        | Low         | Simple but Azure-locked |
+| **2. Azure Monitor + App Insights via OTel** | ✅    | ✅          | ✅      | Medium     | High        | Flexible OSS routing    |
+| **3. Hybrid (Event Hub + OTel + Monitor)**   | ✅    | ✅          | ✅      | Medium     | Medium      | Balanced approach       |
+| **4. Logs Only (Event Hub + Forwarder)**     | ✅    | ✅ (native) | ❌      | Low        | Low         | Logs focus, no tracing  |
+
+---
+
+✅ This wiki-format document is now structured for decision-making.
+
+Would you like me to **generate this as both a Word doc (for formal review) and a Confluence/Markdown version** so it can be directly uploaded to a wiki or collaboration tool?
+
 
 
 
