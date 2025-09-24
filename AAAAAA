@@ -1,3 +1,30 @@
+Optional1: propose will be to re-introduce Azure monitor and app insight directly to grafana; this will allow to captured all the 3 component of the observability; logs, traces and metrics.
+
+Optional2: propose will be to re-introduce Azure monitor and app insight integrate with otel collector ; this will allow to captured all the 3 component of the observability; logs, traces and metrics.
+
+Option3: will be using Azure Event Hub, Otel-collector and azure monitor to capture the 3 component of the observability; logs, traces and metrics.
+
+Optional4: propose will be to use event hub and log forwarder to ; this will allow to captured only  logs.
+               Azure monitor for metrics. 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 Signal Capture Compatibility Matrix
 Azure ComponentOTel-CollectorLoki (Logs)Prometheus (Metrics)Jaeger (Traces)Grafana (Visualization)Front Door⚠️ Limited✅ Yes⚠️ Limited❌ No✅ YesAzure APIM✅ Yes*✅ Yes✅ Yes✅ Yes*✅ YesApp Gateway⚠️ Limited✅ Yes⚠️ Limited❌ No✅ YesAzure Functions✅ Yes✅ Yes✅ Yes✅ Yes✅ YesLogic Apps⚠️ Limited✅ Yes⚠️ Limited❌ No✅ YesFrontend Stack✅ Yes✅ Yes✅ Yes✅ Yes✅ Yes
 
