@@ -1,3 +1,18 @@
+labels:
+  app.kubernetes.io/name: otel-collector
+  app.kubernetes.io/component: telemetry
+  app.kubernetes.io/part-of: observability
+  observability.backend: loki
+  observability.tracer: jaeger
+  observability.metrics: prometheus
+
+
+
+
+
+
+
+
 Service Naming & Label Selection Strategy
 
 Service Names: Simplified to basic component names (e.g., user-service, payment-gateway)
