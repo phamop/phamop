@@ -1,4 +1,18 @@
-since we have decided to adopt  the label selection, we keep the service name simple to the component name. currently working on the label selection and will update once it fully developed
+Service Naming & Label Selection Strategy
+
+Service Names: Simplified to basic component names (e.g., user-service, payment-gateway)
+
+Service Discovery: Implemented through Kubernetes label selectors instead of complex naming conventions
+
+Current Status: Label selection mechanism is under active development
+
+Next Steps: Full specifications and migration guide to be published upon completion
+
+
+
+
+
+
 
 
 **Document Title**: Azure Service  Observability Architecture Proposal - Non-AkS\
