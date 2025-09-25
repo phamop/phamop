@@ -1,3 +1,6 @@
+since we have decided to adopt  the label selection, we keep the service name simple to the component name. currently working on the label selection and will update once it fully developed
+
+
 **Document Title**: Azure Service  Observability Architecture Proposal - Non-AkS\
 **Date**: September 24, 2025\
 
