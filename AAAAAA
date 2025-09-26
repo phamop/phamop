@@ -1,60 +1,29 @@
-apiVersion: jaegertracing.io/v1
-kind: Jaeger
+apiVersion: integreatly.org/v1beta1
+kind: Grafana
 metadata:
-  name: jaeger-eck
-  namespace: monitoring
+  name: grafana
+  namespace: dashboard
+  labels:
+    dashboards: grafana
 spec:
-  strategy: production   # separates collector, query, ingester
-  collector:
-    replicas: 2
-    options:
-      log-level: debug
-    resources:
-      requests:
-        cpu: "500m"
-        memory: "1Gi"
-      limits:
-        cpu: "1"
-        memory: "2Gi"
-    service:
-      type: ClusterIP
-  query:
-    replicas: 2
-    options:
-      log-level: debug
-    resources:
-      requests:
-        cpu: "500m"
-        memory: "1Gi"
-      limits:
-        cpu: "1"
-        memory: "2Gi"
-    service:
-      type: ClusterIP
-  ingester:
-    replicas: 1
-    resources:
-      requests:
-        cpu: "500m"
-        memory: "1Gi"
-      limits:
-        cpu: "1"
-        memory: "2Gi"
-    service:
-      type: ClusterIP
-  storage:
-    type: elasticsearch
-    options:
-      es:
-        server-urls: http://eck-elasticsearch-es-http.monitoring.svc.cluster.local:9200
-    esIndexCleaner:
-      enabled: true
-      numberOfDays: 7   # keep 7 days of traces
-      schedule: "55 23 * * *"
-    esRollover:
-      schedule: "0 0 * * *"
+  config:
+    log:
+      level: info
+    auth:
+      disable_login_form: "false"
+    server:
+      root_url: "%(protocol)s://%(domain)s/grafana"
   ingress:
-    enabled: false   # explicitly disable ingress
+    enabled: false   # enable if you need external access
+  deployment:
+    envFrom:
+      - secretRef:
+          name: grafana-admin-credentials
+  dataStorage:
+    type: pvc
+    size: 10Gi
+    class: "" # supply your StorageClass if required
+
 
 
 
