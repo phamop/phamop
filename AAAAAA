@@ -1,3 +1,5 @@
+Error: chart "grafana-operator" matching 5.19.0 not found in grafana-operator index. 
+
 apiVersion: integreatly.org/v1beta1
 kind: Grafana
 metadata:
