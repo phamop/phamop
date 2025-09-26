@@ -1,682 +1,751 @@
-https://github.com/elastic/cloud-on-k8s/blob/3.1/deploy/eck-stack/charts/eck-elasticsearch/Chart.yaml
-https://github.com/jaegertracing/helm-charts/blob/main/charts/jaeger-operator/Chart.yaml
+global:
+  # -- Overrides the Docker registry globally for all images
+  imageRegistry: null
+  imagePullSecrets: []
 
-https://github.com/elastic/cloud-on-k8s/blob/3.1/deploy/eck-stack/charts/eck-elasticsearch/values.yaml
+rbac:
+  create: true
 
+serviceAccount:
+  create: false  # Set to false since SA already exists
+  name: grafana-sa   # reference to existing managed identity SA
+  labels: {}
+  automountServiceAccountToken: true
 
+replicas: 1
 
+## Create a headless service for the deployment
+headlessService: false
 
+## Should the service account be auto mounted on the pod
+automountServiceAccountToken: true
 
+## Create HorizontalPodAutoscaler object for deployment type
+autoscaling:
+  enabled: true
+  minReplicas: 1
+  maxReplicas: 5
+  targetCPU: "80"
+  targetMemory: ""
+  behavior: {}
 
+## See `kubectl explain poddisruptionbudget.spec` for more
+## ref: https://kubernetes.io/docs/tasks/run-application/configure-pdb/
+podDisruptionBudget: {}
 
+deploymentStrategy:
+  type: RollingUpdate
 
-Current resource: /azp/agent/_work/3/s/cluster/overlays/EDIT/jaeger-operator
-Set the helmGlobals.configHome to the appropriate value.
-About to run kubectl kustomize
-error: accumulating resources: accumulation err='accumulating resources from '../../../../base/jaeger-operator': evalsymlink failure on '/azp/agent/_work/3/s/base/jaeger-operator' : lstat /azp/agent/_work/3/s/base: no such file or directory': must build at directory: not a valid directory: evalsymlink failure on '/azp/agent/_work/3/s/base/jaeger-operator' : lstat /azp/agent/_work/3/s/base: no such file or directory
-DONE resource /azp/agent/_work/3/s/cluster/overlays/EDIT/jaeger-operator
-Current resource: /azp/agent/_work/3/s/cluster/overlays/EDIT/opentelemetry-operator
-Set the helmGlobals.configHome to the appropriate value.
-About to run kubectl kustomize
-error: trouble configuring builtin PatchTransformer with config: `
-path: issuer-cert.yaml
-target:
-  kind: Issuer
-  name: opentelemetry-operator-selfsigned-issuer
-`: unable to parse SM or JSON patch from [path: "issuer-cert.yaml"]
-DONE resource /azp/agent/_work/3/s/cluster/overlays/EDIT/opentelemetry-operator
+readinessProbe:
+  httpGet:
+    path: /api/health
+    port: 3000
+  initialDelaySeconds: 60
+  timeoutSeconds: 30
+  failureThreshold: 10
 
+livenessProbe:
+  httpGet:
+    path: /api/health
+    port: 3000
+  initialDelaySeconds: 60
+  timeoutSeconds: 30
+  failureThreshold: 10
 
+image:
+  # -- The Docker registry
+  registry: docker.io
+  # -- Docker image repository
+  repository: grafana/grafana
+  # Overrides the Grafana image tag whose default is the chart appVersion
+  tag: ""
+  sha: ""
+  pullPolicy: IfNotPresent
+  pullSecrets: []
 
+testFramework:
+  enabled: true
+  image:
+    registry: docker.io
+    repository: bats/bats
+    tag: "v1.4.1"
+  imagePullPolicy: IfNotPresent
+  securityContext: {}
+  containerSecurityContext: {}
+  resources: {}
 
+# dns configuration for pod
+dnsPolicy: ~
+dnsConfig: {}
 
-patches:
-  - path: issuer.yaml
-    target:
-      kind: Issuer
-      name: opentelemetry-operator-selfsigned-issuer
-  - path: certificate.yaml
-    target:
-      kind: Certificate
-      name: opentelemetry-operator-serving-cert
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 472
+  runAsGroup: 472
+  fsGroup: 472
 
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+    - ALL
+  seccompProfile:
+    type: RuntimeDefault
 
-Current resource: /azp/agent/_work/30/s/cluster/overlays/EDIT/jaeger-operator
-Set the helmGlobals.configHome to the appropriate value.
-About to run kubectl kustomize
-error: invalid Kustomization: json: cannot unmarshal string into Go struct field Kustomization.patches of type types.Patch
-DONE resource /azp/agent/_work/30/s/cluster/overlays/EDIT/jaeger-operator
-Current resource: /azp/agent/_work/30/s/cluster/overlays/EDIT/opentelemetry-operator
-Set the helmGlobals.configHome to the appropriate value.
-About to run kubectl kustomize
-error: Multiple Strategic-Merge Patches in one `patches` entry is not allowed to set `patches.target` field: [path: "issuer-cert.yaml"]
-DONE resource /azp/agent/_work/30/s/cluster/overlays/EDIT/opentelemetry-operator
+# Enable creating the grafana configmap
+createConfigmap: true
 
-##[error]Script failed with exit code: 1
+extraConfigmapMounts: []
+extraEmptyDirMounts: []
+extraLabels: {}
 
+downloadDashboardsImage:
+  registry: docker.io
+  repository: curlimages/curl
+  tag: 8.9.1
+  sha: ""
+  pullPolicy: IfNotPresent
 
+downloadDashboards:
+  env: {}
+  envFromSecret: ""
+  resources: {}
+  securityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+      - ALL
+    seccompProfile:
+      type: RuntimeDefault
+  envValueFrom: {}
 
+podPortName: grafana
+gossipPortName: gossip
 
+# Service Configuration
+service:
+  enabled: true
+  type: ClusterIP
+  port: 80
+  targetPort: 3000
+  portName: grafana-http
 
-# helm/values/opentelemetry-operator/values.yaml
-admissionWebhooks:
-  certManager:
-    enabled: true
-  autoGenerateCert:
+# Pod Labels
+# podLabels:
+#   app.kubernetes.io/name: grafana
+#   app.kubernetes.io/version: "12.0.2" 
+#   app.kubernetes.io/managed-by: Helm 
+#   helm.sh/chart: grafana-9.2.10
+
+serviceMonitor:
+  enabled: false
+  path: /metrics
+  labels: {}
+  interval: 30s
+  scheme: http
+  tlsConfig: {}
+  scrapeTimeout: 30s
+  relabelings: []
+  metricRelabelings: []
+  basicAuth: {}
+  targetLabels: []
+
+extraExposePorts: []
+
+# overrides pod.spec.hostAliases in the grafana deployment's pods
+hostAliases: []
+
+# ingress:
+#   enabled: true
+#   name: hbt-grafana-ingress
+#   # For Kubernetes >= 1.18 you should specify the ingress-controller via the field ingressClassName
+#   ingressClassName: nginx
+#   annotations:
+#     nginx.ingress.kubernetes.io/rewrite-target: /$2
+#     nginx.ingress.kubernetes.io/use-regex: "true"
+#     # nginx.ingress.kubernetes.io/auth-tls-secret: monitoring/hbt-ca-secret
+#     # nginx.ingress.kubernetes.io/auth-tls-verify-client: "on"
+#     # nginx.ingress.kubernetes.io/auth-tls-verify-depth: "2"
+#     nginx.ingress.kubernetes.io/ssl-redirect: "false"
+#   labels: {}
+#   path: /grafana(/|$)(.*)
+#   pathType: ImplementationSpecific
+#   hosts:
+#     - monitoring
+#   extraPaths: []
+#   tls:
+#     - hosts:
+#         - monitoring
+#       secretName: tls-secret
+
+# -- BETA: Configure the gateway routes for the chart here.
+# Gateway routes are commented out as we're using Ingress instead
+# route:
+#   main:
+#     enabled: false
+#     apiVersion: gateway.networking.k8s.io/v1
+#     kind: HTTPRoute
+#     annotations: {}
+#     labels: {}
+#     hostnames: []
+#     parentRefs: []
+#     matches:
+#       - path:
+#           type: PathPrefix
+#           value: /
+#     filters: []
+#     additionalRules: []
+
+resources: {}
+
+## Node labels for pod assignment
+nodeSelector: {}
+
+## Tolerations for pod assignment
+tolerations: []
+
+## Affinity for pod assignment (evaluated as template)
+affinity: {}
+
+## Topology Spread Constraints
+topologySpreadConstraints: []
+
+## Additional init containers (evaluated as template)
+extraInitContainers: []
+
+## Enable an Specify container in extraContainers.
+extraContainers: ""
+
+## Volumes that can be used in init containers that will not be mounted to deployment pods
+extraContainerVolumes: []
+
+## Enable persistence using Persistent Volume Claims
+persistence:
+  type: pvc
+  enabled: true
+  accessModes:
+    - ReadWriteOnce
+  size: 10Gi
+  finalizers:
+    - kubernetes.io/pvc-protection
+  extraPvcLabels: {}
+  disableWarning: false
+  inMemory:
     enabled: false
-
-
-# kustomize/base/cert-manager/kustomization.yaml
-apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
-
-generators:
-  - helmChart.yaml
-
-namespace: cert-manager
-
-# If you are not using Helm for CRDs and downloaded them separately, add:
-resources:
-  - crds.yaml
-
-
-
-
-
-# kustomize/base/cert-manager/helmChart.yaml
-apiVersion: builtin
-kind: HelmChartInflationGenerator
-metadata:
-  name: cert-manager
-name: cert-manager
-namespace: cert-manager
-repo: https://charts.jetstack.io
-version: v1.18.2
-releaseName: cert-manager
-valuesFile: ../../../../helm/values/cert-manager-operator/values.yaml
-
-
-
-
-# cluster/overlays/EDIT/opentelemetry-operator/kustomization.yaml
-apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
-
-# Include the base for opentelemetry operator
-bases:
-  - ../../../../kustomize/base/opentelemetry
-
-# If your cert-manager resources are in the same overlay, you might need to include them as a resource
-resources:
-  - ../../01-cert-manager/kustomization.yaml
-
-# Your patches and configurations for the issuer and certificate
-patches:
-  - target:
-      kind: Issuer
-      name: opentelemetry-operator-selfsigned-issuer
-    path: issuer-cert.yaml
-  # ... other patches
-
-
-
-# cluster/overlays/EDIT/opentelemetry-operator/issuer-cert.yaml
-apiVersion: cert-manager.io/v1
-kind: Issuer
-metadata:
-  name: opentelemetry-operator-selfsigned-issuer
-  namespace: monitoring
-spec:
-  selfSigned: {}
----
-apiVersion: cert-manager.io/v1
-kind: Certificate
-metadata:
-  name: opentelemetry-operator-serving-cert
-  namespace: monitoring
-spec:
-  secretName: opentelemetry-operator-serving-cert
-  issuerRef:
-    kind: Issuer
-    name: opentelemetry-operator-selfsigned-issuer
-  dnsNames:
-    - opentelemetry-operator-webhook.monitoring.svc
-    - opentelemetry-operator-webhook.monitoring.svc.cluster.local
-  commonName: opentelemetry-operator-webhook.monitoring.svc
-
-
-
-
-.
-├── README.md
-├── cluster
-│   ├── base
-│   │   ├── cert-manager-operator
-│   │   │   ├── kustomization.yaml
-│   │   │   └── namespace.yaml
-│   │   ├── jaeger-operator
-│   │   │   └── kustomization.yaml
-│   │   └── opentelemetry-operator
-│   │       ├── clusterroles.yaml
-│   │       ├── kustomization.yaml
-│   │       ├── namespace.yaml
-│   │       └── serviceaccount.yaml
-│   └── overlays
-│       ├── EDDV
-│       │   ├── cert-manager-operator
-│       │   │   └── kustomization.yaml
-│       │   └── opentelemetry-operator
-│       │       └── kustomization.yaml
-│       └── EDIT
-│           ├── cert-manager-operator
-│           │   └── kustomization.yaml
-│           ├── jaeger-operator
-│           │   └── kustomization.yaml
-│           └── opentelemetry-operator
-│               ├── clusterrolebinding.yaml
-│               ├── issuer-cert.yaml
-│               └── kustomization.yaml
-├── helm
-│   ├── README.md
-│   ├── source
-│   │   ├── cert-manager
-│   │   │   ├── Chart.yaml
-│   │   │   └── source.yaml
-│   │   ├── crd-prometheus
-│   │   │   ├── Chart.yaml
-│   │   │   └── source.yaml
-│   │   ├── grafana
-│   │   │   ├── Chart.yaml
-│   │   │   └── source.yaml
-│   │   ├── jaeger
-│   │   │   ├── Chart.yaml
-│   │   │   └── source.yaml
-│   │   ├── otel-operator
-│   │   │   ├── Chart.yaml
-│   │   │   └── source.yaml
-│   │   └── prometheus
-│   │       ├── Chart.yaml
-│   │       └── source.yaml
-│   └── values
-│       ├── cert-manager-operator
-│       │   ├── Chart.yaml
-│       │   ├── deploy.yaml
-│       │   └── values.yaml
-│       ├── jaeger-operator
-│       │   ├── Chart.yaml
-│       │   ├── deploy.yaml
-│       │   └── values.yaml
-│       └── opentelemetry-operator
-│           ├── Chart.yaml
-│           ├── deploy.yaml
-│           └── values.yaml
-├── kustomize
-│   ├── base
-│   │   ├── cert-manager
-│   │   │   ├── crds.yaml
-│   │   │   └── kustomization.yaml
-│   │   ├── grafana
-│   │   │   ├── helm-values.yaml
-│   │   │   └── kustomization.yaml
-│   │   ├── jaeger
-│   │   │   ├── helm-values.yaml
-│   │   │   └── kustomization.yaml
-│   │   ├── loki
-│   │   │   ├── helm-values.yaml
-│   │   │   └── kustomization.yaml
-│   │   ├── opentelemetry
-│   │   │   ├── collector.yaml
-│   │   │   ├── kustomization.yaml
-│   │   │   └── serviceMetric.yaml
-│   │   └── prometheus
-│   │       ├── helm-values.yaml
-│   │       └── kustomization.yaml
-│   └── overlays
-│       ├── EDDV
-│       │   ├── crd
-│       │   │   ├── helm-values.yaml
-│       │   │   └── kustomization.yaml
-│       │   ├── grafana
-│       │   │   ├── config-patch.yaml
-│       │   │   ├── kustomization.yaml
-│       │   │   └── serviceaccount.yaml
-│       │   ├── jaeger
-│       │   │   ├── helm-values.yaml
-│       │   │   └── kustomization.yaml
-│       │   ├── loki
-│       │   │   ├── helm-values.yaml
-│       │   │   └── kustomization.yaml
-│       │   ├── opentelemetry
-│       │   │   ├── collector-patch.yaml
-│       │   │   ├── kustomization.yaml
-│       │   │   ├── otel-collector-crd.yaml
-│       │   │   └── serviceMonitor.yaml
-│       │   └── prometheus
-│       │       └── kustomization.yaml
-│       └── EDIT
-│           ├── 01-cert-manager
-│           │   └── kustomization.yaml
-│           ├── 01crd
-│           │   ├── helm-values.yaml
-│           │   └── kustomization.yaml
-│           ├── 02prometheus
-│           │   └── kustomization.yaml
-│           ├── 03loki
-│           │   └── kustomization.yaml
-│           ├── 04jaeger
-│           │   └── kustomization.yaml
-│           ├── 05opentelemetry
-│           │   ├── collector-patch.yaml
-│           │   ├── kustomization.yaml
-│           │   └── serviceMonitor.yaml
-│           └── 06grafana
-│               ├── config-patch.yaml
-│               ├── kustomization.yaml
-│               └── serviceaccount.yaml
-├── out
-│   └── content
-│       └── Ha-grafana
-│           └── Azure_VMSS_Observability_Enhanced.png
-├── steps
-│   ├── applyKustomize.yaml
-│   ├── deployHelmChart.yaml
-│   ├── pullHelmChartLocally.yaml
-│   ├── pushHelmChartAcr.yaml
-│   └── renderKustomize.yaml
-└── variables
-    ├── ENV-ED.yaml
-    ├── ENV-EDDV.yaml
-    ├── ENV-EDIT.yaml
-    └── README.md
-
-
-
-apiVersion: cert-manager.io/v1
-kind: Issuer
-metadata:
-  name: opentelemetry-operator-selfsigned-issuer
-  namespace: monitoring
-spec:
-  selfSigned: {}
----
-apiVersion: cert-manager.io/v1
-kind: Certificate
-metadata:
-  name: opentelemetry-operator-serving-cert
-  namespace: monitoring
-spec:
-  secretName: opentelemetry-operator-serving-cert
-  issuerRef:
-    name: opentelemetry-operator-selfsigned-issuer
-    kind: Issuer
-  dnsNames:
-    - opentelemetry-operator-webhook.monitoring.svc
-    - opentelemetry-operator-webhook.monitoring.svc.cluster.local
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-admissionWebhooks:
-  certManager:
-    enabled: true  # Use cert-manager for certificate management
-  autoGenerateCert: false  # Disable self-signed certs
-
-
-
-# Install cert-manager CRDs separately (ensures CRDs exist before HelmRelease)
-apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
-
-resources:
-  - https://github.com/cert-manager/cert-manager/releases/download/v1.15.3/cert-manager.crds.yaml
-
-
-
-apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
-
-namespace: cert-manager
-
-resources:
-  - ../../../base/cert-manager
-
-patchesStrategicMerge:
-  - ../../../kustomize/overlays/EDIT/cert-manager/kustomization.yaml
-
-
-
-Increased Reliability: The highly available Jaeger deployment on Elasticsearch eliminates single points of failure, ensuring tracing data is not lost during node failures.
-
-Operational Efficiency: Automation through the Jaeger Operator and Cert-Manager reduces manual toil and potential for human error.
-
-Cost Management: The archiving strategy allows for cost-effective long-term retention of trace data in cheap blob storage while maintaining high-performance querying on recent data in Elasticsearch.
-
-
-
-
-
-
----
-
-### **Document Title: Discovery and Implementation Plan: AKS Observability Stack & Jaeger Refactoring**
-
-**Version:** 1.0
-**Date:** October 26, 2023
-**Author:** [Your Name/Team Name]
-**Status:** Draft for Review
-
-### **1. Description**
-
-This document serves as a comprehensive discovery and planning artifact for the deployment and optimization of our observability stack on Azure Kubernetes Service (AKS). The primary objectives are to ensure a seamless, secure, and production-ready deployment by gathering all necessary configuration details and requirements. A specific focus is placed on refactoring the Jaeger tracing component from its current proof-of-concept (POC) `allInOne` configuration to a highly available, scalable, and durable `production` strategy.
-
-### **2. Implementation Approach**
-
-#### **2.1. Shared Technology Integration**
-
-##### **i. Certificate Issuer**
-
-*   **Solution:** **cert-manager**
-*   **Rationale:** cert-manager is the de facto standard for automated TLS certificate management within Kubernetes. It provides robust integration with various Issuers and ClusterIssuers, simplifying the process of obtaining, renewing, and using certificates.
-*   **Implementation Details:**
-    *   **ClusterIssuer (Recommended for cluster-wide use):** We will deploy a `ClusterIssuer` resource configured for our chosen certificate authority.
-    *   **Primary CA:** **Let's Encrypt (Production)**. Provides free, automated, and widely trusted certificates.
-        *   **Issuer Type:** `ACME` (Automated Certificate Management Environment)
-        *   **Challenge Provider:** `HTTP01` using the `nginx` ingress class. This is the most straightforward method for public-facing ingresses.
-    *   **Annotation:** To trigger certificate issuance, the following annotation will be added to Ingress resources:
-        ```yaml
-        cert-manager.io/cluster-issuer: "letsencrypt-prod"
-        ```
-    *   **Fallback Option (Internal/Private CA):** For internal services requiring certificates not signed by a public CA, a second `ClusterIssuer` will be configured using **Azure Key Vault** or **Venafi** as the issuer, leveraging the AAD Workload Identity integration for secure access.
-
-##### **ii. Ingress Controller**
-
-*   **Solution:** **NGINX Ingress Controller** (kubernetes.github.io/ingress-nginx)
-*   **Rationale:** The NGINX Ingress Controller is mature, feature-rich, well-supported, and aligns with our current technology footprint. It provides the necessary performance and flexibility for routing traffic to our observability tools (e.g., Grafana, Jaeger Query, Alertmanager).
-*   **Implementation Details:**
-    *   **Namespace:** `ingress-nginx` (dedicated namespace for isolation).
-    *   **Installation Method:** Helm chart (`ingress-nginx` from https://github.com/kubernetes/ingress-nginx).
-    *   **Service Type:** `LoadBalancer` (Azure will provision a public Azure Load Balancer with a static IP).
-    *   **Key Annotations & Configurations:** Annotations will be applied on the *Ingress resources* for the observability applications, not on the controller itself.
-        *   **TLS/SSL Redirect:**
-            ```yaml
-            nginx.ingress.kubernetes.io/ssl-redirect: "true"
-            ```
-        *   **Proxy Body Size** (for large trace payloads):
-            ```yaml
-            nginx.ingress.kubernetes.io/proxy-body-size: "20m"
-            ```
-        *   **Basic Auth** (if needed for a staging endpoint):
-            ```yaml
-            nginx.ingress.kubernetes.io/auth-type: basic
-            nginx.ingress.kubernetes.io/auth-secret: basic-auth
-            nginx.ingress.kubernetes.io/auth-realm: "Authentication Required"
-            ```
-
-##### **iii. Group Sync & RBAC**
-
-*   **Method:** **Azure Active Directory (AAD) Integration with AKS.**
-*   **Rationale:** Leveraging AAD integration provides a seamless and secure identity layer for the cluster, eliminating the need for separate credential management and enabling centralized user and group lifecycle management.
-*   **Implementation Details:**
-    *   **AKS Cluster Configuration:** The AKS cluster **must be created or reconfigured** with the `--aad-admin-group-object-ids` parameter to grant specific AAD groups cluster-admin access.
-    *   **Group Synchronization:** Azure AD groups (e.g., `aks-observability-admins`, `aks-observability-viewers`) will be used to manage access.
-    *   **RBAC Mapping:** Kubernetes `RoleBinding` and `ClusterRoleBinding` resources will be created that reference the Azure AD groups.
-        *   **Namespace:** `monitoring` (or similar)
-        *   **Sample Bindings:**
-            *   **Admin RoleBinding (Grafana/Jaeger Admin):**
-                ```yaml
-                apiVersion: rbac.authorization.k8s.io/v1
-                kind: RoleBinding
-                metadata:
-                  name: observability-admins
-                  namespace: monitoring
-                subjects:
-                - kind: Group
-                  name: "aks-observability-admins" # Name of the AAD Group
-                  apiGroup: rbac.authorization.k8s.io
-                roleRef:
-                  kind: ClusterRole
-                  name: admin # Pre-defined Kubernetes ClusterRole
-                  apiGroup: rbac.authorization.k8s.io
-                ```
-            *   **Viewer RoleBinding (Grafana/Jaeger Viewer):**
-                ```yaml
-                apiVersion: rbac.authorization.k8s.io/v1
-                kind: RoleBinding
-                metadata:
-                  name: observability-viewers
-                  namespace: monitoring
-                subjects:
-                - kind: Group
-                  name: "aks-observability-viewers" # Name of the AAD Group
-                  apiGroup: rbac.authorization.k8s.io
-                roleRef:
-                  kind: ClusterRole
-                  name: view # Pre-defined Kubernetes ClusterRole
-                  apiGroup: rbac.authorization.k8s.io
-                ```
-
-#### **2.2. Jaeger Optimization & Transition**
-
-*   **Current State Analysis:** The existing deployment uses the `allInOne` strategy, which combines agent, collector, query, and UI in a single pod with in-memory storage. This is unsuitable for production due to:
-    *   **Data Loss:** Traces are lost on pod restart.
-    *   **Lack of Scalability:** Components cannot be scaled independently.
-    *   **No Persistence:** In-memory storage is ephemeral.
-*   **Target State:** **`production` deployment strategy.**
-*   **Implementation Details:**
-    *   **Strategy:** `production`
-    *   **Storage Backend:** **Elasticsearch**. (Primary choice due to its proven integration with Jaeger and scalability. **Azure Monitor managed service for Elastic** will be evaluated vs. self-managed ECK on AKS).
-    *   **Architecture:**
-        *   **Jaeger Agent:** Deployed as a DaemonSet on every node to receive traces from applications.
-        *   **Jaeger Collector:** Deployed as a scalable Deployment. Receives traces from Agents, performs processing, and writes to Elasticsearch storage.
-        *   **Jaeger Query:** Deployed as a scalable Deployment. Provides API and UI for retrieving traces from storage.
-    *   **Helm Chart Analysis:** The official Jaeger Helm chart (`jaegertracing/jaeger`) will be analyzed. The current `values.yaml` will be refactored to:
-        *   Set `provisionDataStore.cassandra=false` (as we are using Elasticsearch).
-        *   Configure the `storage` section with the Elasticsearch node(s) URL and credentials (pulled from a Kubernetes Secret).
-        *   Set the correct `strategy` and disable the `allInOne` image.
-
-### **3. Value & Priority**
-
-*   **High Priority.** This proactive discovery directly addresses operational and security risks.
-*   **Security Hardening:** Defining RBAC and TLS upfront significantly reduces the attack surface and prevents unauthorized access to sensitive observability data.
-*   **Operational Stability:** Transitioning Jaeger to a production architecture eliminates the risk of data loss and ensures the tracing system is reliable and scalable, which is critical for debugging in production environments.
-*   **Compliance:** This approach ensures compliance with organizational policies regarding authentication, authorization, and encrypted communications.
-*   **Reduced Technical Debt:** Replacing the POC Jaeger setup removes a significant anti-pattern and lays a foundation that is easier to maintain and support.
-
-### **4. Done Criteria**
-
-A document is produced, cataloging all relevant AKS configuration details and the specific implementation details for:
-i.  Certificate Issuer **(Complete: Section 2.1.i)**
-ii. Ingress Controller **(Complete: Section 2.1.ii)**
-iii. Group Sync & RBAC configuration **(Complete: Section 2.1.iii)**
-
-**Validation:**
-The discovery document has been reviewed and signed off by the teams member.
-
----
-
-**Sign-off:**
-
-*   **Platform / SRE Team Lead:** ________________________ Date: _________
-*   **Security Representative:** ________________________ Date: _________
-*   **Development Team Lead:** ________________________ Date: _________
-
----
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-1. Description
-Gather all necessary configuration details and requirements to ensure a seamless, secure, and compatible deployment of our observability stack, with a specific focus on refactoring and optimizing the Jaeger tracing component
-
-2. Implementation Approach
-Shared Technology Integration:
-    Certificate Issuer: Identify the solution (e.g., cert-manager, public/private CA) and required annotations for automatic TLS certificate provisioning.
-    Ingress Controller: Determine the specific ingress controller (e.g., NGINX, Azure AGIC, Traefik) and its configuration namespace and annotations.
-    Group Sync & RBAC: Document the method for integrating AKS with Azure Active Directory (or other identity provider) for group synchronization. Map Azure AD groups to Kubernetes `RoleBindings` and `ClusterRoleBindings` for access control to observability tools.
-  Jaeger Optimization & Transition: Transition from the default, POC `allInOne` deployment strategy (using in-memory storage). Implement a production-optimized, highly available strategy using the `production` deployment mode.
-
-Analyze the existing Helm charts/Kustomize overlays to understand the current observability architecture and identify technical debt, anti-patterns, and areas for improvement
-
-3. Value & Priority
-Proactive discovery of integration points (e.g., RBAC, TLS, secrets) hardens the deployment, reduces the attack surface, and ensures compliance with organizational security policies.
-
-4. Done Criteria
- A document is produced, cataloging all relevant AKS configuration details and the specific implementation details for:
-    i   Certificate Issuer
-    ii  Ingress Controller
-    iii Group Sync & RBAC configuration
-Validation:
-The discovery document has been reviewed and signed off by the teams member.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Of course. Here is a refined, structured, and professional version of your request, suitable for a technical plan, project ticket, or statement of work.
-
----
-
-### **1. Description: Pre-Implementation Discovery for Secure AKS Observability**
-
-**Objective:** To conduct a comprehensive discovery phase for the upcoming deployment of a Dedicated Azure Kubernetes Service (AKS) cluster. The goal is to gather all necessary configuration details and requirements to ensure a seamless, secure, and compatible deployment of our observability stack, with a specific focus on refactoring and optimizing the Jaeger tracing component.
-
-This phase will explicitly identify and document the shared technologies and integration points between the platform (AKS) and the observability workloads to prevent misconfiguration and security gaps.
-
----
-
-### **2. Workflow & Implementation Details**
-
-**Phase 1: Discovery & Information Gathering**
-*   **Cluster Configuration:** Document AKS version, network model (CNI vs. Kubenet), network policies, and pod security standards (PSP/OPA).
-*   **Shared Technology Integration:**
-    *   **Certificate Issuer:** Identify the solution (e.g., cert-manager, public/private CA) and required annotations for automatic TLS certificate provisioning.
-    *   **Ingress Controller:** Determine the specific ingress controller (e.g., NGINX, Azure AGIC, Traefik) and its configuration namespace and annotations.
-    *   **Group Sync & RBAC:** Document the method for integrating AKS with Azure Active Directory (or other identity provider) for group synchronization. Map Azure AD groups to Kubernetes `RoleBindings` and `ClusterRoleBindings` for access control to observability tools.
-*   **Security & Compliance:** Identify secrets management strategy (e.g., Azure Key Vault Provider for Secrets Store CSI Driver), and any compliance requirements for data encryption (at-rest/in-transit).
-
-**Phase 2: Codebase Analysis & Refactoring**
-*   **Architectural Review:** Analyze the existing Helm charts/Kustomize overlays to understand the current observability architecture and identify technical debt, anti-patterns, and areas for improvement.
-*   **Implement Best Practices:** Refactor the codebase to align with Kubernetes and Helm best practices (e.g., proper use of `values.yaml`, templates, labels, and annotations).
-*   **Jaeger Optimization & Transition:**
-    *   **Current State:** Transition from the default, development-oriented **`allInOne`** deployment strategy (using in-memory storage).
-    *   **Target State:** Implement a production-optimized, highly available strategy using the **`production`** deployment mode.
-    *   **Storage Backend:** Migrate tracing data storage from volatile memory to a durable, scalable **Elasticsearch** backend, which may be deployed as a separate stateful component within the cluster or use a managed cloud service.
-
----
-
-### **3. Business Value & Priority**
-
-*   **Why This Matters:**
-    *   **Reliability & Performance:** The optimized Jaeger deployment ensures tracing data is persisted and available, providing critical insights for debugging performance issues in production environments. Eliminates data loss from pod restarts.
-    *   **Security & Compliance:** Proactive discovery of integration points (e.g., RBAC, TLS, secrets) hardens the deployment, reduces the attack surface, and ensures compliance with organizational security policies.
-    *   **Operational Efficiency:** A well-refactored and documented codebase is easier to maintain, scale, and troubleshoot, reducing long-term operational overhead.
-    *   **Foundation for Scale:** The move to Elasticsearch provides a scalable storage backend capable of handling high-volume tracing data from distributed microservices.
-
-*   **Class of Service:** **Standard** – This is regular backlog work that is important for platform maturity and stability but is not currently blocking critical work or responding to an incident.
-
----
-
-### **4. Definition of Done & Validation**
-
-**Completion Requirements:**
-
-1.  **Discovery Artifact:** A detailed document is produced, cataloging all relevant AKS configuration details and the specific implementation details for:
-    *   Certificate Issuer
-    *   Ingress Controller
-    *   Group Sync & RBAC configuration
-2.  **Refactored Codebase:** The existing Helm/Kustomize code has been analyzed, refactored, and validated to follow best practices. The new Jaeger production configuration with Elasticsearch storage is implemented and merged into the appropriate branch.
-3.  **Reusability:** The refactored code is modular and reusable for future cluster deployments.
-
-**Testing & Verification:**
-
-*   The discovery document has been **reviewed and signed off** by the infrastructure and security teams.
-*   The refactored Helm charts/Kustomize configurations have been **peer-reviewed** and **verified** to deploy successfully in a non-production environment, successfully connecting to the specified Elasticsearch backend.
-*   All defined integration points (TLS termination at ingress, secret injection, authentication) are **tested and confirmed** to be functional.
-
-**Final Sign-off:** The work is considered complete when reviewed and verified by the team lead or designated project architect.
-
-
-
-Description
-
-Gather all necessary configuration details and requirements for the target Dedicated AKS cluster to ensure a compatible and secure observability deployment.
-Specific technology that  will be share during implementation such Certificate issuer, ingress controller, group sync.
-
-2. Workflow & Implementation Details
-Refactor  the current codebase (likely Helm charts/Kustomize) to understand the architecture, identify improvements, and ensure best practices.
-Transition from a default or less efficient Jaeger deployment strategy to a production-optimized mode; Transition from allinone default to production mode with elasticsearch storage and transition from memory to External Storage Backend: Elasticsearch
-3. Business Value & Priority
-Why does this work matter?  Technical impact.
-Class of Service
-Standard – Regular backlog work.
-4. Definition of Done & Validation
-Completion Requirements: 
-Collecting all relevant information prior to deployment of Dedicated AKS.
-
- Reusable of the  existing code; Optimized jaeger component to the new design/Implementation
-
-Identifying the specific technology that will be share with the implementation such Certificate issuer, ingress controller, group sync
-Testing & Verification: Reviewed and Verified by team
+  lookupVolumeName: true
+
+initChownData:
+  enabled: true
+  image:
+    registry: docker.io
+    repository: library/busybox
+    tag: "1.31.1"
+    sha: ""
+    pullPolicy: IfNotPresent
+  resources: {}
+  securityContext:
+    runAsNonRoot: false
+    runAsUser: 0
+    seccompProfile:
+      type: RuntimeDefault
+    capabilities:
+      add:
+        - CHOWN
+
+# Administrator credentials when not using an existing secret
+adminUser: admin
+
+# Use an existing secret for the admin user.
+admin:
+  existingSecret: ""
+  userKey: admin-user
+  passwordKey: admin-password
+
+env: {}
+envValueFrom: {}
+envFromSecret: "azure-monitors"
+envRenderSecret: {}
+
+## The names of secrets in the same kubernetes namespace which contain values to be added to the environment
+envFromSecrets: []
+
+## ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#configmapenvsource-v1-core
+envFromConfigMaps: []
+
+# See https://kubernetes.io/docs/concepts/services-networking/connect-applications-service/#environment-variables
+enableServiceLinks: true
+
+## Additional grafana server secret mounts
+extraSecretMounts: []
+
+## Additional grafana server volume mounts
+extraVolumeMounts: []
+
+## Additional Grafana server volumes
+extraVolumes: []
+
+## Container Lifecycle Hooks
+lifecycleHooks: {}
+
+## Pass the plugins you want installed as a list.
+plugins:
+  - grafana-azure-monitor-datasource
+
+## ref: http://docs.grafana.org/administration/provisioning/#datasources
+datasources:
+  datasources.yaml:
+    apiVersion: 1
+    datasources:
+    # - name: Azure Monitor
+    #   type: grafana-azure-monitor-datasource
+    #   access: proxy
+    #   jsonData:
+    #     azureAuthType: clientsecret
+    #     cloudName: azuremonitor
+    #     tenantId: $TENANTID
+    #     clientId: $CLIENTID
+    #     logAnalyticsDefaultWorkspace: "/subscriptions/5918db9c-25c1-4564-9079-665362a0b0c2/resourceGroups/loganalytics-general-cd/providers/Microsoft.OperationalInsights/workspaces/cd-general-01"
+    #   secureJsonData:
+    #     clientSecret: $CLIENTSECRET
+    #   version: 1
+    - name: loki 
+      type: loki
+      access: proxy
+      url: http://loki-read.monitoring.svc.cluster.local:3100
+      isDefault: false
+      jsonData:
+        maxLines: 1000
+    - name: Jaeger
+      type: jaeger
+      access: proxy
+      url: http://jaeger-query-service.monitoring.svc.cluster.local:16686
+      isDefault: false
+      jsonData:
+        traceDuration: 24h
+        traceURL: "/jaeger"
+      secureJsonData: {}
+    - name: Prometheus
+      type: prometheus
+      access: proxy
+     #url: http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090
+      url: http://prometheus-server.monitoring.svc.cluster.local
+      isDefault: true
+      jsonData:
+        timeInterval: "15s"
+    - name: Alertmanager
+      type: alertmanager  
+      access: proxy
+ #    url: http://kube-prometheus-stack-alertmanager.monitoring.svc.cluster.local:9093
+      url: http://prometheus-alertmanager.monitoring.svc.cluster.local:9093
+      isDefault: false
+      jsonData:
+        timeInterval: "15s"
+
+## Configure grafana alerting (can be templated)
+alerting: {}
+
+## Configure notifiers
+notifiers: {}
+
+## Configure grafana dashboard providers
+dashboardProviders:
+  dashboardproviders.yaml:
+    apiVersion: 1
+    providers:
+    - name: 'default'
+      orgId: 1
+      folder: 'AKS monitoring'
+      type: file
+      disableDeletion: false
+      editable: true
+      options:
+        path: /var/lib/grafana/dashboards/default
+
+## Configure grafana dashboard to import
+dashboards:
+  default:
+    aks-node-pod-health-dashboard:
+      json: |
+        {
+          "id": null,
+          "uid": "akshealthdashboard",
+          "title": "AKS Node & Pod Health",
+          "tags": ["aks", "health"],
+          "timezone": "browser",
+          "schemaVersion": 36,
+          "version": 1,
+          "refresh": "30s",
+          "panels": [
+            {
+              "type": "stat",
+              "title": "Ready Nodes",
+              "datasource": {
+                "type": "grafana-azure-monitor-datasource",
+                "uid": "azure-monitor"
+              },
+              "targets": [
+                {
+                  "azureMonitor": {
+                    "timeGrain": "auto",
+                    "allowedTimeGrainsMs": [60000, 300000, 900000, 1800000, 3600000, 21600000, 43200000, 86400000],
+                    "dimensionFilters": []
+                  },
+                  "azureLogAnalytics": {
+                    "query": "KubeNodeInventory | where Status == 'Ready' | summarize count()",
+                    "timeColumn": "TimeGenerated",
+                    "workspace": "/subscriptions/5918db9c-25c1-4564-9079-665362a0b0c2/resourceGroups/loganalytics-general-cd/providers/Microsoft.OperationalInsights/workspaces/cd-general-01"
+                  },
+                  "datasourceUid": "azure-monitor",
+                  "hide": false,
+                  "refId": "A"
+                }
+              ],
+              "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+              "fieldConfig": {
+                "defaults": {
+                  "mappings": [],
+                  "thresholds": {
+                    "steps": [
+                      { "color": "green", "value": null }
+                    ]
+                  }
+                }
+              }
+            },
+            {
+              "type": "stat",
+              "title": "Running Pods",
+              "datasource": {
+                "type": "grafana-azure-monitor-datasource",
+                "uid": "azure-monitor"
+              },
+              "targets": [
+                {
+                  "azureMonitor": {
+                    "timeGrain": "auto",
+                    "allowedTimeGrainsMs": [60000, 300000, 900000, 1800000, 3600000, 21600000, 43200000, 86400000],
+                    "dimensionFilters": []
+                  },
+                  "azureLogAnalytics": {
+                    "query": "KubePodInventory | where PodStatus == 'Running' | summarize count()",
+                    "timeColumn": "TimeGenerated",
+                    "workspace": "/subscriptions/5918db9c-25c1-4564-9079-665362a0b0c2/resourceGroups/loganalytics-general-cd/providers/Microsoft.OperationalInsights/workspaces/cd-general-01"
+                  },
+                  "datasourceUid": "azure-monitor",
+                  "hide": false,
+                  "refId": "A"
+                }
+              ],
+              "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+              "fieldConfig": {
+                "defaults": {
+                  "mappings": [],
+                  "thresholds": {
+                    "steps": [
+                      { "color": "green", "value": null }
+                    ]
+                  }
+                }
+              }
+            },
+            {
+              "type": "stat",
+              "title": "CrashLoopBackOff Pods",
+              "datasource": {
+                "type": "grafana-azure-monitor-datasource",
+                "uid": "azure-monitor"
+              },
+              "targets": [
+                {
+                  "azureMonitor": {
+                    "timeGrain": "auto",
+                    "allowedTimeGrainsMs": [60000, 300000, 900000, 1800000, 3600000, 21600000, 43200000, 86400000],
+                    "dimensionFilters": []
+                  },
+                  "azureLogAnalytics": {
+                    "query": "KubePodInventory | where ContainerStatusReason == 'CrashLoopBackOff' | summarize count()",
+                    "timeColumn": "TimeGenerated",
+                    "workspace": "/subscriptions/5918db9c-25c1-4564-9079-665362a0b0c2/resourceGroups/loganalytics-general-cd/providers/Microsoft.OperationalInsights/workspaces/cd-general-01"
+                  },
+                  "datasourceUid": "azure-monitor",
+                  "hide": false,
+                  "refId": "A"
+                }
+              ],
+              "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
+              "fieldConfig": {
+                "defaults": {
+                  "mappings": [],
+                  "thresholds": {
+                    "steps": [
+                      { "color": "red", "value": null }
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        }
+
+## Reference to external ConfigMap per provider.
+dashboardsConfigMaps: {}
+
+## Grafana's primary configuration
+grafana.ini:
+  paths:
+    data: /var/lib/grafana/
+    logs: /var/log/grafana
+    plugins: /var/lib/grafana/plugins
+    provisioning: /etc/grafana/provisioning
+  analytics:
+    check_for_updates: true
+  log:
+    mode: console
+    level: debug 
+  grafana_net:
+    url: https://grafana.net
+  server:
+    #domain: eddv-apim-cor-01.azure-api.net
+  # root_url: "https://eddv-apim-cor-01.azure-api.net/homeowner-gateway-dv3/grafana"
+  # root_url: "http://eddv3-hbt/grafana"
+ #   root_url: "https://eddvaksclus01-ingress.cmhc-schl.gc.ca/grafana"
+
+    serve_from_sub_path: true
+  #  enforce_domain: true
+
+
+   # domain: "eddv-apim-cor-01.azure-api.net/homeowner-gateway-dv3/grafana"
+    # auth.generic_oauth:
+    #   redirect_uri: "https://eddv-apim-cor-01.azure-api.net/homeowner-gateway-dv3/grafana/login/generic_oauth"
+    # enable_gzip: true
+    # router_logging: false
+    # cookie_samesite: "none"
+    # cookie_secure: true
+    # enable_embedding: true
+  auth.azuread:
+    enabled: true
+ #   allow_sign_up: true
+    client_id: "${AZUREAD_CLIENT_ID}"
+    client_secret: "${AZUREAD_CLIENT_SECRET}"
+    scopes: openid email profile
+    auth_url: "https://login.microsoftonline.com/${TENANTID}/oauth2/v2.0/authorize"  
+    token_url: "https://login.microsoftonline.com/${TENANTID}/oauth2/v2.0/token"    
+ #   token_url: "https://login.microsoftonline.com/38b7fc89-dbe8-4ed1-a78b-39dfb6a217a8/oauth2/v2.0/token"
+
+## Grafana's LDAP configuration
+ldap:
+  enabled: false
+  existingSecret: ""
+  config: ""
+
+# When process namespace sharing is enabled, processes in a container are visible to all other containers in the same pod
+shareProcessNamespace: false
+
+## Grafana's SMTP configuration
+smtp:
+  existingSecret: ""
+  userKey: "user"
+  passwordKey: "password"
+
+## Sidecars that collect the configmaps with specified label and stores the included files them into the respective folders
+sidecar:
+  image:
+    registry: quay.io
+    repository: kiwigrid/k8s-sidecar
+    tag: 1.30.0
+    sha: ""
+  imagePullPolicy: IfNotPresent
+  resources: {}
+  securityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+      - ALL
+    seccompProfile:
+      type: RuntimeDefault
+  enableUniqueFilenames: false
+  readinessProbe: {}
+  livenessProbe: {}
+  alerts:
+    enabled: false
+    env: {}
+    label: grafana_alert
+    labelValue: ""
+    searchNamespace: null
+    watchMethod: WATCH
+    resource: both
+    reloadURL: "http://localhost:3000/api/admin/provisioning/alerting/reload"
+    script: null
+    skipReload: false
+    initAlerts: false
+    extraMounts: []
+    sizeLimit: {}
+  dashboards:
+    enabled: false
+    env: {}
+    envValueFrom: {}
+    SCProvider: true
+    label: grafana_dashboard
+    labelValue: ""
+    folder: /tmp/dashboards
+    defaultFolderName: null
+    searchNamespace: null
+    watchMethod: WATCH
+    resource: both
+    folderAnnotation: null
+    reloadURL: "http://localhost:3000/api/admin/provisioning/dashboards/reload"
+    script: null
+    skipReload: false
+    provider:
+      name: sidecarProvider
+      orgid: 1
+      folder: ''
+      folderUid: ''
+      type: file
+      disableDelete: false
+      allowUiUpdates: false
+      foldersFromFilesStructure: false
+    extraMounts: []
+    sizeLimit: {}
+  datasources:
+    enabled: false
+    env: {}
+    envValueFrom: {}
+    label: grafana_datasource
+    labelValue: ""
+    searchNamespace: null
+    watchMethod: WATCH
+    resource: both
+    reloadURL: "http://localhost:3000/api/admin/provisioning/datasources/reload"
+    script: null
+    skipReload: false
+    initDatasources: false
+    extraMounts: []
+    sizeLimit: {}
+  plugins:
+    enabled: false
+    env: {}
+    label: grafana_plugin
+    labelValue: ""
+    searchNamespace: null
+    watchMethod: WATCH
+    resource: both
+    reloadURL: "http://localhost:3000/api/admin/provisioning/plugins/reload"
+    script: null
+    skipReload: false
+    initPlugins: true
+    extraMounts: []
+    sizeLimit: {}
+  notifiers:
+    enabled: false
+    env: {}
+    label: grafana_notifier
+    labelValue: ""
+    searchNamespace: null
+    watchMethod: WATCH
+    resource: both
+    reloadURL: "http://localhost:3000/api/admin/provisioning/notifications/reload"
+    script: null
+    skipReload: false
+    initNotifiers: false
+    extraMounts: []
+    sizeLimit: {}
+
+## Override the deployment namespace
+namespaceOverride: ""
+
+## Number of old ReplicaSets to retain
+revisionHistoryLimit: 10
+
+## Add a separate remote image renderer deployment/service
+imageRenderer:
+  deploymentStrategy: {}
+  enabled: false
+  replicas: 1
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 5
+    targetCPU: "60"
+    targetMemory: ""
+    behavior: {}
+  serverURL: ""
+  renderingCallbackURL: ""
+  image:
+    registry: docker.io
+    repository: grafana/grafana-image-renderer
+    tag: latest
+    sha: ""
+    pullPolicy: Always
+  env:
+    HTTP_HOST: "0.0.0.0"
+    XDG_CONFIG_HOME: /tmp/.chromium
+    XDG_CACHE_HOME: /tmp/.chromium
+  envValueFrom: {}
+  serviceAccountName: ""
+  automountServiceAccountToken: false
+  securityContext: {}
+  containerSecurityContext:
+    seccompProfile:
+      type: RuntimeDefault
+    capabilities:
+      drop: ['ALL']
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+  podAnnotations: {}
+  hostAliases: []
+  priorityClassName: ''
+  service:
+    enabled: true
+    portName: 'http'
+    port: 8081
+    targetPort: 8081
+    appProtocol: ""
+  serviceMonitor:
+    enabled: false
+    path: /metrics
+    labels: {}
+    interval: 1m
+    scheme: http
+    tlsConfig: {}
+    scrapeTimeout: 30s
+    relabelings: []
+    targetLabels: []
+  grafanaProtocol: http
+  grafanaSubPath: ""
+  podPortName: http
+  revisionHistoryLimit: 10
+  networkPolicy:
+    limitIngress: true
+    limitEgress: false
+    extraIngressSelectors: []
+  resources: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  extraConfigmapMounts: []
+  extraSecretMounts: []
+  extraVolumeMounts: []
+  extraVolumes: []
+
+networkPolicy:
+  enabled: false
+  ingress: true
+  allowExternal: true
+  explicitNamespacesSelector: {}
+  egress:
+    enabled: false
+    blockDNSResolution: false
+    ports: []
+    to: []
+
+# Enable backward compatibility of kubernetes where version below 1.13 doesn't have the enableServiceLinks option
+enableKubeBackwardCompatibility: false
+useStatefulSet: false
+
+# extraObjects could be utilized to add dynamic manifests via values
+extraObjects: []
+
+# assertNoLeakedSecrets is a helper function defined in _helpers.tpl that checks if secret
+# values are not exposed in the rendered grafana.ini configmap.
+assertNoLeakedSecrets: true
