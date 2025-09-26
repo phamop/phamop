@@ -1,42 +1,60 @@
-Service Naming & Label Selection Strategy
-
-Service Names: Simplified to basic component names (e.g., user-service, payment-gateway)
-
-Service Discovery: Implemented through Kubernetes label selectors instead of complex naming conventions
-
-Current Status: Label selection mechanism is defined below
-
-Details:
-
-# Monitoring Backend Configuration
-monitoring.backend: loki
-monitoring.tracer: jaeger
-monitoring.metrics: prometheus
-
-# Telemetry Source Identification
-telemetry.source: aks-edit
-telemetry.environment: Dev-FT  
-
-# Data Flow Routing
-telemetry.flow.logs: loki
-telemetry.flow.traces: jaeger
-telemetry.flow.metrics: prometheus
-
-See below for example:
-
-labels:
-
-  app.kubernetes.io/name: otel-collector
-  app.kubernetes.io/component: telemetry
-  app.kubernetes.io/part-of: monitoring
-
-  monitoring.backend: loki
-  monitoring.tracer: jaeger
-  monitoring.metrics: Prometheus
-  telemetry.source: aks-edit
-  telemetry.flow.logs: loki
-  telemetry.flow.traces: jaeger
-  telemetry.flow.metrics: prometheus
+apiVersion: jaegertracing.io/v1
+kind: Jaeger
+metadata:
+  name: jaeger-eck
+  namespace: monitoring
+spec:
+  strategy: production   # separates collector, query, ingester
+  collector:
+    replicas: 2
+    options:
+      log-level: debug
+    resources:
+      requests:
+        cpu: "500m"
+        memory: "1Gi"
+      limits:
+        cpu: "1"
+        memory: "2Gi"
+    service:
+      type: ClusterIP
+  query:
+    replicas: 2
+    options:
+      log-level: debug
+    resources:
+      requests:
+        cpu: "500m"
+        memory: "1Gi"
+      limits:
+        cpu: "1"
+        memory: "2Gi"
+    service:
+      type: ClusterIP
+  ingester:
+    replicas: 1
+    resources:
+      requests:
+        cpu: "500m"
+        memory: "1Gi"
+      limits:
+        cpu: "1"
+        memory: "2Gi"
+    service:
+      type: ClusterIP
+  storage:
+    type: elasticsearch
+    options:
+      es:
+        server-urls: http://eck-elasticsearch-es-http.monitoring.svc.cluster.local:9200
+    esIndexCleaner:
+      enabled: true
+      numberOfDays: 7   # keep 7 days of traces
+      schedule: "55 23 * * *"
+    esRollover:
+      schedule: "0 0 * * *"
+  ingress:
+    enabled: false   # explicitly disable ingress
 
 
 
