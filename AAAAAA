@@ -5,6 +5,7 @@ The request is invalid: patch: Invalid value: "map[metadata:map[annotations:map[
 
 
 
+
 Error: chart "grafana-operator" matching 5.19.0 not found in grafana-operator index. 
 
 apiVersion: integreatly.org/v1beta1
