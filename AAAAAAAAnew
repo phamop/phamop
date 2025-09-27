@@ -1,2 +1,7 @@
-error: accumulating resources: accumulation err='accumulating resources from '../../../base/grafana-operator': '/azp/agent/_work/68/s/kustomize/base/grafana-operator' must resolve to a file': recursed accumulation of path '/azp/agent/_work/68/s/kustomize/base/grafana-operator': accumulating resources: accumulation err='accumulating resources from 'grafana-instance.yaml': evalsymlink failure on '/azp/agent/_work/68/s/kustomize/base/grafana-operator/grafana-instance.yaml' : lstat /azp/agent/_work/68/s/kustomize/base/grafana-operator/grafana-instance.yaml: no such file or directory': must build at directory: not a valid directory: evalsymlink failure on '/azp/agent/_work/68/s/kustomize/base/grafana-operator/grafana-instance.yaml' : lstat /azp/agent/_work/68/s/kustomize/base/grafana-operator/grafana-instance.yaml: no such file or directory
-DONE resource /azp/agent/_work/68/s/kustomize/overlays/EDIT/06grafana
+error: trouble configuring builtin PatchTransformer with config: `
+path: grafana-inst.yaml
+target:
+  kind: Grafana
+  name: grafana-inst
+`: unable to parse SM or JSON patch from [path: "grafana-inst.yaml"]
+
