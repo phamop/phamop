@@ -1,150 +1,24 @@
-Grafana Operator CRDs with Prometheus, Loki & Azure Monitor (Managed Identity)
-1. Admin Secret (Optional if not using Managed Identity)
-
-apiVersion: v1
-kind: Secret
-metadata:
-  name: grafana-admin-secret
-  namespace: observability
-type: Opaque
-stringData:
-  GF_SECURITY_ADMIN_USER: admin
-  GF_SECURITY_ADMIN_PASSWORD: SuperSecurePass123
-
-2. Grafana Instance CR
-
-apiVersion: integreatly.org/v1alpha1
-kind: Grafana
-metadata:
-  name: grafana-instance
-  namespace: observability
-  labels:
-    app: grafana
-spec:
-  serviceAccount:
-    name: grafana-sa
-  ingress:
-    enabled: true
-  configFrom:
-    secretRef:
-      name: grafana-admin-secret
-  config:
-    log:
-      mode: console
-      level: info
-    auth:
-      disable_login_form: false
-      disable_signout_menu: false
-  dashboardLabelSelector:
-    - matchExpressions:
-        - key: app
-          operator: In
-          values:
-            - grafana
-
-3. Prometheus Datasource CR
-
-apiVersion: integreatly.org/v1alpha1
-kind: GrafanaDatasource
-metadata:
-  name: prometheus-datasource
-  namespace: observability
-  labels:
-    app: grafana
-spec:
-  name: prometheus-datasource.yaml
-  datasources:
-    - name: Prometheus
-      type: prometheus
-      access: proxy
-      url: http://prometheus-k8s.monitoring:9090
-      isDefault: true
-  instanceSelector:
-    matchLabels:
-      app: grafana
-
-4. Loki Datasource CR
-
-apiVersion: integreatly.org/v1alpha1
-kind: GrafanaDatasource
-metadata:
-  name: loki-datasource
-  namespace: observability
-  labels:
-    app: grafana
-spec:
-  name: loki-datasource.yaml
-  datasources:
-    - name: Loki
-      type: loki
-      access: proxy
-      url: http://loki.observability:3100
-  instanceSelector:
-    matchLabels:
-      app: grafana
-
-5. Azure Monitor Datasource CR (Managed Identity Mode)
-
-apiVersion: integreatly.org/v1alpha1
-kind: GrafanaDatasource
-metadata:
-  name: azure-monitor-datasource
-  namespace: observability
-  labels:
-    app: grafana
-spec:
-  name: azure-monitor-datasource.yaml
-  datasources:
-    - name: Azure Monitor
-      type: grafana-azure-monitor-datasource
-      access: proxy
-      jsonData:
-        cloudName: azuremonitor
-        tenantId: "<your-tenant-id>"
-        subscriptionId: "<your-subscription-id>"
-        azureAuthType: msi   # 👈 Managed Identity mode
-  instanceSelector:
-    matchLabels:
-      app: grafana
-
-6. Sample Dashboard (Hybrid Metrics & Logs)
-
 apiVersion: integreatly.org/v1alpha1
 kind: GrafanaDashboard
 metadata:
   name: sample-hybrid-dashboard
-  namespace: observability
+  namespace: monitoring
   labels:
     app: grafana
 spec:
   json: |
     {
-      "id": null,
       "title": "Hybrid AKS Observability",
-      "tags": [ "aks", "azure", "prometheus", "loki" ],
-      "timezone": "browser",
+      "tags": [ "aks", "prometheus", "loki", "jaeger" ],
       "panels": [
         {
           "type": "graph",
           "title": "Pod CPU (Prometheus)",
           "targets": [
             {
-              "expr": "sum(rate(container_cpu_usage_seconds_total{namespace!="",container!="POD"}[5m])) by (namespace)",
+              "expr": "sum(rate(container_cpu_usage_seconds_total{namespace!=\"\",container!=\"POD\"}[5m])) by (namespace)",
               "legendFormat": "{{namespace}}",
               "datasource": "Prometheus"
-            }
-          ]
-        },
-        {
-          "type": "graph",
-          "title": "Node CPU (Azure Monitor)",
-          "targets": [
-            {
-              "subscription": "<your-subscription-id>",
-              "resourceGroup": "<your-rg>",
-              "resourceName": "<your-aks-cluster>",
-              "metricName": "CPUUsagePercentage",
-              "datasource": "Azure Monitor"
             }
           ]
         },
@@ -153,14 +27,22 @@ spec:
           "title": "Pod Logs (Loki)",
           "targets": [
             {
-              "expr": "{namespace="observability"}",
+              "expr": "{namespace=\"monitoring\"}",
               "datasource": "Loki"
             }
           ]
+        },
+        {
+          "type": "trace",
+          "title": "Distributed Traces (Jaeger)",
+          "targets": [
+            {
+              "query": "service.name=\"my-service\"",
+              "datasource": "Jaeger"
+            }
+          ]
         }
-      ],
-      "schemaVersion": 16,
-      "version": 1
+      ]
     }
   instanceSelector:
     matchLabels:
