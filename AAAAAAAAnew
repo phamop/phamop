@@ -1,12 +1,35 @@
-resource mapping not found for name: "grafana-inst" namespace: "monitoring" from "/azp/agent/_work/38/s/kustomize/overlays/EDIT/06grafana/kustomization-output.yaml": no matches for kind "Grafana" in version "integreatly.org/v1alpha1"
-ensure CRDs are installed first
-resource mapping not found for name: "sample-hybrid-dashboard" namespace: "monitoring" from "/azp/agent/_work/38/s/kustomize/overlays/EDIT/06grafana/kustomization-output.yaml": no matches for kind "GrafanaDashboard" in version "integreatly.org/v1alpha1"
-ensure CRDs are installed first
-resource mapping not found for name: "jaeger-datasource" namespace: "monitoring" from "/azp/agent/_work/38/s/kustomize/overlays/EDIT/06grafana/kustomization-output.yaml": no matches for kind "GrafanaDatasource" in version "integreatly.org/v1alpha1"
-ensure CRDs are installed first
-resource mapping not found for name: "loki-datasource" namespace: "monitoring" from "/azp/agent/_work/38/s/kustomize/overlays/EDIT/06grafana/kustomization-output.yaml": no matches for kind "GrafanaDatasource" in version "integreatly.org/v1alpha1"
-ensure CRDs are installed first
-resource mapping not found for name: "prometheus-datasource" namespace: "monitoring" from "/azp/agent/_work/38/s/kustomize/overlays/EDIT/06grafana/kustomization-output.yaml": no matches for kind "GrafanaDatasource" in version "integreatly.org/v1alpha1"
-ensure CRDs are installed first
+# kustomize-overlay/EDIT/monitoring/ordering-config.yaml
+apiVersion: builtin
+kind: OrderingTransformer
+metadata:
+  name: ordering
+spec:
+  order:
+    - CustomResourceDefinition
+    - Namespace
+    - ServiceAccount
+    - ClusterRole
+    - ClusterRoleBinding
+    - Role
+    - RoleBinding
+    - Deployment
+    - Service
+    - Grafana
+    - GrafanaDashboard
+    - GrafanaDatasource
 
 
+
+# kustomize-overlay/EDIT/monitoring/kustomization.yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  # CRDs and operator must be installed first
+  - ../../../kustomize-base/monitoring/grafana-operator
+  # Then your grafana resources
+  - 06grafana/
+
+# Ensure proper ordering
+configurations:
+  - ordering-config.yaml
