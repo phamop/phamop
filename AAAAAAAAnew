@@ -1,8 +1,8 @@
-Current resource: /azp/agent/_work/38/s/cluster/overlays/EDIT/grafana-operator
+Current resource: /azp/agent/_work/68/s/cluster/overlays/EDIT/grafana-operator
 Set the helmGlobals.configHome to the appropriate value.
 About to run kubectl kustomize
-error: accumulating resources: accumulation err='accumulating resources from '../../../base/grafana-operator': '/azp/agent/_work/38/s/cluster/base/grafana-operator' must resolve to a file': recursed accumulation of path '/azp/agent/_work/38/s/cluster/base/grafana-operator': error unmarshaling JSON: while decoding JSON: json: unknown field "apiVersion"
-DONE resource /azp/agent/_work/38/s/cluster/overlays/EDIT/grafana-operator
+error: error unmarshaling JSON: while decoding JSON: json: unknown field "apiVersion"
+DONE resource /azp/agent/_work/68/s/cluster/overlays/EDIT/grafana-operator
 
 resources:
   - namespace.yaml
