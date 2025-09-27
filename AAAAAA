@@ -1,3 +1,34 @@
+# jaeger-operator-cluster-rbac.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: jaeger-operator-minimal-cluster
+rules:
+- apiGroups: [""]
+  resources: ["namespaces"]
+  verbs: ["get","list","watch"]
+- apiGroups: ["networking.k8s.io"]
+  resources: ["ingressclasses"]
+  verbs: ["get","list","watch"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: jaeger-operator-minimal-cluster
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: jaeger-operator-minimal-cluster
+subjects:
+- kind: ServiceAccount
+  name: jaeger-operator
+  namespace: monitoring
+
+
+
+
+
 forbidden: User "system:serviceaccount:monitoring:jaeger-operator" cannot list resource "ingressclasses" 
 failed to list *v1.Namespace: namespaces is forbidden: User "system:serviceaccount:monitoring:jaeger-operator" cannot list resource "namespaces" in API group "" at the cluster scope
 Failed to watch *v1.Namespace: failed to list *v1.Namespace: namespaces is forbidden: User "system:serviceaccount:monitoring:jaeger-operator" cannot list resource "namespaces" in API group "" at the cluster scope
