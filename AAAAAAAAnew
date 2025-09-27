@@ -1,1293 +1,168 @@
-grep -ir eddv-bld . | grep jaeger
-./cluster/overlays/EDIT/jaeger-operator/jaeger-certificate.yaml:  - jaeger-operator-webhook-service.eddv-bld.svc
-./cluster/overlays/EDIT/jaeger-operator/jaeger-certificate.yaml:  - jaeger-operator-webhook-service.eddv-bld.svc.cluster.local
-./kustomize/base/jaeger/certificate-multisan.yaml:    # - jaeger-operator-webhook-service.eddv-bld.svc
-./kustomize/base/jaeger/certificate-multisan.yaml:    # - jaeger-operator-webhook-service.eddv-bld.svc.cluster.local
-./kustomize/overlays/EDIT/04jaeger/certificate-multisan.yaml:    - jaeger-operator-webhook-service.eddv-bld.svc
-./kustomize/overlays/EDIT/04jaeger/certificate-multisan.yaml:    - jaeger-operator-webhook-service.eddv-bld.svc.cluster.local
+Grafana Operator CRDs with Prometheus, Loki & Azure Monitor (Managed Identity)
+1. Admin Secret (Optional if not using Managed Identity)
 
-error: namespace transformation produces ID conflict: [{"apiVersion":"cert-manager.io/v1","kind":"Certificate","metadata":{"annotations":{"internal.config.kubernetes.io/previousKinds":"Certificate","internal.config.kubernetes.io/previousNames":"jaeger-operator-service-cert","internal.config.kubernetes.io/previousNamespaces":"eddv-bld"},"labels":{"hbt.cmhc.schl.gc.ca/owner":"devops"},"name":"jaeger-operator-service-cert","namespace":"monitoring"},"spec":{"dnsNames":["jaeger-operator-webhook-service.eddv-bld.svc","jaeger-operator-webhook-service.eddv-bld.svc.cluster.local"],"issuerRef":{"kind":"Issuer","name":"selfsigned-issuer"},"secretName":"jaeger-operator-service-cert","subject":{"organizationalUnits":["jaeger-operator"]}}} {"apiVersion":"cert-manager.io/v1","kind":"Certificate","metadata":{"name":"jaeger-operator-service-cert","namespace":"monitoring"},"spec":{"dnsNames":["jaeger-operator-webhook-service.monitoring.svc","jaeger-operator-webhook-service.monitoring.svc.cluster.local","jaeger-operator-webhook-service.eddv-bld.svc","jaeger-operator-webhook-service.eddv-bld.svc.cluster.local"],"issuerRef":{"group":"cert-manager.io","kind":"ClusterIssuer","name":"selfsigned-issuer"},"secretName":"jaeger-operator-service-cert"}}]
-DONE resource /azp/agent/_work/6/s/cluster/overlays/EDIT/jaeger-operator
-
-
-
-
-
-
-
-
-
-
-cat  cluster/overlays/EDIT/jaeger-operator/jaeger-cert*
-apiVersion: cert-manager.io/v1
-kind: Certificate
+apiVersion: v1
+kind: Secret
 metadata:
-  name: jaeger-operator-service-cert
-  namespace: monitoring
-spec:
-  secretName: jaeger-operator-webhook-cert   # secret Jaeger actually uses
-  issuerRef:
-    name: selfsigned-issuer
-    kind: ClusterIssuer
-  dnsNames:
-    - jaeger-operator-webhook-service.monitoring.svc
-    - jaeger-operator-webhook-service.monitoring.svc.cluster.local
-    - jaeger-operator-webhook-service.eddv-bld.svc
-    - jaeger-operator-webhook-service.eddv-bld.svc.cluster.local
----
-apiVersion: cert-manager.io/v1
-kind: Certificate
+  name: grafana-admin-secret
+  namespace: observability
+type: Opaque
+stringData:
+  GF_SECURITY_ADMIN_USER: admin
+  GF_SECURITY_ADMIN_PASSWORD: SuperSecurePass123
+
+2. Grafana Instance CR
+
+apiVersion: integreatly.org/v1alpha1
+kind: Grafana
 metadata:
-  name: jaeger-operator-service-cert
-  namespace: monitoring
-spec:
-  secretName: jaeger-operator-service-cert
-  dnsNames:
-  - jaeger-operator-webhook-service.monitoring.svc
-  - jaeger-operator-webhook-service.monitoring.svc.cluster.local
-  - jaeger-operator-webhook-service.eddv-bld.svc
-  - jaeger-operator-webhook-service.eddv-bld.svc.cluster.local
-  issuerRef:
-    name: selfsigned-issuer  # Use your issuer
-    kind: ClusterIssuer
-    group: cert-manager.io
-
-
-
-
-
-
-  
-$ cat  cluster/overlays/EDIT/opentelemetry-operator/opentelemetry-certificate.yaml 
-
----
-apiVersion: cert-manager.io/v1
-kind: Certificate
-metadata:
-  name: opentelemetry-operator-service-cert
-  namespace: monitoring
-spec:
-  secretName: opentelemetry-operator-serving-cert
-  issuerRef:
-    name: selfsigned-issuer
-    kind: ClusterIssuer
-  dnsNames:
-    - opentelemetry-operator-webhook-service.monitoring.svc
-    - opentelemetry-operator-webhook-service.monitoring.svc.cluster.local
-    - opentelemetry-operator-webhook-service.eddv-bld.svc
-    - opentelemetry-operator-webhook-service.eddv-bld.svc.cluster.local
-
-
-$ cat  cluster/overlays/EDIT/opentelemetry-operator/otel-operator-cert-alias.yaml 
-apiVersion: cert-manager.io/v1
-kind: Certificate
-metadata:
-  name: otel-operator-serving-cert
-  namespace: monitoring
-spec:
-  secretName: opentelemetry-operator-serving-cert   # reuse existing secret
-  issuerRef:
-    name: selfsigned-issuer
-    kind: ClusterIssuer
-  dnsNames:
-    - opentelemetry-operator-webhook-service.monitoring.svc
-    - opentelemetry-operator-webhook-service.monitoring.svc.cluster.local
-    - opentelemetry-operator-webhook-service.eddv-bld.svc
-    - opentelemetry-operator-webhook-service.eddv-bld.svc.cluster.local
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-kind: CustomResourceDefinition
-metadata:
-  name: opentelemetrycollectors.opentelemetry.io
-  annotations:
-    cert-manager.io/inject-ca-from: monitoring/opentelemetry-operator-serving-cert
----
-apiVersion: apiextensions.k8s.io/v1
-kind: CustomResourceDefinition
-metadata:
-  name: opampbridges.opentelemetry.io
-  annotations:
-    cert-manager.io/inject-ca-from: monitoring/opentelemetry-operator-serving-cert
----
-apiVersion: apiextensions.k8s.io/v1
-kind: CustomResourceDefinition
-metadata:
-  name: targetallocators.opentelemetry.io
-  annotations:
-    cert-manager.io/inject-ca-from: monitoring/opentelemetry-operator-serving-cert
-apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
-namespace: monitoring
-
-resources:
-  - ../../../base/opentelemetry-operator
-  - clusterrolebinding.yaml
-  - issuer.yaml
-  - opentelemetry-certificate.yaml   # Certificate is a resource
-
-patches:
-  - path: opentelemetry-webhook-patch.yaml
-  - path: opentelemetry-crd-patch.yaml
-
-
-
-
-kubectl get crd opentelemetrycollectors.opentelemetry.io -o yaml | grep inject-ca-from
-kubectl get crd opampbridges.opentelemetry.io -o yaml | grep inject-ca-from
-kubectl get crd targetallocators.opentelemetry.io -o yaml | grep inject-ca-from
-
-
-
-
-
-Current resource: /azp/agent/_work/5/s/cluster/overlays/EDIT/jaeger-operator
-Set the helmGlobals.configHome to the appropriate value.
-About to run kubectl kustomize
-error: Multiple Strategic-Merge Patches in one `patches` entry is not allowed to set `patches.target` field: [path: "jaeger-certificate.yaml"]
-DONE resource /azp/agent/_work/5/s/cluster/overlays/EDIT/jaeger-operator
-Current resource: /azp/agent/_work/5/s/cluster/overlays/EDIT/opentelemetry-operator
-Set the helmGlobals.configHome to the appropriate value.
-About to run kubectl kustomize
-error: accumulating resources: accumulation err='merging resources from 'opentelemetry-mutating-webhook-patch.yaml': may not add resource with an already registered id: MutatingWebhookConfiguration.v1.admissionregistration.k8s.io/opentelemetry-operator-mutation.[noNs]': must build at directory: '/azp/agent/_work/5/s/cluster/overlays/EDIT/opentelemetry-operator/opentelemetry-mutating-webhook-patch.yaml': file is not directory
-DONE resource /azp/agent/_work/5/s/cluster/overlays/EDIT/opentelemetry-operator
----
-namespace: monitoring
-
-resources:
-#- opentelemetry-certificate.yaml
-- ../../../base/opentelemetry-operator
-- clusterrolebinding.yaml
-- issuer.yaml
-- opentelemetry-certificate.yaml
-- opentelemetry-mutating-webhook-patch.yaml
-- opentelemetry-validating-webhook-patch.yaml
-
-cluster
-├── base
-│   ├── cert-manager-operator
-│   │   ├── kustomization.yaml
-│   │   └── namespace.yaml
-│   ├── eck-elasticsearch-operator
-│   │   ├── kustomization.yaml
-│   │   └── namespace.yaml
-│   ├── jaeger-operator
-│   │   ├── kustomization.yaml
-│   │   └── namespace.yaml
-│   └── opentelemetry-operator
-│       ├── clusterroles.yaml
-│       ├── kustomization.yaml
-│       ├── namespace.yaml
-│       └── serviceaccount.yaml
-└── overlays
-    ├── EDDV
-    │   ├── cert-manager-operator
-    │   │   └── kustomization.yaml
-    │   └── opentelemetry-operator
-    │       └── kustomization.yaml
-    └── EDIT
-        ├── cert-manager-operator
-        │   └── kustomization.yaml
-        ├── eck-elasticsearch-operator
-        │   └── kustomization.yaml
-        ├── jaeger-operator
-        │   ├── jaeger-certificate.yaml
-        │   ├── jaeger-webhook-patch.yaml
-        │   └── kustomization.yaml
-        └── opentelemetry-operator
-            ├── clusterrolebinding.yaml
-            ├── issuer.yaml
-            ├── kustomization.yaml
-            ├── opentelemetry-certificate.yaml
-            ├── opentelemetry-mutating-webhook-patch.yaml
-            └── opentelemetry-validating-webhook-patch.yaml
-helm
-├── README.md
-├── source
-│   ├── cert-manager
-│   │   ├── Chart.yaml
-│   │   └── source.yaml
-│   ├── crd-prometheus
-│   │   ├── Chart.yaml
-│   │   └── source.yaml
-│   ├── elasticsearch
-│   │   ├── Chart.yaml
-│   │   └── source.yaml
-│   ├── grafana
-│   │   ├── Chart.yaml
-│   │   └── source.yaml
-│   ├── jaeger
-│   │   ├── Chart.yaml
-│   │   └── source.yaml
-│   ├── otel-operator
-│   │   ├── Chart.yaml
-│   │   └── source.yaml
-│   └── prometheus
-│       ├── Chart.yaml
-│       └── source.yaml
-└── values
-    └── EDIT
-        ├── cert-manager-operator
-        │   ├── Chart.yaml
-        │   ├── deploy.yaml
-        │   └── values.yaml
-        └── opentelemetry-operator
-            ├── Chart.yaml
-            ├── deploy.yaml
-            └── values.yaml
-kustomize
-├── base
-│   ├── elasticsearch
-│   │   ├── helm-values.yaml
-│   │   └── kustomization.yaml
-│   ├── grafana
-│   │   ├── helm-values.yaml
-│   │   └── kustomization.yaml
-│   ├── jaeger
-│   │   ├── certificate-multisan.yaml
-│   │   ├── helm-values.yaml
-│   │   ├── issuer.yaml
-│   │   ├── jaeger.yaml
-│   │   └── kustomization.yaml
-│   ├── loki
-│   │   ├── helm-values.yaml
-│   │   └── kustomization.yaml
-│   ├── opentelemetry
-│   │   ├── certificate-multisan.yaml
-│   │   ├── collector.yaml
-│   │   ├── issuer.yaml
-│   │   ├── kustomization.yaml
-│   │   └── serviceMetric.yaml
-│   └── prometheus
-│       ├── helm-values.yaml
-│       └── kustomization.yaml
-└── overlays
-    ├── EDDV
-    │   ├── crd
-    │   │   ├── helm-values.yaml
-    │   │   └── kustomization.yaml
-    │   ├── grafana
-    │   │   ├── config-patch.yaml
-    │   │   ├── kustomization.yaml
-    │   │   └── serviceaccount.yaml
-    │   ├── jaeger
-    │   │   ├── helm-values.yaml
-    │   │   └── kustomization.yaml
-    │   ├── loki
-    │   │   ├── helm-values.yaml
-    │   │   └── kustomization.yaml
-    │   ├── opentelemetry
-    │   │   ├── collector-patch.yaml
-    │   │   ├── kustomization.yaml
-    │   │   ├── otel-collector-crd.yaml
-    │   │   └── serviceMonitor.yaml
-    │   └── prometheus
-    │       └── kustomization.yaml
-    └── EDIT
-        ├── 01crd
-        │   ├── helm-values.yaml
-        │   └── kustomization.yaml
-        ├── 02prometheus
-        │   └── kustomization.yaml
-        ├── 03elasticsearch
-        │   └── kustomization.yaml
-        ├── 03loki
-        │   └── kustomization.yaml
-        ├── 04jaeger
-        │   ├── certificate-multisan.yaml
-        │   ├── issuer.yaml
-        │   ├── jaeger-webhook-patch.yaml
-        │   ├── kustomization.yaml
-        │   └── namespace.yaml
-        ├── 05opentelemetry
-        │   ├── certifcate-multisan.yaml
-        │   ├── collector-patch.yaml
-        │   ├── issuer.yaml
-        │   ├── kustomization.yaml
-        │   ├── opentelemetry-webhook-patch.yaml
-        │   └── serviceMonitor.yaml
-        └── 06grafana
-            ├── config-patch.yaml
-            ├── kustomization.yaml
-            └── serviceaccount.yaml
-
-
-
-1. Certificate (opentelemetry-certificate.yaml or certificate-multisan.yaml)
-apiVersion: cert-manager.io/v1
-kind: Certificate
-metadata:
-  name: opentelemetry-operator-serving-cert
-  namespace: monitoring
-spec:
-  secretName: opentelemetry-operator-serving-cert
-  issuerRef:
-    name: selfsigned-issuer
-    kind: ClusterIssuer
-  dnsNames:
-    - opentelemetry-operator-webhook-service.monitoring.svc
-    - opentelemetry-operator-webhook-service.monitoring.svc.cluster.local
-    - opentelemetry-operator-webhook-service.eddv-bld.svc
-    - opentelemetry-operator-webhook-service.eddv-bld.svc.cluster.local
-
-2. Webhook patches (opentelemetry-webhook-patch.yaml)
-apiVersion: admissionregistration.k8s.io/v1
-kind: MutatingWebhookConfiguration
-metadata:
-  name: opentelemetry-operator-mutation
-  annotations:
-    cert-manager.io/inject-ca-from: monitoring/opentelemetry-operator-serving-cert
-webhooks:
-  - name: mopentelemetrycollector.kb.io
-    clientConfig:
-      service:
-        name: opentelemetry-operator-webhook-service
-        namespace: monitoring
-        path: /mutate-opentelemetry-io-v1beta1-opentelemetrycollector
----
-apiVersion: admissionregistration.k8s.io/v1
-kind: ValidatingWebhookConfiguration
-metadata:
-  name: opentelemetry-operator-validation
-  annotations:
-    cert-manager.io/inject-ca-from: monitoring/opentelemetry-operator-serving-cert
-webhooks:
-  - name: vopentelemetrycollector.kb.io
-    clientConfig:
-      service:
-        name: opentelemetry-operator-webhook-service
-        namespace: monitoring
-        path: /validate-opentelemetry-io-v1beta1-opentelemetrycollector
-
-3. Kustomization (cluster/overlays/EDIT/opentelemetry-operator/kustomization.yaml)
-apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
-namespace: monitoring
-
-resources:
-  - ../../../base/opentelemetry-operator
-
-patches:
-  - path: opentelemetry-certificate.yaml
-    target:
-      kind: Certificate
-      name: opentelemetry-operator-serving-cert
-      namespace: monitoring
-  - path: opentelemetry-webhook-patch.yaml
-    target:
-      kind: MutatingWebhookConfiguration
-      name: opentelemetry-operator-mutation
-  - path: opentelemetry-webhook-patch.yaml
-    target:
-      kind: ValidatingWebhookConfiguration
-      name: opentelemetry-operator-validation
-
-4. Cleanup required before applying
-
-Remove wrong certs/secrets in eddv-bld or opentelemetry namespaces:
-
-kubectl delete secret opentelemetry-operator-serving-cert -n eddv-bld || true
-kubectl delete certificate opentelemetry-operator-serving-cert -n eddv-bld || true
-kubectl delete secret otel-operator-serving-cert -n opentelemetry || true
-kubectl delete certificate otel-operator-serving-cert -n opentelemetry || true
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-E0916 16:28:15.134708       1 sources.go:106] "unable to fetch associated certificate" err="Certificate.cert-manager.io \"opentelemetry-operator-serving-cert\" not found" logger="cert-manager" kind="customresourcedefinition" kind="customresourcedefinition" name="opentelemetrycollectors.opentelemetry.io" certificate="eddv-bld/opentelemetry-operator-serving-cert"
-I0916 16:28:15.134744       1 reconciler.go:117] "could not find any ca data in data source for target" logger="cert-manager" kind="customresourcedefinition" kind="customresourcedefinition" name="opentelemetrycollectors.opentelemetry.io"
-E0916 16:28:15.135618       1 sources.go:106] "unable to fetch associated certificate" err="Certificate.cert-manager.io \"opentelemetry-operator-serving-cert\" not found" logger="cert-manager" kind="customresourcedefinition" kind="customresourcedefinition" name="opampbridges.opentelemetry.io" certificate="eddv-bld/opentelemetry-operator-serving-cert"
-I0916 16:28:15.135651       1 reconciler.go:117] "could not find any ca data in data source for target" logger="cert-manager" kind="customresourcedefinition" kind="customresourcedefinition" name="opampbridges.opentelemetry.io"
-E0916 16:28:15.148714       1 sources.go:106] "unable to fetch associated certificate" err="Certificate.cert-manager.io \"opentelemetry-operator-serving-cert\" not found" logger="cert-manager" kind="customresourcedefinition" kind="customresourcedefinition" name="targetallocators.opentelemetry.io" certificate="eddv-bld/opentelemetry-operator-serving-cert"
-I0916 16:28:15.148760       1 reconciler.go:117] "could not find any ca data in data source for target" logger="cert-manager" kind="customresourcedefinition" kind="customresourcedefinition" name="targetallocators.opentelemetry.io"
-I0916 16:28:15.158825       1 reconciler.go:141] "Updated object" logger="cert-manager" kind="validatingwebhookconfiguration" kind="validatingwebhookconfiguration" name="my-opentelemetry-operator-validation"
-E0916 16:28:15.159230       1 sources.go:106] "unable to fetch associated certificate" err="Certificate.cert-manager.io \"otel-operator-serving-cert\" not found" logger="cert-manager" kind="validatingwebhookconfiguration" kind="validatingwebhookconfiguration" name="otel-operator-validation" certificate="opentelemetry/otel-operator-serving-cert"
-I0916 16:28:15.160414       1 reconciler.go:141] "Updated object" logger="cert-manager" kind="mutatingwebhookconfiguration" kind="mutatingwebhookconfiguration" name="my-opentelemetry-operator-mutation"
-E0916 16:28:15.160873       1 sources.go:106] "unable to fetch associated certificate" err="Certificate.cert-manager.io \"opentelemetry-operator-serving-cert\" not found" logger="cert-manager" kind="mutatingwebhookconfiguration" kind="mutatingwebhookconfiguration" name="opentelemetry-operator-mutation" certificate="eddv-bld/opentelemetry-operator-serving-cert"
-I0916 16:28:15.161127       1 reconciler.go:117] "could not find any ca data in data source for target" logger="cert-manager" kind="mutatingwebhookconfiguration" kind="mutatingwebhookconfiguration" name="opentelemetry-operator-mutation"
-E0916 16:28:15.175610       1 sources.go:106] "unable to fetch associated certificate" err="Certificate.cert-manager.io \"opentelemetry-operator-serving-cert\" not found" logger="cert-manager" kind="validatingwebhookconfiguration" kind="validatingwebhookconfiguration" name="opentelemetry-operator-validation" certificate="eddv-bld/opentelemetry-operator-serving-cert"
-
-
-
-cluster
-├── base
-│   ├── cert-manager-operator
-│   │   ├── kustomization.yaml
-│   │   └── namespace.yaml
-│   ├── eck-elasticsearch-operator
-│   │   ├── kustomization.yaml
-│   │   └── namespace.yaml
-│   ├── jaeger-operator
-│   │   ├── kustomization.yaml
-│   │   └── namespace.yaml
-│   └── opentelemetry-operator
-│       ├── clusterroles.yaml
-│       ├── kustomization.yaml
-│       ├── namespace.yaml
-│       └── serviceaccount.yaml
-└── overlays
-    ├── EDDV
-    │   ├── cert-manager-operator
-    │   │   └── kustomization.yaml
-    │   └── opentelemetry-operator
-    │       └── kustomization.yaml
-    └── EDIT
-        ├── cert-manager-operator
-        │   └── kustomization.yaml
-        ├── eck-elasticsearch-operator
-        │   └── kustomization.yaml
-        ├── jaeger-operator
-        │   ├── jaeger-certificate.yaml
-        │   ├── jaeger-webhook-patch.yaml
-        │   └── kustomization.yaml
-        └── opentelemetry-operator
-            ├── clusterrolebinding.yaml
-            ├── kustomization.yaml
-            ├── opentelemetry-certificate.yaml
-            └── opentelemetry-webhook-patch.yaml
-helm
-├── README.md
-├── source
-│   ├── cert-manager
-│   │   ├── Chart.yaml
-│   │   └── source.yaml
-│   ├── crd-prometheus
-│   │   ├── Chart.yaml
-│   │   └── source.yaml
-│   ├── elasticsearch
-│   │   ├── Chart.yaml
-│   │   └── source.yaml
-│   ├── grafana
-│   │   ├── Chart.yaml
-│   │   └── source.yaml
-│   ├── jaeger
-│   │   ├── Chart.yaml
-│   │   └── source.yaml
-│   ├── otel-operator
-│   │   ├── Chart.yaml
-│   │   └── source.yaml
-│   └── prometheus
-│       ├── Chart.yaml
-│       └── source.yaml
-└── values
-    └── EDIT
-        ├── cert-manager-operator
-        │   ├── Chart.yaml
-        │   ├── deploy.yaml
-        │   └── values.yaml
-        └── opentelemetry-operator
-            ├── Chart.yaml
-            ├── deploy.yaml
-            └── values.yaml
-kustomize
-├── base
-│   ├── elasticsearch
-│   │   ├── helm-values.yaml
-│   │   └── kustomization.yaml
-│   ├── grafana
-│   │   ├── helm-values.yaml
-│   │   └── kustomization.yaml
-│   ├── jaeger
-│   │   ├── certificate-multisan.yaml
-│   │   ├── helm-values.yaml
-│   │   ├── issuer.yaml
-│   │   ├── jaeger.yaml
-│   │   └── kustomization.yaml
-│   ├── loki
-│   │   ├── helm-values.yaml
-│   │   └── kustomization.yaml
-│   ├── opentelemetry
-│   │   ├── certificate-multisan.yaml
-│   │   ├── collector.yaml
-│   │   ├── issuer.yaml
-│   │   ├── kustomization.yaml
-│   │   └── serviceMetric.yaml
-│   └── prometheus
-│       ├── helm-values.yaml
-│       └── kustomization.yaml
-└── overlays
-    ├── EDDV
-    │   ├── crd
-    │   │   ├── helm-values.yaml
-    │   │   └── kustomization.yaml
-    │   ├── grafana
-    │   │   ├── config-patch.yaml
-    │   │   ├── kustomization.yaml
-    │   │   └── serviceaccount.yaml
-    │   ├── jaeger
-    │   │   ├── helm-values.yaml
-    │   │   └── kustomization.yaml
-    │   ├── loki
-    │   │   ├── helm-values.yaml
-    │   │   └── kustomization.yaml
-    │   ├── opentelemetry
-    │   │   ├── collector-patch.yaml
-    │   │   ├── kustomization.yaml
-    │   │   ├── otel-collector-crd.yaml
-    │   │   └── serviceMonitor.yaml
-    │   └── prometheus
-    │       └── kustomization.yaml
-    └── EDIT
-        ├── 01crd
-        │   ├── helm-values.yaml
-        │   └── kustomization.yaml
-        ├── 02prometheus
-        │   └── kustomization.yaml
-        ├── 03elasticsearch
-        │   └── kustomization.yaml
-        ├── 03loki
-        │   └── kustomization.yaml
-        ├── 04jaeger
-        │   ├── certificate-multisan.yaml
-        │   ├── issuer.yaml
-        │   ├── jaeger-webhook-patch.yaml
-        │   ├── kustomization.yaml
-        │   └── namespace.yaml
-        ├── 05opentelemetry
-        │   ├── certifcate-multisan.yaml
-        │   ├── collector-patch.yaml
-        │   ├── issuer.yaml
-        │   ├── kustomization.yaml
-        │   ├── opentelemetry-webhook-patch.yaml
-        │   └── serviceMonitor.yaml
-        └── 06grafana
-            ├── config-patch.yaml
-            ├── kustomization.yaml
-            └── serviceaccount.yaml
-
-Error from server (InternalError): error when creating "/azp/agent/_work/5/s/kustomize/overlays/EDIT/04jaeger/kustomization-output.yaml": Internal error occurred: failed calling webhook "vjaeger.kb.io": failed to call webhook: Post "https://jaeger-operator-webhook-service.monitoring.svc:443/validate-jaegertracing-io-v1-jaeger?timeout=10s": tls: failed to verify certificate: x509: certificate is valid for jaeger-operator-webhook-service.eddv-bld.svc, jaeger-operator-webhook-service.eddv-bld.svc.cluster.local, not jaeger-operator-webhook-service.monitoring.svc
-*** Done
-
-
-E0916 15:37:10.578806       1 indexers.go:61] "unable to fetch certificate that owns the secret" err="Certificate.cert-manager.io \"jaeger-operator-service-cert\" not found" logger="cert-manager" kind="validatingwebhookconfiguration" type="validatingwebhookconfiguration" secret="monitoring/jaeger-operator-webhook-cert" certificate="monitoring/jaeger-operator-service-cert"
-E0916 15:37:10.581993       1 indexers.go:61] "unable to fetch certificate that owns the secret" err="Certificate.cert-manager.io \"jaeger-operator-service-cert\" not found" logger="cert-manager" kind="apiservice" type="apiservice" secret="monitoring/jaeger-operator-webhook-cert" certificate="monitoring/jaeger-operator-service-cert"
-E0916 15:37:10.583247       1 indexers.go:61] "unable to fetch certificate that owns the secret" err="Certificate.cert-manager.io \"jaeger-operator-service-cert\" not found" logger="cert-manager" kind="mutatingwebhookconfiguration" type="mutatingwebhookconfiguration" secret="monitoring/jaeger-operator-webhook-cert" certificate="monitoring/jaeger-operator-service-cert"
-E0916 15:37:10.590702       1 sources.go:106] "unable to fetch associated certificate" err="Certificate.cert-manager.io \"jaeger-operator-service-cert\" not found" logger="cert-manager" kind="mutatingwebhookconfiguration" kind="mutatingwebhookconfiguration" name="jaeger-operator-mutating-webhook-configuration" certificate="monitoring/jaeger-operator-service-cert"
-I0916 15:37:10.590752       1 reconciler.go:117] "could not find any ca data in data source for target" logger="cert-manager" kind="mutatingwebhookconfiguration" kind="mutatingwebhookconfiguration" name="jaeger-operator-mutating-webhook-configuration"
-E0916 15:37:10.593897       1 indexers.go:61] "unable to fetch certificate that owns the secret" err="Certificate.cert-manager.io \"jaeger-operator-service-cert\" not found" logger="cert-manager" kind="customresourcedefinition" type="customresourcedefinition" secret="monitoring/jaeger-operator-webhook-cert" certificate="monitoring/jaeger-operator-service-cert"
-E0916 15:37:10.610945       1 sources.go:106] "unable to fetch associated certificate" err="Certificate.cert-manager.io \"jaeger-operator-service-cert\" not found" logger="cert-manager" kind="validatingwebhookconfiguration" kind="validatingwebhookconfiguration" name="jaeger-operator-validating-webhook-configuration" certificate="monitoring/jaeger-operator-service-cert"
-I0916 15:37:10.611517       1 reconciler.go:117] "could not find any ca data in data source for target" logger="cert-manager" kind="validatingwebhookconfiguration" kind="validatingwebhookconfiguration" name="jaeger-operator-validating-webhook-configuration"
-I0916 15:38:00.219437       1 reconciler.go:141] "Updated object" logger="cert-manager" kind="mutatingwebhookconfiguration" kind="mutatingwebhookconfiguration" name="jaeger-operator-mutating-webhook-configuration"
-I0916 15:38:00.223169       1 reconciler.go:141] "Updated object" logger="cert-manager" kind="validatingwebhookconfiguration" kind="validatingwebhookconfiguration" name="jaeger-operator-validating-webhook-configuration"
-I0916 15:38:00.248814       1 reconciler.go:141] "Updated object" logger="cert-manager" kind="mutatingwebhookconfiguration" kind="mutatingwebhookconfiguration" name="jaeger-operator-mutating-webhook-configuration"
-
-
-
-
-kubectl patch validatingwebhookconfiguration jaeger-operator-validating-webhook-configuration \
-  --type=json \
-  -p='[{"op":"replace","path":"/metadata/annotations/cert-manager.io~1inject-ca-from","value":"monitoring/jaeger-operator-service-cert"}]'
-
-
-kubectl get validatingwebhookconfiguration jaeger-operator-validating-webhook-configuration -o yaml | grep inject-ca-from
-
-
-
-
-
-
-
-apiVersion: admissionregistration.k8s.io/v1
-kind: MutatingWebhookConfiguration
-metadata:
-  name: jaeger-operator-mutating-webhook-configuration
-  annotations:
-    cert-manager.io/inject-ca-from: monitoring/jaeger-operator-service-cert
-webhooks:
-  - name: mjaeger.kb.io
-    clientConfig:
-      service:
-        name: jaeger-operator-webhook-service
-        namespace: monitoring
-        path: /mutate-jaegertracing-io-v1-jaeger
----
-apiVersion: admissionregistration.k8s.io/v1
-kind: ValidatingWebhookConfiguration
-metadata:
-  name: jaeger-operator-validating-webhook-configuration
-  annotations:
-    cert-manager.io/inject-ca-from: monitoring/jaeger-operator-service-cert
-webhooks:
-  - name: vjaeger.kb.io
-    clientConfig:
-      service:
-        name: jaeger-operator-webhook-service
-        namespace: monitoring
-        path: /validate-jaegertracing-io-v1-jaeger
-
-
-
-
-
-
-
-apiVersion: admissionregistration.k8s.io/v1
-kind: MutatingWebhookConfiguration
-metadata:
-  name: jaeger-operator-mutating-webhook-configuration
-  annotations:
-    cert-manager.io/inject-ca-from: monitoring/jaeger-operator-service-cert  # Changed from eddv-bld
-webhooks:
-- name: mjaeger.kb.io
-  clientConfig:
-    service:
-      name: jaeger-operator-webhook-service
-      namespace: monitoring  # Make sure this matches too
-      path: /mutate-jaegertracing-io-v1-jaeger
-  # ... rest of configuration
----
-apiVersion: admissionregistration.k8s.io/v1
-kind: ValidatingWebhookConfiguration
-metadata:
-  name: jaeger-operator-validating-webhook-configuration
-  annotations:
-    cert-manager.io/inject-ca-from: monitoring/jaeger-operator-service-cert  # Changed from eddv-bld
-webhooks:
-- name: vjaeger.kb.io
-  clientConfig:
-    service:
-      name: jaeger-operator-webhook-service
-      namespace: monitoring  # Make sure this matches too
-      path: /validate-jaegertracing-io-v1-jaeger
-  # ... rest of configuration
-
-
-
-
-
-
-# Patch Certificate to add multiSAN + issuer
-  - path: jaeger-certificate-patch.yaml
-    target:
-      kind: Certificate
-      name: jaeger-operator-service-cert
-      namespace: monitoring
-
-  # Patch MutatingWebhookConfiguration to use monitoring svc + allow CA injection
-  - path: jaeger-webhook-patch.yaml
-    target:
-      kind: MutatingWebhookConfiguration
-      name: jaeger-operator-mutating-webhook-configuration
-
-
-
-
-certificate.cert-manager.io/jaeger-operator-service-cert configured
-mutatingwebhookconfiguration.admissionregistration.k8s.io/jaeger-operator-mutating-webhook-configuration configured
-Error from server (InternalError): error when creating "/azp/agent/_work/25/s/kustomize/overlays/EDIT/04jaeger/kustomization-output.yaml": Internal error occurred: failed calling webhook "mjaeger.kb.io": failed to call webhook: Post "https://jaeger-operator-webhook-service.monitoring.svc:443/mutate-jaegertracing-io-v1-jaeger?timeout=10s": tls: failed to verify certificate: x509: certificate is valid for jaeger-operator-webhook-service.eddv-bld.svc, jaeger-operator-webhook-service.eddv-bld.svc.cluster.local, not jaeger-operator-webhook-service.monitoring.svc
-*** Done
-
-
-
-
-
-
-Current resource: /azp/agent/_work/25/s/cluster/overlays/EDIT/jaeger-operator
-Set the helmGlobals.configHome to the appropriate value.
-About to run kubectl kustomize
-error: namespace transformation produces ID conflict: [{"apiVersion":"cert-manager.io/v1","kind":"Certificate","metadata":{"annotations":{"internal.config.kubernetes.io/previousKinds":"Certificate","internal.config.kubernetes.io/previousNames":"jaeger-operator-service-cert","internal.config.kubernetes.io/previousNamespaces":"eddv-bld"},"labels":{"hbt.cmhc.schl.gc.ca/owner":"devops"},"name":"jaeger-operator-service-cert","namespace":"monitoring"},"spec":{"dnsNames":["jaeger-operator-webhook-service.eddv-bld.svc","jaeger-operator-webhook-service.eddv-bld.svc.cluster.local"],"issuerRef":{"kind":"Issuer","name":"selfsigned-issuer"},"secretName":"jaeger-operator-service-cert","subject":{"organizationalUnits":["jaeger-operator"]}}} {"apiVersion":"cert-manager.io/v1","kind":"Certificate","metadata":{"name":"jaeger-operator-service-cert","namespace":"monitoring"},"spec":{"dnsNames":["jaeger-operator-webhook-service.monitoring.svc","jaeger-operator-webhook-service.monitoring.svc.cluster.local","jaeger-operator-webhook-service.eddv-bld.svc","jaeger-operator-webhook-service.eddv-bld.svc.cluster.local"],"issuerRef":{"kind":"Issuer","name":"jaeger-selfsigned-issuer"},"secretName":"jaeger-operator-service-cert"}}]
-DONE resource /azp/agent/_work/25/s/cluster/overlays/EDIT/jaeger-operator
-Current resource: /azp/agent/_work/25/s/cluster/overlays/EDIT/opentelemetry-operator
-
-
-
-
-
-
-
-# webhook
-apiVersion: admissionregistration.k8s.io/v1
-kind: MutatingWebhookConfiguration
-metadata:
-  name: jaeger-operator-mutating-webhook-configuration
-webhooks:
-  - name: mjaeger.kb.io
-    clientConfig:
-      service:
-        name: jaeger-operator-webhook-service  # consistent reference
-        namespace: monitoring
-        path: /mutate-jaegertracing-io-v1-jaeger
----
-apiVersion: cert-manager.io/v1
-kind: Issuer
-metadata:
-  name: jaeger-selfsigned-issuer
-  namespace: monitoring
-spec:
-  selfSigned: {}
----
-apiVersion: cert-manager.io/v1
-kind: Certificate
-metadata:
-  name: jaeger-operator-service-cert
-  namespace: monitoring
-spec:
-  dnsNames:
-    - jaeger-operator-webhook-service.monitoring.svc
-    - jaeger-operator-webhook-service.monitoring.svc.cluster.local
-    - jaeger-operator-webhook-service.eddv-bld.svc
-    - jaeger-operator-webhook-service.eddv-bld.svc.cluster.local
-  secretName: jaeger-operator-service-cert
-  issuerRef:
-    name: jaeger-selfsigned-issuer
-    kind: Issuer
-
-
-
-
-
-
-
-
-
-
-
-#webhook
-apiVersion: admissionregistration.k8s.io/v1
-kind: MutatingWebhookConfiguration
-metadata:
-  name: opentelemetry-operator-mutating-webhook-configuration
-webhooks:
-  - name: mopentelemetrycollectorbeta.kb.io
-    clientConfig:
-      service:
-        name: opentelemetry-operator-webhook  # consistent reference
-        namespace: monitoring
-        path: /mutate-opentelemetry-io-v1beta1-opentelemetrycollector
----
-apiVersion: cert-manager.io/v1
-kind: Issuer
-metadata:
-  name: otel-selfsigned-issuer
-  namespace: monitoring
-spec:
-  selfSigned: {}
----
-apiVersion: cert-manager.io/v1
-kind: Certificate
-metadata:
-  name: opentelemetry-operator-service-cert
-  namespace: monitoring
-spec:
-  dnsNames:
-    - opentelemetry-operator-webhook-service.monitoring.svc
-    - opentelemetry-operator-webhook-service.monitoring.svc.cluster.local
-    - opentelemetry-operator-webhook-service.eddv-bld.svc
-    - opentelemetry-operator-webhook-service.eddv-bld.svc.cluster.local
-  secretName: opentelemetry-operator-service-cert
-  issuerRef:
-    name: otel-selfsigned-issuer
-    kind: Issuer
-
-
-Error from server (InternalError): error when creating "/azp/agent/_work/3/s/kustomize/overlays/EDIT/04jaeger/kustomization-output.yaml": Internal error occurred: failed calling webhook "mjaeger.kb.io": failed to call webhook: Post "https://jaeger-operator-webhook-service.monitoring.svc:443/mutate-jaegertracing-io-v1-jaeger?timeout=10s": tls: failed to verify certificate: x509: certificate is valid for jaeger-operator-webhook-service.eddv-bld.svc, jaeger-operator-webhook-service.eddv-bld.svc.cluster.local, not jaeger-operator-webhook-service.monitoring.svc
-*** Done
-Current resource: /azp/agent/_work/3/s/kustomize/overlays/EDIT/05opentelemetry
-Set the helmGlobals.configHome to the appropriate value.
-About to run kubectl kustomize
-error: invalid Kustomization: json: unknown field "kind"
-
-
-
-
-
-
-
-
-
-
-mutatingwebhookconfiguration.admissionregistration.k8s.io/jaeger-operator-mutating-webhook-configuration configured
-Error from server (InternalError): error when creating "/azp/agent/_work/3/s/kustomize/overlays/EDIT/04jaeger/kustomization-output.yaml": Internal error occurred: failed calling webhook "mjaeger.kb.io": failed to call webhook: Post "https://jaeger-operator-webhook-service.monitoring.svc:443/mutate-jaegertracing-io-v1-jaeger?timeout=10s": tls: failed to verify certificate: x509: certificate is valid for jaeger-operator-webhook-service.eddv-bld.svc, jaeger-operator-webhook-service.eddv-bld.svc.cluster.local, not jaeger-operator-webhook-service.monitoring.svc
-
-Error from server (InternalError): error when applying patch:
-{"spec":{"ports":[{"name":"otlp-grpc","port":4317,"protocol":"TCP"},{"name":"otlp-http","port":4318,"protocol":"TCP"},{"name":"jaeger-grpc","port":14250,"protocol":"TCP"},{"name":"jaeger-thrift-c","port":6831,"protocol":"TCP"},{"name":"jaeger-thrift-h","port":14268,"protocol":"TCP"},{"name":"metrics","port":8888,"protocol":"TCP"},{"name":"prom-metrics","port":8889,"protocol":"TCP"},{"name":"health","port":13133,"protocol":"TCP"}],"resources":{"limits":{"cpu":"1000m"}}}}
-to:
-Resource: "opentelemetry.io/v1beta1, Resource=opentelemetrycollectors", GroupVersionKind: "opentelemetry.io/v1beta1, Kind=OpenTelemetryCollector"
-Name: "otel-collector", Namespace: "monitoring"
-for: "/azp/agent/_work/3/s/kustomize/overlays/EDIT/05opentelemetry/kustomization-output.yaml": error when patching "/azp/agent/_work/3/s/kustomize/overlays/EDIT/05opentelemetry/kustomization-output.yaml": Internal error occurred: failed calling webhook "mopentelemetrycollectorbeta.kb.io": failed to call webhook: Post "https://opentelemetry-operator-webhook.monitoring.svc:443/mutate-opentelemetry-io-v1beta1-opentelemetrycollector?timeout=10s": tls: failed to verify certificate: x509: certificate is valid for opentelemetry-operator-webhook.eddv-bld.svc, opentelemetry-operator-webhook.eddv-bld.svc.cluster.local, not opentelemetry-operator-webhook.monitoring.svc
-
-
-
-
-
-
-resources:
-  - ../../../../kustomize/base/jaeger
-
-patches:
-  - path: issuer.yaml
-    target:
-      kind: Issuer
-      name: jaeger-operator-selfsigned-issuer
-      namespace: monitoring
-
-  - path: certificate-multisan.yaml
-    target:
-      kind: Certificate
-      name: jaeger-operator-service-cert
-      namespace: monitoring
-
-  - path: jaeger-webhook-patch.yaml
-    target:
-      kind: MutatingWebhookConfiguration
-      name: jaeger-operator-mutating-webhook-configuration
-
-
-
-
-
-
-
-
-
-
-
-
-for: "/azp/agent/_work/25/s/kustomize/overlays/EDIT/05opentelemetry/kustomization-output.yaml": error when patching "/azp/agent/_work/25/s/kustomize/overlays/EDIT/05opentelemetry/kustomization-output.yaml": Internal error occurred: failed calling webhook "mopentelemetrycollectorbeta.kb.io": failed to call webhook: Post "https://opentelemetry-operator-webhook.monitoring.svc:443/mutate-opentelemetry-io-v1beta1-opentelemetrycollector?timeout=10s": tls: failed to verify certificate: x509: certificate is valid for my-opentelemetry-operator-webhook.monitoring.svc, my-opentelemetry-operator-webhook.monitoring.svc.cluster.local, not opentelemetry-operator-webhook.monitoring.svc
-
-
-
-error: accumulating resources: accumulation err='accumulating resources from '../../../base/jaeger': '/azp/agent/_work/25/s/kustomize/base/jaeger' must resolve to a file': recursed merging from path '/azp/agent/_work/25/s/kustomize/base/jaeger': may not add resource with an already registered id: Certificate.v1.cert-manager.io/jaeger-operator-service-cert.monitoring
-apiVersion: cert-manager.io/v1
-kind: Certificate
-metadata:
-  name: opentelemetry-operator-service-cert
-  namespace: monitoring
-spec:
-  secretName: opentelemetry-operator-service-cert
-  dnsNames:
-    # real service in monitoring
-    - opentelemetry-operator-webhook.monitoring.svc
-    - opentelemetry-operator-webhook.monitoring.svc.cluster.local
-    # keep legacy names if needed
-    - opentelemetry-operator-webhook.eddv-bld.svc
-    - opentelemetry-operator-webhook.eddv-bld.svc.cluster.local
-  issuerRef:
-    name: otel-selfsigned-issuer
-    kind: Issuer
-
-
-
-
-error: accumulating resources: accumulation err='accumulating resources from '../../../base/jaeger': '/azp/agent/_work/25/s/kustomize/base/jaeger' must resolve to a file': recursed merging from path '/azp/agent/_work/25/s/kustomize/base/jaeger': may not add resource with an already registered id: Issuer.v1.cert-manager.io/jaeger-selfsigned-issuer.monitoring
-DONE resource /azp/agent/_work/25/s/kustomize/overlays/EDIT/04jaeger
-Error from server (InternalError): error when applying patch:
-{"spec":{"ports":[{"name":"otlp-grpc","port":4317,"protocol":"TCP"},{"name":"otlp-http","port":4318,"protocol":"TCP"},{"name":"jaeger-grpc","port":14250,"protocol":"TCP"},{"name":"jaeger-thrift-c","port":6831,"protocol":"TCP"},{"name":"jaeger-thrift-h","port":14268,"protocol":"TCP"},{"name":"metrics","port":8888,"protocol":"TCP"},{"name":"prom-metrics","port":8889,"protocol":"TCP"},{"name":"health","port":13133,"protocol":"TCP"}],"resources":{"limits":{"cpu":"1000m"}}}}
-to:
-Resource: "opentelemetry.io/v1beta1, Resource=opentelemetrycollectors", GroupVersionKind: "opentelemetry.io/v1beta1, Kind=OpenTelemetryCollector"
-Name: "otel-collector", Namespace: "monitoring"
-for: "/azp/agent/_work/25/s/kustomize/overlays/EDIT/05opentelemetry/kustomization-output.yaml": error when patching "/azp/agent/_work/25/s/kustomize/overlays/EDIT/05opentelemetry/kustomization-output.yaml": Internal error occurred: failed calling webhook "mopentelemetrycollectorbeta.kb.io": failed to call webhook: Post "https://opentelemetry-operator-webhook.monitoring.svc:443/mutate-opentelemetry-io-v1beta1-opentelemetrycollector?timeout=10s": tls: failed to verify certificate: x509: certificate is valid for opentelemetry-operator-webhook.eddv-bld.svc, opentelemetry-operator-webhook.eddv-bld.svc.cluster.local, not opentelemetry-operator-webhook.monitoring.svc
-*** Done
---- Current file: /azp/agent/_work/25/s/kustomize/overlays/EDIT/06grafana/kustomization-output.yaml ---
-*** DRY-RUN *** Start kubectl apply
-serviceaccount/grafana-sa configured (dry run)
-
-
-
-
-
-apiVersion: cert-manager.io/v1
-kind: Certificate
-metadata:
-  name: opentelemetry-operator-service-cert
-  namespace: monitoring
-spec:
-  secretName: opentelemetry-operator-service-cert
-  dnsNames:
-    # The real webhook Service name in monitoring
-    - my-opentelemetry-operator-webhook.monitoring.svc
-    - my-opentelemetry-operator-webhook.monitoring.svc.cluster.local
-    # (Optional) keep old SANs if operator might still be in eddv-bld
-    - opentelemetry-operator-webhook.eddv-bld.svc
-    - opentelemetry-operator-webhook.eddv-bld.svc.cluster.local
-  issuerRef:
-    name: otel-selfsigned-issuer
-    kind: Issuer
-
-
-
-
-
-
-
-Error from server (InternalError): error when applying patch:
-{"spec":{"ports":[{"name":"otlp-grpc","port":4317,"protocol":"TCP"},{"name":"otlp-http","port":4318,"protocol":"TCP"},{"name":"jaeger-grpc","port":14250,"protocol":"TCP"},{"name":"jaeger-thrift-c","port":6831,"protocol":"TCP"},{"name":"jaeger-thrift-h","port":14268,"protocol":"TCP"},{"name":"metrics","port":8888,"protocol":"TCP"},{"name":"prom-metrics","port":8889,"protocol":"TCP"},{"name":"health","port":13133,"protocol":"TCP"}],"resources":{"limits":{"cpu":"1000m"}}}}
-to:
-Resource: "opentelemetry.io/v1beta1, Resource=opentelemetrycollectors", GroupVersionKind: "opentelemetry.io/v1beta1, Kind=OpenTelemetryCollector"
-Name: "otel-collector", Namespace: "monitoring"
-for: "/azp/agent/_work/25/s/kustomize/overlays/EDIT/05opentelemetry/kustomization-output.yaml": error when patching "/azp/agent/_work/25/s/kustomize/overlays/EDIT/05opentelemetry/kustomization-output.yaml": Internal error occurred: failed calling webhook "mopentelemetrycollectorbeta.kb.io": failed to call webhook: Post "https://opentelemetry-operator-webhook.monitoring.svc:443/mutate-opentelemetry-io-v1beta1-opentelemetrycollector?timeout=10s": tls: failed to verify certificate: x509: certificate is valid for opentelemetry-operator-webhook.eddv-bld.svc, opentelemetry-operator-webhook.eddv-bld.svc.cluster.local, not opentelemetry-operator-webhook.monitoring.svc
-*** Done
-
-
-
-apiVersion: opentelemetry.io/v1beta1
-kind: OpenTelemetryCollector
-metadata:
-  name: otel-collector  
-# namespace: monitoring
+  name: grafana-instance
+  namespace: observability
   labels:
-    app: opentelemetry-collector
+    app: grafana
 spec:
-  mode: deployment
-  image: otel/opentelemetry-collector-contrib:0.128.0
-  serviceAccount: opentelemetry-collector
-  replicas: 2
-  
-  ports:
-    - name: otlp-grpc
-      port: 4317
-      protocol: TCP
-    - name: otlp-http
-      port: 4318
-      protocol: TCP
-    - name: jaeger-grpc
-      port: 14250
-      protocol: TCP
-    - name: jaeger-thrift-c  
-      port: 6831
-      protocol: TCP
-    - name: jaeger-thrift-h  
-      port: 14268
-      protocol: TCP
-    - name: metrics
-      port: 8888
-      protocol: TCP
-    - name: prom-metrics
-      port: 8889
-      protocol: TCP
-    - name: health
-      port: 13133
-      protocol: TCP
-
-  env:
-    - name: K8S_NODE_NAME
-      valueFrom:
-        fieldRef:
-          fieldPath: spec.nodeName
-    - name: K8S_POD_NAME
-      valueFrom:
-        fieldRef:
-          fieldPath: metadata.name
-    - name: K8S_POD_NAMESPACE
-      valueFrom:
-        fieldRef:
-          fieldPath: metadata.namespace
-    - name: K8S_POD_IP
-      valueFrom:
-        fieldRef:
-          fieldPath: status.podIP
-
-  resources:
-    requests:
-      cpu: 500m
-      memory: 800Mi
-    limits:
-      cpu: 1000m
-      memory: 1600Mi
-
+  serviceAccount:
+    name: grafana-sa
+  ingress:
+    enabled: true
+  configFrom:
+    secretRef:
+      name: grafana-admin-secret
   config:
-    extensions:
-      health_check:
-        endpoint: "0.0.0.0:13133"
-      pprof:
-        endpoint: "0.0.0.0:1777"
-      zpages:
-        endpoint: "0.0.0.0:55679"
+    log:
+      mode: console
+      level: info
+    auth:
+      disable_login_form: false
+      disable_signout_menu: false
+  dashboardLabelSelector:
+    - matchExpressions:
+        - key: app
+          operator: In
+          values:
+            - grafana
 
-    receivers:
-      otlp:
-        protocols:
-          grpc:
-            endpoint: "0.0.0.0:4317"
-          http:
-            endpoint: "0.0.0.0:4318"
-      jaeger:
-        protocols:
-          grpc:
-            endpoint: "0.0.0.0:14250"
-          thrift_compact:
-            endpoint: "0.0.0.0:6831"
-          thrift_http:
-            endpoint: "0.0.0.0:14268"
-      loki:
-        protocols:
-          grpc:
-            endpoint: "0.0.0.0:4317"
-          http:
-            endpoint: "0.0.0.0:4318"
-            include_metadata: true
-        use_incoming_timestamp: true
-      prometheus/node:
-        config:
-          scrape_configs:
-            - job_name: 'node-exporter'
-              scrape_interval: 10s
-              static_configs:
-                - targets: ['prometheus-prometheus-node-exporter.monitoring.svc:9100']
-                  labels:
-                    job: 'node-exporter'
-                    cluster: 'clustername'
+3. Prometheus Datasource CR
 
-    processors:
-      batch:
-        timeout: 200ms
-        send_batch_size: 1024
-        send_batch_max_size: 4096
-      memory_limiter:
-        check_interval: 5s
-        limit_percentage: 80
-        spike_limit_mib: 64
-        limit_mib: 512
-      groupbytrace: {}
-      resource:
-        attributes:
-          - key: service.name
-            from_attribute: service.name
-            action: insert
-          - key: k8s.container.name
-            from_attribute: k8s.container.name
-            action: insert
-          - key: k8s.namespace.name
-            from_attribute: k8s.namespace.name
-            action: insert
-          - key: k8s.pod.name
-            from_attribute: k8s.pod.name
-            action: insert
-          - key: k8s.node.name
-            from_attribute: k8s.node.name
-            action: insert
-          - key: host.name
-            from_attribute: host.name
-            action: insert
-          - key: service.name
-            from_attribute: service.name
-            action: upsert
-          - key: service.namespace
-            from_attribute: service.namespace
-            action: upsert
-          - key: cluster.name
-            value: clustername
-            action: insert
-          - key: exporter
-            value: "node-exporter"
-            action: insert
-      resourcedetection:
-        detectors: [env, system]
-        override: false
-        timeout: 2s
-      transform:
-        log_statements:
-          - context: log
-            statements:
-              - set(attributes["processing.note"], "Log enriched with resource and trace context")
-              - set(attributes["service.name"], resource.attributes["service.name"])
-              - set(attributes["k8s.pod.name"], resource.attributes["k8s.pod.name"])
-              - set(attributes["k8s.node.name"], resource.attributes["k8s.node.name"])
-              - set(attributes["host.name"], resource.attributes["host.name"])
-              - set(attributes["cluster.name"], resource.attributes["cluster.name"])
-              - set(attributes["trace_id"], trace_id)
-              - set(attributes["span_id"], span_id)
-      metricstransform:
-        transforms:
-          - include: system.cpu.usage
-            action: update
-            operations:
-              - action: add_label
-                new_label: host.name
-                new_value: host.name
-              - action: add_label
-                new_label: cluster.name
-                new_value: clustername
-          - include: system.memory.usage
-            action: update
-            operations:
-              - action: add_label
-                new_label: host.name
-                new_value: host.name
-              - action: add_label
-                new_label: cluster.name
-                new_value: clustername
-
-    exporters:
-      debug:
-        verbosity: detailed
-      otlphttp:
-        endpoint: http://loki-write.monitoring.svc.cluster.local:3100/otlp
-        tls:
-          insecure: true
-        headers:
-          X-Scope-OrgID: tenant-1
-      prometheus:
-        endpoint: "0.0.0.0:8889"  
-        namespace: monitoring
-        const_labels:
-          k8s_cluster: clustername
-        send_timestamps: true
-        enable_open_metrics: true
-      otlp/jaeger:
-        endpoint: jaeger-collector.monitoring.svc.cluster.local:4317
-        tls:
-          insecure: true
-
-    service:
-      telemetry:
-        metrics:
-          level: detailed
-      extensions: [health_check, pprof, zpages]
-      pipelines:
-        metrics:
-          receivers: [otlp, prometheus/node]
-          processors: [memory_limiter, resourcedetection, resource, metricstransform, batch]
-          exporters: [debug, prometheus]
-        traces:
-          receivers: [otlp, jaeger]
-          processors: [memory_limiter, resourcedetection, resource, groupbytrace, batch]
-          exporters: [debug, otlp/jaeger]
-        logs:
-          receivers: [otlp, loki]
-          processors: [memory_limiter, resourcedetection, resource, transform, batch]
-          exporters: [debug, otlphttp]
-
----
-apiVersion: admissionregistration.k8s.io/v1
-kind: MutatingWebhookConfiguration
+apiVersion: integreatly.org/v1alpha1
+kind: GrafanaDatasource
 metadata:
-  name: opentelemetry-operator-mutating-webhook-configuration
-  annotations:
-    cert-manager.io/inject-ca-from: monitoring/opentelemetry-operator-service-cert
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
----
-namespace: monitoring
-
-resources:
-- opentelemetry-certificate.yaml
-- ../../../base/opentelemetry-operator
-- clusterrolebinding.yaml
-
-patches:
-- opentelemetry-webhook-patch.yaml
-
-cluster/
-├── base
-│   ├── cert-manager-operator
-│   │   ├── kustomization.yaml
-│   │   └── namespace.yaml
-│   ├── eck-elasticsearch-operator
-│   │   ├── kustomization.yaml
-│   │   └── namespace.yaml
-│   ├── jaeger-operator
-│   │   ├── kustomization.yaml
-│   │   └── namespace.yaml
-│   └── opentelemetry-operator
-│       ├── clusterroles.yaml
-│       ├── kustomization.yaml
-│       ├── namespace.yaml
-│       └── serviceaccount.yaml
-└── overlays
-    ├── EDDV
-    │   ├── cert-manager-operator
-    │   │   └── kustomization.yaml
-    │   └── opentelemetry-operator
-    │       └── kustomization.yaml
-    └── EDIT
-        ├── cert-manager-operator
-        │   └── kustomization.yaml
-        ├── eck-elasticsearch-operator
-        │   └── kustomization.yaml
-        ├── jaeger-operator
-        │   └── kustomization.yaml
-        └── opentelemetry-operator
-            ├── clusterrolebinding.yaml
-            ├── kustomization.yaml
-            ├── opentelemetry-certificate.yaml
-            └── opentelemetry-webhook-patch.yaml
-
-
-
-# cluster/overlays/EDIT/certs/opentelemetry-certificate.yaml
-apiVersion: cert-manager.io/v1
-kind: Issuer
-metadata:
-  name: otel-selfsigned-issuer
-  namespace: monitoring
+  name: prometheus-datasource
+  namespace: observability
+  labels:
+    app: grafana
 spec:
-  selfSigned: {}
----
-apiVersion: cert-manager.io/v1
-kind: Certificate
+  name: prometheus-datasource.yaml
+  datasources:
+    - name: Prometheus
+      type: prometheus
+      access: proxy
+      url: http://prometheus-k8s.monitoring:9090
+      isDefault: true
+  instanceSelector:
+    matchLabels:
+      app: grafana
+
+4. Loki Datasource CR
+
+apiVersion: integreatly.org/v1alpha1
+kind: GrafanaDatasource
 metadata:
-  name: opentelemetry-operator-service-cert
-  namespace: monitoring
+  name: loki-datasource
+  namespace: observability
+  labels:
+    app: grafana
 spec:
-  dnsNames:
-    - opentelemetry-operator-webhook-service.monitoring.svc
-    - opentelemetry-operator-webhook-service.monitoring.svc.cluster.local
-    - opentelemetry-operator-webhook-service.eddv-bld.svc
-    - opentelemetry-operator-webhook-service.eddv-bld.svc.cluster.local
-  secretName: opentelemetry-operator-service-cert
-  issuerRef:
-    name: otel-selfsigned-issuer
-    kind: Issuer
+  name: loki-datasource.yaml
+  datasources:
+    - name: Loki
+      type: loki
+      access: proxy
+      url: http://loki.observability:3100
+  instanceSelector:
+    matchLabels:
+      app: grafana
 
+5. Azure Monitor Datasource CR (Managed Identity Mode)
 
-
-#cluster/overlays/EDIT/certs/opentelemetry-webhook-patch.yaml
-apiVersion: admissionregistration.k8s.io/v1
-kind: MutatingWebhookConfiguration
+apiVersion: integreatly.org/v1alpha1
+kind: GrafanaDatasource
 metadata:
-  name: opentelemetry-operator-mutating-webhook-configuration
-  annotations:
-    cert-manager.io/inject-ca-from: monitoring/opentelemetry-operator-service-cert
+  name: azure-monitor-datasource
+  namespace: observability
+  labels:
+    app: grafana
+spec:
+  name: azure-monitor-datasource.yaml
+  datasources:
+    - name: Azure Monitor
+      type: grafana-azure-monitor-datasource
+      access: proxy
+      jsonData:
+        cloudName: azuremonitor
+        tenantId: "<your-tenant-id>"
+        subscriptionId: "<your-subscription-id>"
+        azureAuthType: msi   # 👈 Managed Identity mode
+  instanceSelector:
+    matchLabels:
+      app: grafana
+
+6. Sample Dashboard (Hybrid Metrics & Logs)
+
+apiVersion: integreatly.org/v1alpha1
+kind: GrafanaDashboard
+metadata:
+  name: sample-hybrid-dashboard
+  namespace: observability
+  labels:
+    app: grafana
+spec:
+  json: |
+    {
+      "id": null,
+      "title": "Hybrid AKS Observability",
+      "tags": [ "aks", "azure", "prometheus", "loki" ],
+      "timezone": "browser",
+      "panels": [
+        {
+          "type": "graph",
+          "title": "Pod CPU (Prometheus)",
+          "targets": [
+            {
+              "expr": "sum(rate(container_cpu_usage_seconds_total{namespace!="",container!="POD"}[5m])) by (namespace)",
+              "legendFormat": "{{namespace}}",
+              "datasource": "Prometheus"
+            }
+          ]
+        },
+        {
+          "type": "graph",
+          "title": "Node CPU (Azure Monitor)",
+          "targets": [
+            {
+              "subscription": "<your-subscription-id>",
+              "resourceGroup": "<your-rg>",
+              "resourceName": "<your-aks-cluster>",
+              "metricName": "CPUUsagePercentage",
+              "datasource": "Azure Monitor"
+            }
+          ]
+        },
+        {
+          "type": "logs",
+          "title": "Pod Logs (Loki)",
+          "targets": [
+            {
+              "expr": "{namespace="observability"}",
+              "datasource": "Loki"
+            }
+          ]
+        }
+      ],
+      "schemaVersion": 16,
+      "version": 1
+    }
+  instanceSelector:
+    matchLabels:
+      app: grafana
+
