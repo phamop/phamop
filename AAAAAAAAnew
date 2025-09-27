@@ -1,6 +1,15 @@
 Current resource: /azp/agent/_work/68/s/kustomize/overlays/EDIT/01grafana
 Set the helmGlobals.configHome to the appropriate value.
 About to run kubectl kustomize
+error: unable to load builtin OrderingTransformer.builtin.[noGrp]
+DONE resource /azp/agent/_work/68/s/kustomize/overlays/EDIT/01grafana
+
+
+
+
+Current resource: /azp/agent/_work/68/s/kustomize/overlays/EDIT/01grafana
+Set the helmGlobals.configHome to the appropriate value.
+About to run kubectl kustomize
 error: error unmarshaling JSON: while decoding JSON: json: unknown field "apiVersion"
 
 apiVersion: builtin
