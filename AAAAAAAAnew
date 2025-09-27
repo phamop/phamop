@@ -4,6 +4,31 @@ About to run kubectl kustomize
 error: accumulating resources: accumulation err='accumulating resources from '../../../base/grafana-operator': '/azp/agent/_work/38/s/cluster/base/grafana-operator' must resolve to a file': recursed accumulation of path '/azp/agent/_work/38/s/cluster/base/grafana-operator': error unmarshaling JSON: while decoding JSON: json: unknown field "apiVersion"
 DONE resource /azp/agent/_work/38/s/cluster/overlays/EDIT/grafana-operator
 
+resources:
+  - namespace.yaml
+  #- serviceaccount.yaml
+
+
+helmGlobals:
+  chartHome: ./charts
+# configHome: ado_agent_helm_config_dir
+  configHome: /root/.config/helm
+helmCharts:
+  - name: grafana-operator
+    namespace: monitoring
+    repo: oci://xxxxxxxxxxxxt/charts
+    includeCRDs: true
+    releaseName: grafana-operator
+    version: v5.19.2
+
+labels:
+  - pairs:
+      hbt.cmhc.schl.gc.ca/owner: devops
+    includeSelectors: false
+
+configurations:
+  - ordering-config.yaml
+
 
 
 
