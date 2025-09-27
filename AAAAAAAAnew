@@ -1,76 +1,26 @@
-Current resource: /azp/agent/_work/68/s/cluster/overlays/EDIT/grafana-operator
-Set the helmGlobals.configHome to the appropriate value.
-About to run kubectl kustomize
-error: error unmarshaling JSON: while decoding JSON: json: unknown field "apiVersion"
-DONE resource /azp/agent/_work/68/s/cluster/overlays/EDIT/grafana-operator
-
-resources:
-  - namespace.yaml
-  #- serviceaccount.yaml
+crd is installed see below and why the errors
 
 
-helmGlobals:
-  chartHome: ./charts
-# configHome: ado_agent_helm_config_dir
-  configHome: /root/.config/helm
-helmCharts:
-  - name: grafana-operator
-    namespace: monitoring
-    repo: oci://xxxxxxxxxxxxt/charts
-    includeCRDs: true
-    releaseName: grafana-operator
-    version: v5.19.2
+kubectl get crds  | grep -i grafana
+grafanaalertrulegroups.grafana.integreatly.org               2025-09-27T20:05:43Z
+grafanacontactpoints.grafana.integreatly.org                 2025-09-27T20:05:44Z
+grafanadashboards.grafana.integreatly.org                    2025-09-27T20:05:44Z
+grafanadatasources.grafana.integreatly.org                   2025-09-27T20:05:44Z
+grafanafolders.grafana.integreatly.org                       2025-09-27T20:05:44Z
+grafanalibrarypanels.grafana.integreatly.org                 2025-09-27T20:05:44Z
+grafanamutetimings.grafana.integreatly.org                   2025-09-27T20:05:44Z
+grafananotificationpolicies.grafana.integreatly.org          2025-09-27T20:05:44Z
+grafananotificationpolicyroutes.grafana.integreatly.org      2025-09-27T20:05:44Z
+grafananotificationtemplates.grafana.integreatly.org         2025-09-27T20:05:44Z
+grafanas.grafana.integreatly.org                             2025-09-27T20:05:44Z
 
-labels:
-  - pairs:
-      xxxxxxxx/owner: devops
-    includeSelectors: false
-
-configurations:
-  - ordering-config.yaml
-
-
-
-
-Current resource: /azp/agent/_work/68/s/kustomize/overlays/EDIT/01grafana
-Set the helmGlobals.configHome to the appropriate value.
-About to run kubectl kustomize
-error: error unmarshaling JSON: while decoding JSON: json: unknown field "apiVersion"
-
-apiVersion: builtin
-kind: OrderingTransformer
-metadata:
-  name: ordering
-spec:
-  order:
-    - CustomResourceDefinition
-    - Namespace
-    - ServiceAccount
-    - ClusterRole
-    - ClusterRoleBinding
-    - Role
-    - RoleBinding
-    - Deployment
-    - Service
-    - Grafana
-    - GrafanaDashboard
-    - GrafanaDatasource
-
-configurations:
-  - ordering-config.yaml
-
-
-
-# kustomize-overlay/EDIT/monitoring/kustomization.yaml
-apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
-
-resources:
-  # CRDs and operator must be installed first
-  - ../../../kustomize-base/monitoring/grafana-operator
-  # Then your grafana resources
-  - 06grafana/
-
-# Ensure proper ordering
-configurations:
-  - ordering-config.yaml
+resource mapping not found for name: "grafana-inst" namespace: "monitoring" from "/azp/agent/_work/38/s/kustomize/overlays/EDIT/06grafana/kustomization-output.yaml": no matches for kind "Grafana" in version "integreatly.org/v1alpha1"
+ensure CRDs are installed first
+resource mapping not found for name: "sample-hybrid-dashboard" namespace: "monitoring" from "/azp/agent/_work/38/s/kustomize/overlays/EDIT/06grafana/kustomization-output.yaml": no matches for kind "GrafanaDashboard" in version "integreatly.org/v1alpha1"
+ensure CRDs are installed first
+resource mapping not found for name: "jaeger-datasource" namespace: "monitoring" from "/azp/agent/_work/38/s/kustomize/overlays/EDIT/06grafana/kustomization-output.yaml": no matches for kind "GrafanaDatasource" in version "integreatly.org/v1alpha1"
+ensure CRDs are installed first
+resource mapping not found for name: "loki-datasource" namespace: "monitoring" from "/azp/agent/_work/38/s/kustomize/overlays/EDIT/06grafana/kustomization-output.yaml": no matches for kind "GrafanaDatasource" in version "integreatly.org/v1alpha1"
+ensure CRDs are installed first
+resource mapping not found for name: "prometheus-datasource" namespace: "monitoring" from "/azp/agent/_work/38/s/kustomize/overlays/EDIT/06grafana/kustomization-output.yaml": no matches for kind "GrafanaDatasource" in version "integreatly.org/v1alpha1"
+ensure CRDs are installed first
