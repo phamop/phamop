@@ -23,7 +23,7 @@ helmCharts:
 
 labels:
   - pairs:
-      hbt.cmhc.schl.gc.ca/owner: devops
+      xxxxxxxx/owner: devops
     includeSelectors: false
 
 configurations:
