@@ -1,10 +1,108 @@
-msg":"Failed to create span writer","error":"failed to create template \"jaeger-span\": error creating index template jaeger-span: [400 Bad Request] {\"error\":{\"root_cause\":[{\"type\":\"x_content_parse_exception\",\"reason\":\"[2:15] [index_template] template doesn't support values of type: VALUE_STRING\"}],\"type\":\"x_content_parse_exception\",\"reason\":\"[2:15] [index_template] template doesn't support values of type: VALUE_STRING\"},\"status\":400}","stacktrace":"main.main.func1\n\tgithub.com/jaegertracing/jaeger/cmd/collector/main.go:72\ngithub.com/spf13/cobra.(*Command).execute\n\tgithub.com/spf13/cobra@v1.8.1/command.go:985\ngithub.com/spf13/cobra.(*Command).ExecuteC\n\tgithub.com/spf13/cobra@v1.8.1/command.go:1117\ngithub.com/spf13/cobra.(*Command).Execute\n\tgithub.com/spf13/cobra@v1.8.1/command.go:1041\nmain.main\n\tgithub.com/jaegertracing/jaeger/cmd/collector/main.go:145\nruntime.main\n\truntime/proc.go:272"}
+Discussion
+==========
+
+Description for Option 2
+2. Azure Monitor + Application Insights via OTel Collector
+Integrate Azure Monitor and Application Insights with the OTel Collector, exporting into OSS tools running on AKS.
+
+Coverage
+
+Logs: Azure Monitor → OTel → Loki
+Metrics: Azure Monitor → OTel → Prometheus
+Traces: Application Insights → OTel → Jaeger
+Advantages
+
+Full control of telemetry pipelines (transform, enrich, route).
+Flexibility to store data in OSS or cloud-native backends.
+Limitations
+
+Higher complexity (must manage OTel Collector in AKS).
+Azure Monitor ingestion charges still apply.
+Description for Option 3
+3. Hybrid with Event Hub + OTel Collector + Azure Monitor
+Use Azure Event Hub for logs, combined with OTel Collector for routing, while relying on Azure Monitor for metrics.
+
+Coverage
+
+Logs: Event Hub → OTel → Loki
+Metrics: Azure Monitor → Prometheus
+Traces: OTel Collector → Jaeger
+Advantages
+
+Balanced model leveraging both OSS and Azure-native services.
+Event Hub provides scalable, decoupled log ingestion.
+Limitations
+
+Dual management (Event Hub + Azure Monitor).
+Potential duplication of telemetry pipelines.
 
 
-https://github.com/elastic/cloud-on-k8s/issues/1191
-https://www.elastic.co/docs/deploy-manage/deploy/cloud-on-k8s/accessing-services#k8s-authentication
 
-{"@timestamp":"2025-09-27T14:01:44.825Z", "log.level": "WARN", "message":"caught exception while handling client http traffic, closing connection Netty4HttpChannel{localAddress=/10.244.2.116:9200, remoteAddress=/10.244.8.103:46560}", "ecs.version": "1.2.0","service.name":"ES_ECS","event.dataset":"elasticsearch.server","process.thread.name":"elasticsearch[eck-elasticsearch-es-masters-0][transport_worker][T#1]","log.logger":"org.elasticsearch.http.AbstractHttpServerTransport","elasticsearch.cluster.uuid":"oopSOwktQZmIhxzN4uvyIA","elasticsearch.node.id":"75b7d1wkTvCeplCKKrGtnQ","elasticsearch.node.name":"eck-elasticsearch-es-masters-0","elasticsearch.cluster.name":"eck-elasticsearch","error.type":"io.netty.handler.codec.DecoderException","error.message":"javax.net.ssl.SSLHandshakeException: (bad_certificate) Received fatal alert: bad_certificate","error.stack_trace":"io.netty.handler.codec.DecoderException: javax.net.ssl.SSLHandshakeException: (bad_certificate) Received fatal alert: bad_certificate\n\tat io.netty.codec@4.1.118.Final/io.netty.handler.codec.ByteToMessageDecoder.callDecode(ByteToMessageDecoder.java:500)\n\tat io.netty.codec@4.1.118.Final/io.netty.handler.codec.ByteToMessageDecoder.channelRead(ByteToMessageDecoder.java:290)\n\tat io.netty.transport@4.1.118.Final/io.netty.channel.AbstractChannelHandlerContext.invokeChannelRead(AbstractChannelHandlerContext.java:444)\n\tat io.netty.transport@4.1.118.Final/io.netty.channel.AbstractChannelHandlerContext.invokeChannelRead(AbstractChannelHandlerContext.java:420)\n\tat io.netty.transport@4.1.118.Final/io.netty.channel.AbstractChannelHandlerContext.fireChannelRead(AbstractChannelHandlerContext.java:412)\n\tat io.netty.transport@4.1.118.Final/io.netty.channel.DefaultChannelPipeline$HeadContext.channelRead(DefaultChannelPipeline.java:1357)\n\tat io.netty.transport@4.1.118.Final/io.netty.channel.AbstractChannelHandlerContext.invokeChannelRead(AbstractChannelHandlerContext.java:440)\n\tat io.netty.transport@4.1.118.Final/io.netty.channel.AbstractChannelHandlerContext.invokeChannelRead(AbstractChannelHandlerContext.java:420)\n\tat io.netty.transport@4.1.118.Final/io.netty.channel.DefaultChannelPipeline.fireChannelRead(DefaultChannelPipeline.java:868)\n\tat io.netty.transport@4.1.118.Final/io.netty.channel.nio.AbstractNioByteChannel$NioByteUnsafe.read(AbstractNioByteChannel.java:166)\n\tat io.netty.transport@4.1.118.Final/io.netty.channel.nio.NioEventLoop.processSelectedKey(NioEventLoop.java:796)\n\tat io.netty.transport@4.1.118.Final/io.netty.channel.nio.NioEventLoop.processSelectedKeysPlain(NioEventLoop.java:697)\n\tat io.netty.transport@4.1.118.Final/io.netty.channel.nio.NioEventLoop.processSelectedKeys(NioEventLoop.java:660)\n\tat io.netty.transport@4.1.118.Final/io.netty.channel.nio.NioEventLoop.run(NioEventLoop.java:562)\n\tat io.netty.common@4.1.118.Final/io.netty.util.concurrent.SingleThreadEventExecutor$4.run(SingleThreadEventExecutor.java:998)\n\tat io.netty.common@4.1.118.Final/io.netty.util.internal.ThreadExecutorMap$2.run(ThreadExecutorMap.java:74)\n\tat java.base/java.lang.Thread.run(Thread.java:1447)\nCaused by: javax.net.ssl.SSLHandshakeException: (bad_certificate) Received fatal alert: bad_certificate\n\tat java.base/sun.security.ssl.Alert.createSSLException(Alert.java:130)\n\tat java.base/sun.security.ssl.Alert.createSSLException(Alert.java:117)\n\tat java.base/sun.security.ssl.TransportContext.fatal(TransportContext.java:363)\n\tat java.base/sun.security.ssl.Alert$AlertConsumer.consume(Alert.java:287)\n\tat java.base/sun.security.ssl.TransportContext.dispatch(TransportContext.java:202)\n\tat java.base/sun.security.ssl.SSLTransport.decode(SSLTransport.java:172)\n\tat java.base/sun.security.ssl.SSLEngineImpl.decode(SSLEngineImpl.java:734)\n\tat java.base/sun.security.ssl.SSLEngineImpl.readRecord(SSLEngineImpl.java:689)\n\tat java.base/sun.security.ssl.SSLEngineImpl.unwrap(SSLEngineImpl.java:504)\n\tat java.base/sun.security.ssl.SSLEngineImpl.unwrap(SSLEngineImpl.java:480)\n\tat java.base/javax.net.ssl.SSLEngine.unwrap(SSLEngine.java:673)\n\tat io.netty.handler@4.1.118.Final/io.netty.handler.ssl.SslHandler$SslEngineType$3.unwrap(SslHandler.java:309)\n\tat io.netty.handler@4.1.118.Final/io.netty.handler.ssl.SslHandler.unwrap(SslHandler.java:1485)\n\tat io.netty.handler@4.1.118.Final/io.netty.handler.ssl.SslHandler.decodeJdkCompatible(SslHandler.java:1378)\n\tat io.netty.handler@4.1.118.Final/io.netty.handler.ssl.SslHandler.decode(SslHandler.java:1427)\n\tat io.netty.codec@4.1.118.Final/io.netty.handler.codec.ByteToMessageDecoder.decodeRemovalReentryProtection(ByteToMessageDecoder.java:530)\n\tat io.netty.codec@4.1.118.Final/io.netty.handler.codec.ByteToMessageDecoder.callDecode(ByteToMessageDecoder.java:469)\n\t... 16 more\n"}
+
+
+
+OSS observability (otel-collector, loki, Prometheus, jaeger and grafana)
+
+Front Door,
+Azure APIM
+
+### Front Door
+| Signal Type | Limitations | Weaknesses | Recommendations |
+|-------------|-------------|------------|-----------------|
+| **Logs** | Limited custom log format control | No real-time streaming to external systems | Use diagnostic settings → Event Hub → OTel Collector → Loki |
+| **Metrics** | Built-in metrics only, no custom metrics | 60-second granularity limitation | Export via Azure Monitor → Prometheus remote write |
+| **Traces** | No native distributed tracing | Cannot correlate with backend services | Implement correlation IDs in headers, use synthetic monitoring |
+
+### Azure APIM
+| Signal Type | Limitations | Weaknesses | Recommendations |
+|-------------|-------------|------------|-----------------|
+| **Logs** | Policy-level logging configuration complexity | High volume can impact performance | Use sampling, configure log levels per API |
+| **Metrics** | Limited custom business metrics | API-level granularity constraints | Custom policies for business metrics, use Application Insights SDK |
+| **Traces** | Request/response tracing only | No automatic correlation with downstream services | Implement custom correlation headers, use APIM policies for trace propagation |
+
+### App Gateway
+| Signal Type | Limitations | Weaknesses | Recommendations |
+|-------------|-------------|------------|-----------------|
+| **Logs** | Access logs format limitations | No application-level insights | Parse access logs with custom parsers, use WAF logs for security events |
+| **Metrics** | Infrastructure metrics only | No application performance metrics | Combine with backend service metrics, use health probes strategically |
+| **Traces** | No distributed tracing support | Cannot track end-to-end requests | Implement at application level, use unique request IDs |
+
+### Azure Functions
+| Signal Type | Limitations | Weaknesses | Recommendations |
+|-------------|-------------|------------|-----------------|
+| **Logs** | Cold start logging gaps | Structured logging configuration complexity | Use Application Insights, implement structured logging with correlation IDs |
+| **Metrics** | Limited custom metrics in consumption plan | Function-level aggregation only | Use Application Insights custom metrics, implement business KPIs |
+| **Traces** | Dependency tracking limitations | Cold start trace gaps | Enable Application Insights, use OpenTelemetry SDK for comprehensive tracing |
+
+### Logic Apps
+| Signal Type | Limitations | Weaknesses | Recommendations |
+|-------------|-------------|------------|-----------------|
+| **Logs** | Action-level logging only | Limited custom log enrichment | Use tracked properties, implement custom logging in custom connectors |
+| **Metrics** | Built-in workflow metrics only | No custom business metrics | Use custom tracking properties, integrate with Application Insights |
+| **Traces** | Workflow execution tracing only | No correlation with external systems | Implement correlation IDs in workflow inputs/outputs |
+
+### Frontend Stack
+| Signal Type | Limitations | Weaknesses | Recommendations |
+|-------------|-------------|------------|-----------------|
+| **Logs** | Browser console limitations | Client-side log aggregation challenges | Implement centralized logging service, use structured logging |
+| **Metrics** | Performance API limitations | Real user monitoring complexity | Use Application Insights JavaScript SDK, implement custom RUM |
+| **Traces** | Browser trace correlation | Performance impact concerns | Use OpenTelemetry browser SDK, implement sampling strategies |
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
