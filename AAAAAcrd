@@ -1,6 +1,50 @@
-Error from server (BadRequest): error when creating "/azp/agent/_work/31/s/kustomize/overlays/EDIT/06grafana/kustomization-output.yaml": Grafana in version "v1beta1" cannot be handled as a Grafana: strict decoding error: unknown field "spec.configFrom", unknown field "spec.deployment.replicas", unknown field "spec.deployment.storage", unknown field "spec.ingress.enabled"
-Error from server (BadRequest): error when creating "/azp/agent/_work/31/s/kustomize/overlays/EDIT/06grafana/kustomization-output.yaml": GrafanaDatasource in version "v1beta1" cannot be handled as a GrafanaDatasource: strict decoding error: unknown field "spec.datasources"
-Error from server (BadRequest): error when creating "/azp/agent/_work/31/s/kustomize/overlays/EDIT/06grafana/kustomization-output.yaml": GrafanaDatasource in version "v1beta1" cannot be handled as a GrafanaDatasource: strict decoding error: unknown field "spec.datasources"
-Error from server (BadRequest): error when creating "/azp/agent/_work/31/s/kustomize/overlays/EDIT/06grafana/kustomization-output.yaml": GrafanaDatasource in version "v1beta1" cannot be handled as a GrafanaDatasource: strict decoding error: unknown field "spec.datasources"
+Error from server (BadRequest): error when creating "/azp/agent/_work/31/s/kustomize/overlays/EDIT/06grafana/kustomization-output.yaml": Grafana in version "v1beta1" cannot be handled as a Grafana: strict decoding error: unknown field "spec.dashboardLabelSelector", unknown field "spec.ingress.enabled", unknown field "spec.service.type"
+Error from server (BadRequest): error when creating "/azp/agent/_work/31/s/kustomize/overlays/EDIT/06grafana/kustomization-output.yaml": GrafanaDatasource in version "v1beta1" cannot be handled as a GrafanaDatasource: strict decoding error: unknown field "spec.datasource[0].access", unknown field "spec.datasource[0].name", unknown field "spec.datasource[0].type", unknown field "spec.datasource[0].url"
+Error from server (BadRequest): error when creating "/azp/agent/_work/31/s/kustomize/overlays/EDIT/06grafana/kustomization-output.yaml": GrafanaDatasource in version "v1beta1" cannot be handled as a GrafanaDatasource: strict decoding error: unknown field "spec.datasource[0].access", unknown field "spec.datasource[0].name", unknown field "spec.datasource[0].type", unknown field "spec.datasource[0].url"
+Error from server (BadRequest): error when creating "/azp/agent/_work/31/s/kustomize/overlays/EDIT/06grafana/kustomization-output.yaml": GrafanaDatasource in version "v1beta1" cannot be handled as a GrafanaDatasource: strict decoding error: unknown field "spec.datasource[0].access", unknown field "spec.datasource[0].isDefault", unknown field "spec.datasource[0].name", unknown field "spec.datasource[0].type", unknown field "spec.datasource[0].url"
 *** Done
+
+apiVersion: grafana.integreatly.org/v1beta1
+kind: Grafana
+metadata:
+  name: grafana-inst
+  namespace: monitoring
+  labels:
+    app: grafana
+spec:
+  service:
+    type: Clusterip
+  # deployment:
+  #   replicas: 1
+  #   storage:
+  #     size: 10Gi
+  #     class: default 
+  # serviceAccount:
+  #   name: grafana-sa
+  # ingress:
+  #   enabled: false
+  # configFrom:
+  #   secretRef:
+  #     name: grafana-admin-temporary
+  config:
+    log:
+      mode: console
+      level: info
+    auth:
+      disable_login_form: false
+      disable_signout_menu: false
+  dashboardLabelSelector:
+    - matchExpressions:
+        - key: app
+          operator: In
+          values:
+            - grafana
+  # persistenceVolumeClaim:
+  #   spec:
+  #    accessModes:
+  #       - ReadWriteOnce
+  #    resources:
+  #       requests:
+  #         storage:  10Gi 
+  # StorageClassName: managed-premium
 
