@@ -1,317 +1,184 @@
-
-https://github.com/cert-manager/cert-manager/blob/master/deploy/charts/cert-manager/values.yaml
-kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.18.2/cert-manager.yaml
-
-
-https://github.com/jaegertracing/helm-charts/blob/main/charts/jaeger-operator/READ
-
-apiVersion: jaegertracing.io/v1
-kind: Jaeger
-metadata:
-  name: jaeger-eck
-  namespace: monitoring
-spec:
-  strategy: production   # production = all-in-one separated into collectors, query, ingester
-  collector:
-    replicas: 2
-    resources:
-      requests:
-        cpu: "500m"
-        memory: "1Gi"
-      limits:
-        cpu: "1"
-        memory: "2Gi"
-  query:
-    replicas: 2
-    resources:
-      requests:
-        cpu: "500m"
-        memory: "1Gi"
-      limits:
-        cpu: "1"
-        memory: "2Gi"
-  ingester:
-    replicas: 1
-    resources:
-      requests:
-        cpu: "500m"
-        memory: "1Gi"
-      limits:
-        cpu: "1"
-        memory: "2Gi"
-  storage:
-    type: elasticsearch
-    options:
-      es:
-        server-urls: http://elasticsearch-es-http.monitoring.svc.cluster.local:9200
-    esIndexCleaner:
-      enabled: true
-      numberOfDays: 7   # keep 7 days of traces
-      schedule: "55 23 * * *"
-    esRollover:
-      enabled: true
-      schedule: "0 0 * * *"
-
-
-
-
-
-
-
-
-
-
-
-
-
-apiVersion: jaegertracing.io/v1
-kind: Jaeger
-metadata:
-  name: jaeger-production
-  namespace: observability
-spec:
-  strategy: production
-  storage:
-    type: elasticsearch
-    options:
-      es:
-        server-urls: https://jaeger-elasticsearch-es-http.observability.svc.cluster.local:9200
-        username: elastic
-        password-file: /etc/jaeger/elasticsearch/password
-        tls:
-          enabled: true
-          ca: /etc/jaeger/elasticsearch/ca.crt
-          skip-host-verify: false
-        num-shards: 5
-        num-replicas: 1
-        index-prefix: jaeger
-        create-index-templates: true
-        use-ilm: true
-        ilm-policy: |
-          {
-            "policy": {
-              "phases": {
-                "hot": {
-                  "actions": {
-                    "rollover": {
-                      "max_size": "50gb",
-                      "max_age": "7d"
-                    }
-                  }
-                },
-                "warm": {
-                  "min_age": "7d",
-                  "actions": {
-                    "allocate": {
-                      "number_of_replicas": 0
-                    }
-                  }
-                },
-                "delete": {
-                  "min_age": "30d"
-                }
-              }
-            }
-          }
-    secretName: jaeger-elasticsearch-secret
-    dependencies:
-      enabled: true
-      schedule: "55 23 * * *"
-  collector:
-    maxReplicas: 5
-    resources:
-      limits:
-        cpu: 1
-        memory: 1Gi
-      requests:
-        cpu: 500m
-        memory: 512Mi
-    config: |
-      receivers:
-        otlp:
-          protocols:
-            grpc:
-              endpoint: 0.0.0.0:4317
-            http:
-              endpoint: 0.0.0.0:4318
-        jaeger:
-          protocols:
-            grpc:
-              endpoint: 0.0.0.0:14250
-            thrift_http:
-              endpoint: 0.0.0.0:14268
-            thrift_compact:
-              endpoint: 0.0.0.0:6831
-            thrift_binary:
-              endpoint: 0.0.0.0:6832
-      processors:
-        batch:
-          timeout: 1s
-          send_batch_size: 1024
-          send_batch_max_size: 2048
-        memory_limiter:
-          limit_mib: 400
-      exporters:
-        elasticsearch:
-          endpoints: 
-            - https://jaeger-elasticsearch-es-http.observability.svc.cluster.local:9200
-          user: elastic
-          password: ${ELASTIC_PASSWORD}
-          tls:
-            ca_file: /etc/jaeger/elasticsearch/ca.crt
-            insecure_skip_verify: false
-          index: jaeger-span-%{+yyyy.MM.dd}
-          pipeline: jaeger-pipeline
-      service:
-        extensions: [health_check]
-        pipelines:
-          traces:
-            receivers: [otlp, jaeger]
-            processors: [memory_limiter, batch]
-            exporters: [elasticsearch]
-        telemetry:
-          logs:
-            level: info
-          metrics:
-            address: 0.0.0.0:8888
-    volumeMounts:
-    - name: elasticsearch-certs
-      mountPath: /etc/jaeger/elasticsearch
-      readOnly: true
-    volumes:
-    - name: elasticsearch-certs
-      secret:
-        secretName: jaeger-elasticsearch-secret
-  query:
-    replicas: 2
-    resources:
-      limits:
-        cpu: 500m
-        memory: 512Mi
-      requests:
-        cpu: 250m
-        memory: 256Mi
-    config: |
-      es:
-        server-urls: https://jaeger-elasticsearch-es-http.observability.svc.cluster.local:9200
-        username: elastic
-        password-file: /etc/jaeger/elasticsearch/password
-        tls:
-          enabled: true
-          ca: /etc/jaeger/elasticsearch/ca.crt
-          skip-host-verify: false
-        num-shards: 5
-        num-replicas: 1
-        index-prefix: jaeger
-        use-aliases: true
-    volumeMounts:
-    - name: elasticsearch-certs
-      mountPath: /etc/jaeger/elasticsearch
-      readOnly: true
-    volumes:
-    - name: elasticsearch-certs
-      secret:
-        secretName: jaeger-elasticsearch-secret
-  ingester:
-    maxReplicas: 5
-    resources:
-      limits:
-        cpu: 1
-        memory: 1Gi
-      requests:
-        cpu: 500m
-        memory: 512Mi
-    config: |
-      kafka:
-        consumer:
-          topic: jaeger-spans
-          brokers: 
-            - kafka.kafka.svc.cluster.local:9092
-        producer:
-          topic: jaeger-spans
-          brokers:
-            - kafka.kafka.svc.cluster.local:9092
-      deadlockInterval: 5m
-  ui:
-    options:
-      dependencies:
-        menuEnabled: true
-      tracking:
-        gaID: UA-000000-2
-      menu:
-        - label: "About Jaeger"
-          url: "https://www.jaegertracing.io/"
-          anchorTarget: "_blank"
----
-apiVersion: v1
-kind: Secret
-metadata:
-  name: jaeger-elasticsearch-secret
-  namespace: observability
-type: Opaque
-data:
-  password: ""  # Will be populated by ECK
-  ca.crt: ""    # Will be populated by ECK
----
-apiVersion: batch/v1
-kind: Job
-metadata:
-  name: create-jaeger-elasticsearch-secret
-  namespace: observability
-spec:
-  template:
-    spec:
-      serviceAccountName: jaeger-elasticsearch-secret-creator
-      containers:
-      - name: secret-creator
-        image: bitnami/kubectl:latest
-        command:
-        - /bin/bash
-        - -c
-        - |
-          # Wait for Elasticsearch to be ready
-          kubectl wait --for=condition=ready elasticsearch/jaeger-elasticsearch --timeout=600s -n observability
-          
-          # Get the elastic password
-          ELASTIC_PASSWORD=$(kubectl get secret jaeger-elasticsearch-es-elastic-user -o jsonpath='{.data.elastic}' -n observability)
-          
-          # Get the CA certificate
-          CA_CERT=$(kubectl get secret jaeger-elasticsearch-es-http-certs-public -o jsonpath='{.data.ca\.crt}' -n observability)
-          
-          # Create or update the Jaeger secret
-          kubectl patch secret jaeger-elasticsearch-secret -n observability -p "{\"data\":{\"password\":\"$ELASTIC_PASSWORD\",\"ca.crt\":\"$CA_CERT\"}}"
-      restartPolicy: OnFailure
-  backoffLimit: 5
----
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: jaeger-elasticsearch-secret-creator
-  namespace: observability
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
-metadata:
-  name: jaeger-elasticsearch-secret-creator
-  namespace: observability
-rules:
-- apiGroups: [""]
-  resources: ["secrets"]
-  verbs: ["get", "list", "patch", "update"]
-- apiGroups: ["elasticsearch.k8s.elastic.co"]
-  resources: ["elasticsearches"]
-  verbs: ["get", "list", "watch"]
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: jaeger-elasticsearch-secret-creator
-  namespace: observability
-subjects:
-- kind: ServiceAccount
-  name: jaeger-elasticsearch-secret-creator
-  namespace: observability
-roleRef:
-  kind: Role
-  name: jaeger-elasticsearch-secret-creator
-  apiGroup: rbac.authorization.k8s.io
+cluster
+├── base
+│   ├── cert-manager-operator
+│   │   ├── issuer.yaml
+│   │   ├── kustomization.yaml
+│   │   └── namespace.yaml
+│   ├── eck-elasticsearch-operator
+│   │   ├── kustomization.yaml
+│   │   └── namespace.yaml
+│   ├── grafana-config
+│   ├── grafana-operator
+│   │   ├── kustomization.yaml
+│   │   ├── namespace.yaml
+│   │   └── serviceaccount.yaml
+│   ├── jaeger-operator
+│   │   ├── kustomization.yaml
+│   │   └── namespace.yaml
+│   └── opentelemetry-operator
+│       ├── clusterroles.yaml
+│       ├── kustomization.yaml
+│       ├── namespace.yaml
+│       ├── opentelemetry-certificate.yaml
+│       ├── otel-operator-cert-alias.yaml
+│       └── serviceaccount.yaml
+└── overlays
+    ├── EDDV
+    │   ├── cert-manager-operator
+    │   │   └── kustomization.yaml
+    │   └── opentelemetry-operator
+    │       └── kustomization.yaml
+    └── EDIT
+        ├── cert-manager-operator
+        │   └── kustomization.yaml
+        ├── eck-elasticsearch-operator
+        │   └── kustomization.yaml
+        ├── grafana-operator
+        │   ├── kustomization.yaml
+        │   └── ordering-config.yaml
+        ├── jaeger-operator
+        │   ├── clusterrole.yaml
+        │   ├── jaeger-certificate-monitoring.yaml
+        │   ├── jaeger-certificate-patch.yaml
+        │   ├── jaeger-certificate.yaml
+        │   ├── jaeger-cred.yaml
+        │   ├── jaeger-mutating-webhook-patch.yaml
+        │   ├── jaeger-validating-webhook-patch.yaml
+        │   └── kustomization.yaml
+        └── opentelemetry-operator
+            ├── clusterrolebinding.yaml
+            ├── crd-patch.yaml
+            ├── kustomization.yaml
+            ├── opentelemetry-certificate-patch.yaml
+            ├── opentelemetry-crd-patch.yaml
+            ├── opentelemetry-validating-webhook-patch.yaml
+            ├── opentelemetry-webhook-patch.yaml
+            ├── otel-crd-patch.yaml
+            ├── otel-mutating-webhook-patch.yaml
+            ├── otel-operator-cert-alias.yaml
+            └── otel-validating-webhook-patch.yaml
+helm
+├── README.md
+├── source
+│   ├── cert-manager
+│   │   ├── Chart.yaml
+│   │   └── source.yaml
+│   ├── crd-prometheus
+│   │   ├── Chart.yaml
+│   │   └── source.yaml
+│   ├── elasticsearch
+│   │   ├── Chart.yaml
+│   │   └── source.yaml
+│   ├── grafana
+│   │   ├── Chart.yaml
+│   │   └── source.yaml
+│   ├── jaeger
+│   │   ├── Chart.yaml
+│   │   └── source.yaml
+│   ├── otel-operator
+│   │   ├── Chart.yaml
+│   │   └── source.yaml
+│   └── prometheus
+│       ├── Chart.yaml
+│       └── source.yaml
+└── values
+    └── EDIT
+        ├── cert-manager-operator
+        │   ├── Chart.yaml
+        │   ├── deploy.yaml
+        │   └── values.yaml
+        └── opentelemetry-operator
+            ├── Chart.yaml
+            ├── deploy.yaml
+            └── values.yaml
+kustomize
+├── base
+│   ├── elasticsearch
+│   │   ├── helm-values.yaml
+│   │   └── kustomization.yaml
+│   ├── grafana-operator
+│   │   ├── azure-monitor-datasource.yaml
+│   │   ├── gghelm-values.yaml
+│   │   ├── grafana-admin.yaml
+│   │   ├── grafana-inst.yaml
+│   │   ├── grafana-operator-values.yaml
+│   │   ├── helm-values.yaml
+│   │   ├── hybrid-dashboard.yaml
+│   │   ├── jaeger-datasource.yaml
+│   │   ├── kustomization.yaml
+│   │   ├── loki-datasource.yaml
+│   │   ├── namespace.yaml
+│   │   └── prometheus-datasource.yaml
+│   ├── jaeger
+│   │   ├── certificate-multisan.yaml
+│   │   ├── helm-values.yaml
+│   │   ├── issuer.yaml
+│   │   ├── jaeger.yaml
+│   │   ├── jaeger0.yaml
+│   │   ├── jaeger2.yaml
+│   │   └── kustomization.yaml
+│   ├── loki
+│   │   ├── helm-values.yaml
+│   │   └── kustomization.yaml
+│   ├── opentelemetry
+│   │   ├── certificate-multisan.yaml
+│   │   ├── collector.yaml
+│   │   ├── issuer.yaml
+│   │   ├── kustomization.yaml
+│   │   └── serviceMetric.yaml
+│   └── prometheus
+│       ├── helm-values.yaml
+│       └── kustomization.yaml
+└── overlays
+    ├── EDDV
+    │   ├── crd
+    │   │   ├── helm-values.yaml
+    │   │   └── kustomization.yaml
+    │   ├── grafana
+    │   │   ├── config-patch.yaml
+    │   │   ├── kustomization.yaml
+    │   │   └── serviceaccount.yaml
+    │   ├── jaeger
+    │   │   ├── helm-values.yaml
+    │   │   └── kustomization.yaml
+    │   ├── loki
+    │   │   ├── helm-values.yaml
+    │   │   └── kustomization.yaml
+    │   ├── opentelemetry
+    │   │   ├── collector-patch.yaml
+    │   │   ├── kustomization.yaml
+    │   │   ├── otel-collector-crd.yaml
+    │   │   └── serviceMonitor.yaml
+    │   └── prometheus
+    │       └── kustomization.yaml
+    └── EDIT
+        ├── 01crd
+        │   ├── helm-values.yaml
+        │   └── kustomization.yaml
+        ├── 01grafana
+        │   ├── kustomization.yaml
+        │   └── ordering-config.yaml
+        ├── 02prometheus
+        │   └── kustomization.yaml
+        ├── 03elasticsearch
+        │   └── kustomization.yaml
+        ├── 03loki
+        │   └── kustomization.yaml
+        ├── 04jaeger
+        │   ├── certificate-multisan.yaml
+        │   ├── jaeger-mutating-webhook-patch.yaml
+        │   ├── jaeger-validating-webhook-patch.yaml
+        │   ├── kustomization.yaml
+        │   └── namespace.yaml
+        ├── 05opentelemetry
+        │   ├── certifcate-multisan.yaml
+        │   ├── collector-patch.yaml
+        │   ├── kustomization.yaml
+        │   ├── opentelemetry-webhook-patch.yaml
+        │   └── serviceMonitor.yaml
+        └── 06grafana
+            ├── config-patch.yaml
+            ├── grafana-inst.yaml
+            ├── kustomization.yaml
+            ├── ordering-config.yaml
+            └── serviceaccount.yaml
