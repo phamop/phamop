@@ -1,1902 +1,580 @@
-Please disregard my previous timesheet submission. I have attached a corrected version for your review and approval.
+################################################################################
+# BASE CONFIGURATION
+################################################################################
 
-To clarify, I will be working tomorrow, [Date], as a consultant. The holiday only applies to full-time employees.
+# kustomize/base/grafana-operator/namespace.yaml
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: grafana-operator
 
-Thank you for your assistance.
+---
+# kustomize/base/grafana-operator/kustomization.yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
 
-Discussion
-==========
+namespace: grafana-operator
 
-Description for Option 2
-2. Azure Monitor + Application Insights via OTel Collector
-Integrate Azure Monitor and Application Insights with the OTel Collector, exporting into OSS tools running on AKS.
+resources:
+  - namespace.yaml
+  - grafana-admin.yaml
+  - grafana-inst.yaml
+  - azure-monitor-datasource.yaml
+  - jaeger-datasource.yaml
+  - loki-datasource.yaml
+  - prometheus-datasource.yaml
+  - hybrid-dashboard.yaml
+  - helm-values.yaml
 
-Coverage
+helmCharts:
+  - name: grafana-operator
+    repo: oci://ghcr.io/grafana/helm-charts
+    version: v5.19.4
+    releaseName: grafana-operator
+    namespace: grafana-operator
+    valuesFile: grafana-operator-values.yaml
 
-Logs: Azure Monitor → OTel → Loki
-Metrics: Azure Monitor → OTel → Prometheus
-Traces: Application Insights → OTel → Jaeger
-Advantages
+---
+# kustomize/base/grafana-operator/grafana-operator-values.yaml
+# Helm values for Grafana Operator v5.19.4
+namespaceScope: false
+watchNamespaces: ""
 
-Full control of telemetry pipelines (transform, enrich, route).
-Flexibility to store data in OSS or cloud-native backends.
-Limitations
+operator:
+  resources:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
 
-Higher complexity (must manage OTel Collector in AKS).
-Azure Monitor ingestion charges still apply.
-Description for Option 3
-3. Hybrid with Event Hub + OTel Collector + Azure Monitor
-Use Azure Event Hub for logs, combined with OTel Collector for routing, while relying on Azure Monitor for metrics.
+---
+# kustomize/base/grafana-operator/grafana-admin.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: grafana-admin-credentials
+  namespace: grafana-operator
+type: Opaque
+stringData:
+  GF_SECURITY_ADMIN_USER: admin
+  GF_SECURITY_ADMIN_PASSWORD: changeme123!
 
-Coverage
-
-Logs: Event Hub → OTel → Loki
-Metrics: Azure Monitor → Prometheus
-Traces: OTel Collector → Jaeger
-Advantages
-
-Balanced model leveraging both OSS and Azure-native services.
-Event Hub provides scalable, decoupled log ingestion.
-Limitations
-
-Dual management (Event Hub + Azure Monitor).
-Potential duplication of telemetry pipelines.
-
-
-
-
-
-
-OSS observability (otel-collector, loki, Prometheus, jaeger and grafana)
-
-Front Door,
-Azure APIM
-
-### Front Door
-| Signal Type | Limitations | Weaknesses | Recommendations |
-|-------------|-------------|------------|-----------------|
-| **Logs** | Limited custom log format control | No real-time streaming to external systems | Use diagnostic settings → Event Hub → OTel Collector → Loki |
-| **Metrics** | Built-in metrics only, no custom metrics | 60-second granularity limitation | Export via Azure Monitor → Prometheus remote write |
-| **Traces** | No native distributed tracing | Cannot correlate with backend services | Implement correlation IDs in headers, use synthetic monitoring |
-
-### Azure APIM
-| Signal Type | Limitations | Weaknesses | Recommendations |
-|-------------|-------------|------------|-----------------|
-| **Logs** | Policy-level logging configuration complexity | High volume can impact performance | Use sampling, configure log levels per API |
-| **Metrics** | Limited custom business metrics | API-level granularity constraints | Custom policies for business metrics, use Application Insights SDK |
-| **Traces** | Request/response tracing only | No automatic correlation with downstream services | Implement custom correlation headers, use APIM policies for trace propagation |
-
-### App Gateway
-| Signal Type | Limitations | Weaknesses | Recommendations |
-|-------------|-------------|------------|-----------------|
-| **Logs** | Access logs format limitations | No application-level insights | Parse access logs with custom parsers, use WAF logs for security events |
-| **Metrics** | Infrastructure metrics only | No application performance metrics | Combine with backend service metrics, use health probes strategically |
-| **Traces** | No distributed tracing support | Cannot track end-to-end requests | Implement at application level, use unique request IDs |
-
-### Azure Functions
-| Signal Type | Limitations | Weaknesses | Recommendations |
-|-------------|-------------|------------|-----------------|
-| **Logs** | Cold start logging gaps | Structured logging configuration complexity | Use Application Insights, implement structured logging with correlation IDs |
-| **Metrics** | Limited custom metrics in consumption plan | Function-level aggregation only | Use Application Insights custom metrics, implement business KPIs |
-| **Traces** | Dependency tracking limitations | Cold start trace gaps | Enable Application Insights, use OpenTelemetry SDK for comprehensive tracing |
-
-### Logic Apps
-| Signal Type | Limitations | Weaknesses | Recommendations |
-|-------------|-------------|------------|-----------------|
-| **Logs** | Action-level logging only | Limited custom log enrichment | Use tracked properties, implement custom logging in custom connectors |
-| **Metrics** | Built-in workflow metrics only | No custom business metrics | Use custom tracking properties, integrate with Application Insights |
-| **Traces** | Workflow execution tracing only | No correlation with external systems | Implement correlation IDs in workflow inputs/outputs |
-
-### Frontend Stack
-| Signal Type | Limitations | Weaknesses | Recommendations |
-|-------------|-------------|------------|-----------------|
-| **Logs** | Browser console limitations | Client-side log aggregation challenges | Implement centralized logging service, use structured logging |
-| **Metrics** | Performance API limitations | Real user monitoring complexity | Use Application Insights JavaScript SDK, implement custom RUM |
-| **Traces** | Browser trace correlation | Performance impact concerns | Use OpenTelemetry browser SDK, implement sampling strategies |
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-forbidden: User "system:serviceaccount:monitoring:jaeger-operator" cannot list resource "ingressclasses" 
-failed to list *v1.Namespace: namespaces is forbidden: User "system:serviceaccount:monitoring:jaeger-operator" cannot list resource "namespaces" in API group "" at the cluster scope
-Failed to watch *v1.Namespace: failed to list *v1.Namespace: namespaces is forbidden: User "system:serviceaccount:monitoring:jaeger-operator" cannot list resource "namespaces" in API group "" at the cluster scope
-
-
-The request is invalid: patch: Invalid value: "map[metadata:map[annotations:map[kubectl.kubernetes.io/last-applied-configuration:{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"annotations\":{},\"labels\":{\"app.kubernetes.io/component\":\"operator\",\"app.kubernetes.io/instance\":\"grafana-operator\",\"app.kubernetes.io/managed-by\":\"Helm\",\"app.kubernetes.io/name\":\"grafana-operator\",\"app.kubernetes.io/part-of\":\"grafana-operator\",\"app.kubernetes.io/version\":\"v5.19.2\",\"hbt.cmhc.schl.gc.ca/owner\":\"devops\",\"helm.sh/chart\":\"grafana-operator-v5.19.2\"},\"name\":\"grafana-operator\",\"namespace\":\"dashboard\"},\"spec\":{\"replicas\":1,\"selector\":{\"matchLabels\":{\"app.kubernetes.io/instance\":\"grafana-operator\",\"app.kubernetes.io/name\":\"grafana-operator\"}},\"template\":{\"metadata\":{\"labels\":{\"app.kubernetes.io/component\":\"operator\",\"app.kubernetes.io/instance\":\"grafana-operator\",\"app.kubernetes.io/managed-by\":\"Helm\",\"app.kubernetes.io/name\":\"grafana-operator\",\"app.kubernetes.io/part-of\":\"grafana-operator\",\"app.kubernetes.io/version\":\"v5.19.2\",\"helm.sh/chart\":\"grafana-operator-v5.19.2\"}},\"spec\":{\"containers\":[{\"args\":[\"--health-probe-bind-address=:8081\",\"--metrics-bind-address=0.0.0.0:9090\",\"--pprof-addr=0.0.0.0:8888\",\"--zap-encoder=console\",\"--zap-log-level=info\",\"--zap-time-encoding=rfc3339\",\"--leader-elect\",\"--max-concurrent-reconciles=1\"],\"env\":[{\"name\":\"WATCH_NAMESPACE\",\"value\":null},{\"name\":\"WATCH_NAMESPACE_SELECTOR\",\"value\":\"\"},{\"name\":\"WATCH_LABEL_SELECTORS\",\"value\":\"\"},{\"name\":\"ENFORCE_CACHE_LABELS\",\"value\":\"safe\"},{\"name\":\"CLUSTER_DOMAIN\",\"value\":\"\"}],\"image\":\"grafana/grafana:v5.19.2\",\"imagePullPolicy\":\"IfNotPresent\",\"livenessProbe\":{\"httpGet\":{\"path\":\"/healthz\",\"port\":8081}},\"name\":\"grafana-operator\",\"ports\":[{\"containerPort\":9090,\"name\":\"metrics\",\"protocol\":\"TCP\"},{\"containerPort\":8888,\"name\":\"pprof\",\"protocol\":\"TCP\"}],\"readinessProbe\":{\"httpGet\":{\"path\":\"/readyz\",\"port\":8081}},\"securityContext\":{\"allowPrivilegeEscalation\":false,\"capabilities\":{\"drop\":[\"ALL\"]},\"fsGroup\":472,\"readOnlyRootFilesystem\":true,\"runAsGroup\":472,\"runAsNonRoot\":true,\"runAsUser\":472},\"volumeMounts\":[{\"mountPath\":\"/tmp/dashboards\",\"name\":\"dashboards-dir\"}]}],\"serviceAccountName\":\"grafana-sa\",\"volumes\":[{\"emptyDir\":{},\"name\":\"dashboards-dir\"}]}}}}\n]] spec:map[template:map[spec:map[serviceAccountName:grafana-sa]]]]": strict decoding error: unknown field "spec.template.spec.containers[0].securityContext.fsGroup"
-*** Done
-
-
-
-
-
-
-Error: chart "grafana-operator" matching 5.19.0 not found in grafana-operator index. 
-
-apiVersion: integreatly.org/v1beta1
+---
+# kustomize/base/grafana-operator/grafana-inst.yaml
+apiVersion: grafana.integreatly.org/v1beta1
 kind: Grafana
 metadata:
-  name: grafana
-  namespace: dashboard
+  name: grafana-instance
+  namespace: grafana-operator
   labels:
-    dashboards: grafana
+    dashboards: "grafana"
 spec:
   config:
     log:
-      level: info
+      mode: "console"
+      level: "info"
     auth:
       disable_login_form: "false"
+    security:
+      admin_user:
+        valueFrom:
+          secretKeyRef:
+            name: grafana-admin-credentials
+            key: GF_SECURITY_ADMIN_USER
+      admin_password:
+        valueFrom:
+          secretKeyRef:
+            name: grafana-admin-credentials
+            key: GF_SECURITY_ADMIN_PASSWORD
     server:
-      root_url: "%(protocol)s://%(domain)s/grafana"
-  ingress:
-    enabled: false   # enable if you need external access
+      root_url: "http://grafana.example.com"
+
   deployment:
-    envFrom:
-      - secretRef:
-          name: grafana-admin-credentials
-  dataStorage:
-    type: pvc
-    size: 10Gi
-    class: "" # supply your StorageClass if required
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-labels:
-
-  app.kubernetes.io/name: otel-collector
-  app.kubernetes.io/component: telemetry
-  app.kubernetes.io/part-of: monitoring
-
-  monitoring.backend: loki
-  monitoring.tracer: jaeger
-  monitoring.metrics: Prometheus
-  telemetry.source: aks-edit
-  telemetry.flow.logs: loki
-  telemetry.flow.traces: jaeger
-  telemetry.flow.metrics: prometheus
-
-
-
-
-
-labels:
-  app.kubernetes.io/name: otel-collector
-  app.kubernetes.io/component: telemetry
-  telemetry.source: aks-workloads
-  telemetry.flow.logs: loki
-  telemetry.flow.traces: jaeger
-  telemetry.flow.metrics: prometheus
-
-
-
-
-
-labels:
-  app.kubernetes.io/name: otel-collector
-  app.kubernetes.io/component: telemetry
-  app.kubernetes.io/part-of: observability
-  observability.backend: loki
-  observability.tracer: jaeger
-  observability.metrics: prometheus
-
-
-
-
-
-
-
-
-Service Naming & Label Selection Strategy
-
-Service Names: Simplified to basic component names (e.g., user-service, payment-gateway)
-
-Service Discovery: Implemented through Kubernetes label selectors instead of complex naming conventions
-
-Current Status: Label selection mechanism is under active development
-
-Next Steps: Full specifications and migration guide to be published upon completion
-
-
-
-
-
-
-
-
-**Document Title**: Azure Service  Observability Architecture Proposal - Non-AkS\
-**Date**: September 24, 2025\
-
-
-
-Perfect 👍 — I’ll transform this into a **wiki-style document** that is structured, professional, and ready for stakeholder review. It will align with your requirement of **dedicated AKS for observability** (Grafana, Loki, Jaeger, Prometheus, OTel Collector).
-
----
-
-# **Document Title**: Azure Service Observability Architecture Proposal
-
-**Date**: September 24, 2025
-
----
-
-## 📘 **Overview**
-
-This document proposes multiple architectural options for implementing **observability** (logs, metrics, traces) for Azure services using a **Dedicated AKS cluster**. The OSS stack considered includes **Grafana, Loki, Jaeger, Prometheus, and OpenTelemetry Collector (OTel Collector)**.
-
-The goal is to evaluate integration models between **Azure-native telemetry sources** (Azure Monitor, Application Insights, Event Hub) and the OSS observability stack, considering trade-offs in **coverage, complexity, cost, and flexibility**.
-
----
-
-## 🏗 **OSS Observability Components (on Dedicated AKS)**
-
-* **Grafana**: Visualization & dashboards (single pane of glass).
-* **Loki**: Centralized log aggregation and querying.
-* **Prometheus**: Metrics collection and time-series database (with remote\_write enabled).
-* **Jaeger**: Distributed tracing backend (queried via Grafana datasource).
-* **OTel Collector**: Normalizes, enriches, and routes telemetry (logs, metrics, traces).
-* **Fluent Bit / Grafana Alloy**: Log forwarding agents (replacement for Promtail).
-
----
-
-## 🔹 **Description for Option 1**
-
-### **Option 1: Direct Integration with Grafana**
-
-Re-introduce **Azure Monitor** and **Application Insights** directly as data sources in Grafana.
-
-**Coverage**
-
-* Logs: via Application Insights + Azure Monitor data source
-* Metrics: via Azure Monitor metrics API
-* Traces: via Application Insights distributed tracing
-
-**Advantages**
-
-* Simplest setup (no OTel Collector required).
-* Low operational overhead.
-
-**Limitations**
-
-* Vendor lock-in (direct dependency on Azure Monitor).
-* Limited ability to forward telemetry to OSS backends (Loki, Jaeger).
-
----
-
-## 🔹 **Description for Option 2**
-
-### **Option 2: Azure Monitor + Application Insights via OTel Collector**
-
-Integrate **Azure Monitor** and **Application Insights** with the **OTel Collector**, exporting into OSS tools running on AKS.
-
-**Coverage**
-
-* Logs: Azure Monitor → OTel → Loki
-* Metrics: Azure Monitor → OTel → Prometheus
-* Traces: Application Insights → OTel → Jaeger
-
-**Advantages**
-
-* Full control of telemetry pipelines (transform, enrich, route).
-* Flexibility to store data in OSS or cloud-native backends.
-
-**Limitations**
-
-* Higher complexity (must manage OTel Collector in AKS).
-* Azure Monitor ingestion charges still apply.
-
----
-
-## 🔹 **Description for Option 3**
-
-### **Option 3: Hybrid with Event Hub + OTel Collector + Azure Monitor**
-
-Use **Azure Event Hub** for logs, combined with **OTel Collector** for routing, while relying on **Azure Monitor** for metrics.
-
-**Coverage**
-
-* Logs: Event Hub → OTel → Loki
-* Metrics: Azure Monitor → Prometheus
-* Traces: OTel Collector → Jaeger
-
-**Advantages**
-
-* Balanced model leveraging both OSS and Azure-native services.
-* Event Hub provides scalable, decoupled log ingestion.
-
-**Limitations**
-
-* Dual management (Event Hub + Azure Monitor).
-* Potential duplication of telemetry pipelines.
-
----
-
-## 🔹 **Description for Option 4**
-
-### **Option 4: Logs Only via Event Hub + Log Forwarder**
-
-Use **Event Hub + Log Forwarder (Fluent Bit / Alloy)** only for logs, while metrics remain in Azure Monitor.
-
-**Coverage**
-
-* Logs: Event Hub → Loki
-* Metrics: Azure Monitor (native)
-* Traces: ❌ Not included in OSS stack
-
-**Advantages**
-
-* Simplified design for log-centric observability.
-* Lower operational overhead.
-
-**Limitations**
-
-* Incomplete observability (metrics remain siloed, no tracing).
-* Limited correlation across logs, metrics, and traces.
-
----
-
-## 📊 **Comparison Summary**
-
-| Option                                       | Logs | Metrics    | Traces | Complexity | Flexibility | Notes                   |
-| -------------------------------------------- | ---- | ---------- | ------ | ---------- | ----------- | ----------------------- |
-| **1. Direct Grafana Integration**            | ✅    | ✅          | ✅      | Low        | Low         | Simple but Azure-locked |
-| **2. Azure Monitor + App Insights via OTel** | ✅    | ✅          | ✅      | Medium     | High        | Flexible OSS routing    |
-| **3. Hybrid (Event Hub + OTel + Monitor)**   | ✅    | ✅          | ✅      | Medium     | Medium      | Balanced approach       |
-| **4. Logs Only (Event Hub + Forwarder)**     | ✅    | ✅ (native) | ❌      | Low        | Low         | Logs focus, no tracing  |
-
----
-
-✅ This wiki-format document is now structured for decision-making.
-
-Would you like me to **generate this as both a Word doc (for formal review) and a Confluence/Markdown version** so it can be directly uploaded to a wiki or collaboration tool?
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Observability Architecture Options
-Option 1: Direct Integration with Grafana
-
-Description:
-Re-introduce Azure Monitor and Application Insights directly as data sources in Grafana.
-
-Coverage:
-
-Logs: via Application Insights + Azure Monitor data source
-
-Metrics: via Azure Monitor metrics API
-
-Traces: via Application Insights distributed tracing
-
-Advantages:
-
-Simplest setup (no additional middleware like OTel Collector needed).
-
-Low operational overhead (native Grafana plugin support).
-
-Limitations:
-
-Vendor lock-in (direct dependency on Azure Monitor).
-
-Less flexibility for routing data to OSS backends (Loki, Jaeger).
-
-Option 2: Azure Monitor + Application Insights via OTel Collector
-
-Description:
-Integrate Azure Monitor and Application Insights with the OpenTelemetry Collector, then export into OSS tools (Loki, Prometheus, Jaeger) or Grafana.
-
-Coverage:
-
-Logs: Azure Monitor → OTel → Loki
-
-Metrics: Azure Monitor → OTel → Prometheus
-
-Traces: Application Insights → OTel → Jaeger
-
-Advantages:
-
-Full control of telemetry pipelines (transform, enrich, route).
-
-Flexibility to store data in OSS or cloud-native backends.
-
-Limitations:
-
-Slightly higher complexity (must manage OTel pipeline).
-
-Azure Monitor costs still apply for ingestion.
-
-Option 3: Hybrid with Event Hub + OTel Collector + Azure Monitor
-
-Description:
-Use Azure Event Hub to stream logs, combined with OTel Collector for routing, while continuing to leverage Azure Monitor for metrics.
-
-Coverage:
-
-Logs: Event Hub → OTel → Loki
-
-Metrics: Azure Monitor → Prometheus
-
-Traces: OTel Collector → Jaeger
-
-Advantages:
-
-Balanced model leveraging both OSS and Azure services.
-
-Event Hub provides reliable, scalable log ingestion.
-
-Limitations:
-
-Dual management (Event Hub + Azure Monitor).
-
-Some duplication of telemetry paths (Azure Monitor + Event Hub).
-
-Option 4: Logs Only via Event Hub + Log Forwarder
-
-Description:
-Use Event Hub + Log Forwarder (Fluent Bit / Alloy) only for logs, while metrics remain in Azure Monitor.
-
-Coverage:
-
-Logs: Event Hub → Fluent Bit → Loki
-
-Metrics: Azure Monitor (native)
-
-Traces: Not included in OSS stack
-
-Advantages:
-
-Simple design for organizations prioritizing logs only.
-
-Reduced operational overhead.
-
-Limitations:
-
-Incomplete observability (no unified tracing, metrics remain siloed).
-
-Limited correlation across logs, traces, and metrics.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Optional1: propose will be to re-introduce Azure monitor and app insight directly to grafana; this will allow to captured all the 3 component of the observability; logs, traces and metrics.
-
-Optional2: propose will be to re-introduce Azure monitor and app insight integrate with otel collector ; this will allow to captured all the 3 component of the observability; logs, traces and metrics.
-
-Option3: will be using Azure Event Hub, Otel-collector and azure monitor to capture the 3 component of the observability; logs, traces and metrics.
-
-Optional4: propose will be to use event hub and log forwarder to ; this will allow to captured only  logs.
-               Azure monitor for metrics. 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Signal Capture Compatibility Matrix
-Azure ComponentOTel-CollectorLoki (Logs)Prometheus (Metrics)Jaeger (Traces)Grafana (Visualization)Front Door⚠️ Limited✅ Yes⚠️ Limited❌ No✅ YesAzure APIM✅ Yes*✅ Yes✅ Yes✅ Yes*✅ YesApp Gateway⚠️ Limited✅ Yes⚠️ Limited❌ No✅ YesAzure Functions✅ Yes✅ Yes✅ Yes✅ Yes✅ YesLogic Apps⚠️ Limited✅ Yes⚠️ Limited❌ No✅ YesFrontend Stack✅ Yes✅ Yes✅ Yes✅ Yes✅ Yes
-
-
-
-
-Front Door
-Azure APIM
-App Gateway
-Azure function
-Logic Apps
-Frontend Stack
-
-
-app-<purpose>-<environment>-<region>-<instance>
-Confirming that the issue has been resolved by adding the missing namespace definition directly to the Helm chart. This is the correct approach and successfully aligns our source code with the deployment configuration.
-
-
-# AKS Service Naming Convention Standards
-
-## Overview
-This document establishes standardized naming conventions for Azure Kubernetes Service (AKS) resources to ensure consistency, clarity, and maintainability across all environments.
-
-## General Naming Principles
-
-### Core Guidelines
-- Use lowercase letters, numbers, and hyphens only
-- No spaces or special characters except hyphens
-- Keep names concise but descriptive
-- Maintain consistency across all environments
-- Follow Azure resource naming restrictions
-- Use abbreviations sparingly and only when widely understood
-
-### Character Limits
-- AKS Cluster Name: 63 characters maximum
-- Resource Group: 90 characters maximum
-- Node Pool Name: 12 characters maximum (Windows), 63 characters (Linux)
-
-## Standard Naming Pattern
-
-### AKS Cluster Naming Convention
-```
-{company}-{environment}-{workload}-{location}-{instance}-aks
-```
-
-**Components:**
-- `company`: 3-4 letter organization abbreviation
-- `environment`: Environment identifier (dev, test, stage, prod)
-- `workload`: Application/workload identifier
-- `location`: Azure region abbreviation
-- `instance`: Sequential number (01, 02, etc.)
-- `aks`: Resource type suffix
-
-**Examples:**
-- `acme-prod-webapp-eus2-01-aks`
-- `acme-dev-api-wus2-01-aks`
-- `acme-stage-ecom-cus-01-aks`
-
-### Resource Group Naming Convention
-```
-rg-{company}-{environment}-{workload}-{location}-{instance}
-```
-
-**Examples:**
-- `rg-acme-prod-webapp-eus2-01`
-- `rg-acme-dev-api-wus2-01`
-
-### Node Pool Naming Convention
-```
-{purpose}{instance}
-```
-
-**Standard Node Pools:**
-- `system01` - System node pool
-- `worker01` - General workload node pool
-- `gpu01` - GPU-enabled node pool
-- `spot01` - Spot instance node pool
-- `mem01` - Memory-optimized node pool
-
-## Environment Abbreviations
-
-| Environment | Abbreviation |
-|-------------|--------------|
-| Development | dev |
-| Testing | test |
-| Staging | stage |
-| Production | prod |
-| Sandbox | sand |
-| Quality Assurance | qa |
-| User Acceptance Testing | uat |
-
-## Azure Region Abbreviations
-
-| Region | Abbreviation |
-|--------|--------------|
-| East US | eus |
-| East US 2 | eus2 |
-| West US | wus |
-| West US 2 | wus2 |
-| Central US | cus |
-| North Central US | ncus |
-| South Central US | scus |
-| West Central US | wcus |
-| Canada Central | cac |
-| Canada East | cae |
-| Brazil South | brs |
-| UK South | uks |
-| UK West | ukw |
-| West Europe | weu |
-| North Europe | neu |
-| France Central | frc |
-| Germany West Central | gwc |
-| Switzerland North | swn |
-| Norway East | noe |
-| UAE North | uan |
-| South Africa North | san |
-| Australia East | aue |
-| Australia Southeast | ause |
-| East Asia | ea |
-| Southeast Asia | sea |
-| Japan East | jpe |
-| Japan West | jpw |
-| Korea Central | krc |
-| Korea South | krs |
-| Central India | inc |
-| South India | ins |
-| West India | inw |
-
-## Additional Resource Naming
-
-### Associated Resources
-
-#### Azure Container Registry
-```
-{company}{environment}{workload}{location}{instance}acr
-```
-Example: `acmeprodwebappeus201acr`
-
-#### Log Analytics Workspace
-```
-law-{company}-{environment}-{workload}-{location}-{instance}
-```
-Example: `law-acme-prod-webapp-eus2-01`
-
-#### Key Vault
-```
-kv-{company}-{environment}-{workload}-{location}-{instance}
-```
-Example: `kv-acme-prod-webapp-eus2-01`
-
-#### Storage Account
-```
-st{company}{environment}{workload}{location}{instance}
-```
-Example: `stacmeprodwebappeus201`
-
-#### Network Security Group
-```
-nsg-{company}-{environment}-{workload}-{location}-{instance}
-```
-Example: `nsg-acme-prod-webapp-eus2-01`
-
-#### Virtual Network
-```
-vnet-{company}-{environment}-{workload}-{location}-{instance}
-```
-Example: `vnet-acme-prod-webapp-eus2-01`
-
-#### Subnet
-```
-snet-{purpose}-{instance}
-```
-Examples:
-- `snet-aks-01`
-- `snet-gateway-01`
-- `snet-private-endpoints-01`
-
-## Tagging Strategy
-
-### Mandatory Tags
-```yaml
-Environment: prod|test|dev|stage
-Owner: team-name
-Project: project-name
-CostCenter: cost-center-code
-CreatedDate: YYYY-MM-DD
-```
-
-### Optional Tags
-```yaml
-Application: application-name
-Workload: workload-type
-Backup: true|false
-Monitoring: enabled|disabled
-Compliance: required-compliance-standard
-```
-
-## Implementation Examples
-
-### Production E-commerce Platform
-```yaml
-AKS Cluster: acme-prod-ecom-eus2-01-aks
-Resource Group: rg-acme-prod-ecom-eus2-01
-Node Pools:
-  - system01 (system workloads)
-  - worker01 (application workloads)
-  - worker02 (background jobs)
-Associated Resources:
-  - ACR: acmeprodecomeus201acr
-  - Key Vault: kv-acme-prod-ecom-eus2-01
-  - Log Analytics: law-acme-prod-ecom-eus2-01
-```
-
-### Development API Service
-```yaml
-AKS Cluster: acme-dev-api-wus2-01-aks
-Resource Group: rg-acme-dev-api-wus2-01
-Node Pools:
-  - system01
-  - worker01
-Associated Resources:
-  - ACR: acmedevapiwus201acr
-  - Key Vault: kv-acme-dev-api-wus2-01
-  - Log Analytics: law-acme-dev-api-wus2-01
-```
-
-## Validation Rules
-
-### Pre-deployment Checklist
-- [ ] Name follows standard pattern
-- [ ] All components are lowercase
-- [ ] No spaces or invalid characters
-- [ ] Within character limits
-- [ ] Environment matches actual deployment target
-- [ ] Location matches Azure region
-- [ ] Instance number is sequential and unique
-- [ ] All mandatory tags are applied
-
-### Common Mistakes to Avoid
-- Using uppercase letters
-- Including spaces in names
-- Exceeding character limits
-- Inconsistent abbreviations
-- Missing environment indicators
-- Duplicate instance numbers
-- Missing mandatory tags
-
-## Governance and Compliance
-
-### Azure Policy Integration
-Consider implementing Azure Policies to enforce naming conventions:
-- Require specific naming patterns
-- Validate tag compliance
-- Prevent deployment of non-compliant resources
-- Automatically apply mandatory tags
-
-### Exception Process
-For cases requiring deviation from standard naming:
-1. Document business justification
-2. Get approval from architecture team
-3. Update naming convention documentation
-4. Communicate changes to all stakeholders
-
-## Maintenance and Updates
-
-### Review Schedule
-- Quarterly review of naming conventions
-- Annual assessment of abbreviations and patterns
-- Update based on new Azure regions or services
-- Incorporate feedback from development teams
-
-### Version Control
-- Maintain naming convention documentation in version control
-- Track changes and rationale
-- Communicate updates to all teams
-- Provide migration guidance for existing resources
-
----
-
-*Last Updated: September 2025*
-*Version: 1.0*
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-apiVersion: admissionregistration.k8s.io/v1
-kind: MutatingWebhookConfiguration
-metadata:
-  name: opentelemetry-operator-mutating-webhook-configuration
-  annotations:
-    cert-manager.io/inject-ca-from: monitoring/opentelemetry-operator-service-cert
-
-
-#kustomize/base/opentelemetry/certificate-multisan.yaml
-
-apiVersion: cert-manager.io/v1
-kind: Issuer
-metadata:
-  name: otel-selfsigned-issuer
-  namespace: monitoring
-spec:
-  selfSigned: {}
----
-apiVersion: cert-manager.io/v1
-kind: Certificate
-metadata:
-  name: opentelemetry-operator-service-cert
-  namespace: monitoring
-spec:
-  dnsNames:
-    - opentelemetry-operator-webhook-service.monitoring.svc
-    - opentelemetry-operator-webhook-service.monitoring.svc.cluster.local
-    - opentelemetry-operator-webhook-service.eddv-bld.svc
-    - opentelemetry-operator-webhook-service.eddv-bld.svc.cluster.local
-  secretName: opentelemetry-operator-service-cert
-  issuerRef:
-    name: otel-selfsigned-issuer
-    kind: Issuer
-
-
-
-
-
-
-
-
-
-
-
-
-kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.18.2/cert-manager.yaml
-
-
-#issuer.yaml
-apiVersion: cert-manager.io/v1
-kind: Issuer
-metadata:
-  name: jaeger-selfsigned-issuer
-  namespace: monitoring
-spec:
-  selfSigned: {}
-
-#certificate.yaml
-
-apiVersion: cert-manager.io/v1
-kind: Certificate
-metadata:
-  name: jaeger-operator-service-cert
-  namespace: monitoring
-spec:
-  dnsNames:
-    - jaeger-operator-webhook-service.monitoring.svc
-    - jaeger-operator-webhook-service.monitoring.svc.cluster.local
-  secretName: jaeger-operator-service-cert
-  issuerRef:
-    name: jaeger-selfsigned-issuer
-    kind: Issuer
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-kind: MutatingWebhookConfiguration
-metadata:
-  annotations:
-    cert-manager.io/inject-ca-from: eddv-bld/jaeger-operator-service-cert
-
-
-
-
-apiVersion: jaegertracing.io/v1
-kind: Jaeger
-metadata:
-  name: jaeger-eck
-  namespace: monitoring
-spec:
-  strategy: production   # separates collector, query, ingester
-  collector:
-    replicas: 2
-    resources:
-      requests:
-        cpu: "500m"
-        memory: "1Gi"
-      limits:
-        cpu: "1"
-        memory: "2Gi"
-  query:
-    replicas: 2
-    resources:
-      requests:
-        cpu: "500m"
-        memory: "1Gi"
-      limits:
-        cpu: "1"
-        memory: "2Gi"
-  ingester:
-    replicas: 1
-    resources:
-      requests:
-        cpu: "500m"
-        memory: "1Gi"
-      limits:
-        cpu: "1"
-        memory: "2Gi"
-  storage:
-    type: elasticsearch
-    options:
-      es:
-        server-urls: http://eck-elasticsearch-es-http.monitoring.svc.cluster.local:9200
-    esIndexCleaner:
-      enabled: true
-      numberOfDays: 7   # keep 7 days of traces
-      schedule: "55 23 * * *"
-    esRollover:
-      schedule: "0 0 * * *"
----
-apiVersion: admissionregistration.k8s.io/v1
-kind: MutatingWebhookConfiguration
-metadata:
-  name: jaeger-operator-mutating-webhook-configuration
-  annotations:
-    cert-manager.io/inject-ca-from: monitoring/jaeger-operator-service-cert
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-kubectl delete mutatingwebhookconfiguration jaeger-operator-mutating-webhook-configuration
-
-
-
-Internal error occurred: failed calling webhook "mjaeger.kb.io": failed to call webhook
-
-apiVersion: admissionregistration.k8s.io/v1
-kind: MutatingWebhookConfiguration
-metadata:
-  annotations:
-    cert-manager.io/inject-ca-from: monitoring/jaeger-operator-service-cert
-
-
-
-
-apiVersion: jaegertracing.io/v1
-kind: Jaeger
-metadata:
-  name: jaeger-eck
-  namespace: monitoring
-spec:
-  strategy: production   # separates collector, query, ingester
-  collector:
-    replicas: 2
-    resources:
-      requests:
-        cpu: "500m"
-        memory: "1Gi"
-      limits:
-        cpu: "1"
-        memory: "2Gi"
-  query:
-    replicas: 2
-    resources:
-      requests:
-        cpu: "500m"
-        memory: "1Gi"
-      limits:
-        cpu: "1"
-        memory: "2Gi"
-  ingester:
-    replicas: 1
-    resources:
-      requests:
-        cpu: "500m"
-        memory: "1Gi"
-      limits:
-        cpu: "1"
-        memory: "2Gi"
-  storage:
-    type: elasticsearch
-    options:
-      es:
-        server-urls: http://eck-elasticsearch-es-http.monitoring.svc.cluster.local:9200
-    esIndexCleaner:
-      enabled: true
-      numberOfDays: 7   # keep 7 days of traces
-      schedule: "55 23 * * *"
-    esRollover:
-      schedule: "0 0 * * *"
----
-apiVersion: admissionregistration.k8s.io/v1
-kind: MutatingWebhookConfiguration
-metadata:
-  name: jaeger-operator-mutating-webhook-configuration
-  annotations:
-    cert-manager.io/inject-ca-from: monitoring/jaeger-operator-service-cert
-
-
-
-apiVersion: jaegertracing.io/v2
-kind: Jaeger
-metadata:
-  name: jaeger-eck
-  namespace: monitoring
-spec:
-  strategy: production   # production = separate collector and query
-  collector:
-    replicas: 2
-    resources:
-      requests:
-        cpu: "500m"
-        memory: "1Gi"
-      limits:
-        cpu: "1"
-        memory: "2Gi"
-  query:
-    replicas: 2
-    resources:
-      requests:
-        cpu: "500m"
-        memory: "1Gi"
-      limits:
-        cpu: "1"
-        memory: "2Gi"
-  storage:
-    type: elasticsearch
-    options:
-      es:
-        server-urls: http://eck-elasticsearch-es-http.monitoring.svc.cluster.local:9200
-    esIndexCleaner:
-      enabled: true
-      numberOfDays: 7   # keep 7 days of traces
-      schedule: "55 23 * * *"
-    esRollover:
-      schedule: "0 0 * * *"
----
-apiVersion: admissionregistration.k8s.io/v1
-kind: MutatingWebhookConfiguration
-metadata:
-  name: jaeger-operator-mutating-webhook-configuration
-  annotations:
-    cert-manager.io/inject-ca-from: monitoring/jaeger-operator-service-cert
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Jaeger in version "v1" cannot be handled as a Jaeger: strict decoding error: unknown field "spec.storage.esRollover.enabled
-
-apiVersion: jaegertracing.io/v1
-kind: Jaeger
-metadata:
-  name: jaeger-eck
-  namespace: monitoring
-spec:
-  strategy: production   # separates collector, query, ingester
-  collector:
-    replicas: 2
-    resources:
-      requests:
-        cpu: "500m"
-        memory: "1Gi"
-      limits:
-        cpu: "1"
-        memory: "2Gi"
-  query:
-    replicas: 2
-    resources:
-      requests:
-        cpu: "500m"
-        memory: "1Gi"
-      limits:
-        cpu: "1"
-        memory: "2Gi"
-  ingester:
-    replicas: 1
-    resources:
-      requests:
-        cpu: "500m"
-        memory: "1Gi"
-      limits:
-        cpu: "1"
-        memory: "2Gi"
-  storage:
-    type: elasticsearch
-    options:
-      es:
-        server-urls: http://eck-elasticsearch-es-http.monitoring.svc.cluster.local:9200
-    esIndexCleaner:
-      enabled: true
-      numberOfDays: 7   # keep 7 days of traces
-      schedule: "55 23 * * *"
-    esRollover:
-      enabled: true
-      schedule: "0 0 * * *"
----
-apiVersion: admissionregistration.k8s.io/v1
-kind: MutatingWebhookConfiguration
-metadata:
-  name: jaeger-operator-mutating-webhook-configuration
-  annotations:
-    cert-manager.io/inject-ca-from: monitoring/jaeger-operator-service-cert
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-apiVersion: admissionregistration.k8s.io/v1
-kind: MutatingWebhookConfiguration
-metadata:
-  annotations:
-    cert-manager.io/inject-ca-from: eddv-bld/jaeger-operator-service-cert
-
-# Where is the webhook service actually running?
-kubectl get svc -A | grep jaeger-operator-webhook-service
-
-# What do the cluster-scoped webhooks point to?
-kubectl get mutatingwebhookconfigurations mjaeger.kb.io -o yaml | grep -A4 clientConfig:
-kubectl get validatingwebhookconfigurations vjaeger.kb.io -o yaml | grep -A4 clientConfig:
-
-# Check cert secret & certificate objects in your operator ns (monitoring)
-kubectl get secret,certificate -n monitoring | grep jaeger-operator
-
-kubectl get validatingadmissionwebhooks -o yaml | grep jaeger
-kubectl edit validatingadmissionwebhooks mjaeger.kb.io
-
-jaeger.jaegertracing.io/jaeger-eck created (dry run)
-2025-09-13T15:59:34.5030801Z *** DRY-RUN *** Done
-2025-09-13T15:59:34.5031514Z *** Start kubectl apply
-2025-09-13T15:59:34.7019477Z Error from server (InternalError): error when creating "/azp/agent/_work/3/s/kustomize/overlays/EDIT/04jaeger/kustomization-output.yaml": Internal error occurred: failed calling webhook "mjaeger.kb.io": failed to call webhook: Post "https://jaeger-operator-webhook-service.monitoring.svc:443/mutate-jaegertracing-io-v1-jaeger?timeout=10s": tls: failed to verify certificate: x509: certificate is valid for jaeger-operator-webhook-service.eddv-bld.svc, jaeger-operator-webhook-service.eddv-bld.svc.cluster.local, not jaeger-operator-webhook-service.monitoring.svc
-
-
-https://us02web.zoom.us/j/88420979908?pwd=14d5X4nWvK2UZ1nyg3ovj74OEsAhaF.1
-
-https://www.elastic.co/docs/deploy-manage/deploy/cloud-on-k8s/managing-deployments-using-helm-chart
-
-# Jaeger v2 Operator with Elasticsearch Setup
-
-This guide provides the complete configuration structure for deploying Jaeger v2 Operator with Elasticsearch using Helm and Kustomize.
-
-## Directory Structure
-
-```
-├── cluster
-│   ├── base
-│   │   ├── cert-manager
-│   │   │   └── kustomization.yaml
-│   │   ├── elasticsearch
-│   │   │   └── kustomization.yaml
-│   │   └── jaeger
-│   │       └── kustomization.yaml
-│   └── overlays
-│       └── production
-│           ├── cert-manager
-│           │   └── kustomization.yaml
-│           ├── elasticsearch
-│           │   └── kustomization.yaml
-│           └── jaeger
-│               └── kustomization.yaml
-├── helm
-│   ├── source
-│   │   ├── cert-manager
-│   │   │   ├── Chart.yaml
-│   │   │   └── source.yaml
-│   │   ├── elasticsearch
-│   │   │   ├── Chart.yaml
-│   │   │   └── source.yaml
-│   │   └── jaeger
-│   │       ├── Chart.yaml
-│   │       └── source.yaml
-│   └── values
-│       ├── cert-manager
-│       │   ├── Chart.yaml
-│       │   ├── deploy.yaml
-│       │   └── values.yaml
-│       ├── elasticsearch
-│       │   ├── Chart.yaml
-│       │   ├── deploy.yaml
-│       │   └── values.yaml
-│       └── jaeger
-│           ├── Chart.yaml
-│           ├── deploy.yaml
-│           └── values.yaml
-└── kustomize
-    ├── base
-    │   ├── cert-manager
-    │   │   ├── crds.yaml
-    │   │   ├── kustomization.yaml
-    │   │   └── helm-values.yaml
-    │   ├── elasticsearch
-    │   │   ├── crds.yaml
-    │   │   ├── kustomization.yaml
-    │   │   └── helm-values.yaml
-    │   └── jaeger
-    │       ├── crds.yaml
-    │       ├── kustomization.yaml
-    │       └── helm-values.yaml
-    └── overlays
-        └── production
-            ├── cert-manager
-            │   └── kustomization.yaml
-            ├── elasticsearch
-            │   └── kustomization.yaml
-            └── jaeger
-                └── kustomization.yaml
-```
-
-## 1. Elasticsearch Configuration
-
-### helm/source/elasticsearch/Chart.yaml
-```yaml
-apiVersion: v2
-name: elasticsearch
-version: 1.0.0
-dependencies:
-  - name: elasticsearch
-    version: 8.5.1
-    repository: https://helm.elastic.co
-```
-
-### helm/source/elasticsearch/source.yaml
-```yaml
-apiVersion: source.toolkit.fluxcd.io/v1beta2
-kind: HelmRepository
-metadata:
-  name: elasticsearch
-  namespace: flux-system
-spec:
-  interval: 1m
-  url: https://helm.elastic.co
-```
-
-### helm/values/elasticsearch/Chart.yaml
-```yaml
-apiVersion: v2
-name: elasticsearch-values
-version: 1.0.0
-```
-
-### helm/values/elasticsearch/deploy.yaml
-```yaml
-apiVersion: helm.toolkit.fluxcd.io/v2beta1
-kind: HelmRelease
-metadata:
-  name: elasticsearch
-  namespace: elasticsearch
-spec:
-  interval: 10m
-  chart:
     spec:
-      chart: elasticsearch
-      version: 8.5.1
-      sourceRef:
-        kind: HelmRepository
-        name: elasticsearch
-        namespace: flux-system
-  valuesFrom:
-    - kind: ConfigMap
-      name: elasticsearch-values
-```
+      replicas: 1
+      template:
+        spec:
+          containers:
+            - name: grafana
+              image: grafana/grafana:11.0.0
+              resources:
+                limits:
+                  cpu: 500m
+                  memory: 1Gi
+                requests:
+                  cpu: 250m
+                  memory: 512Mi
+              volumeMounts:
+                - name: grafana-storage
+                  mountPath: /var/lib/grafana
+          volumes:
+            - name: grafana-storage
+              persistentVolumeClaim:
+                claimName: grafana-pvc
 
-### helm/values/elasticsearch/values.yaml
-```yaml
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: elasticsearch-values
-  namespace: elasticsearch
-data:
-  values.yaml: |
-    replicas: 3
-    minimumMasterNodes: 2
-    
-    esConfig:
-      elasticsearch.yml: |
-        cluster.name: "elasticsearch"
-        network.host: 0.0.0.0
-        discovery.type: zen
-        discovery.zen.minimum_master_nodes: 2
-        discovery.zen.ping.unicast.hosts: elasticsearch-master-headless
-        xpack.security.enabled: false
-        xpack.monitoring.collection.enabled: true
-    
-    resources:
-      requests:
-        cpu: 1000m
-        memory: 2Gi
-      limits:
-        cpu: 2000m
-        memory: 4Gi
-    
-    volumeClaimTemplate:
-      accessModes: ["ReadWriteOnce"]
-      storageClassName: "standard"
+  # PVC Configuration
+  persistentVolumeClaim:
+    spec:
+      accessModes:
+        - ReadWriteOnce
       resources:
         requests:
-          storage: 30Gi
-    
-    service:
-      type: ClusterIP
-      port: 9200
-      targetPort: 9200
-```
+          storage: 10Gi
+      # storageClassName: standard  # Uncomment and set your storage class
 
-### kustomize/base/elasticsearch/kustomization.yaml
-```yaml
+  service:
+    metadata:
+      labels:
+        app: grafana
+    spec:
+      type: ClusterIP
+      ports:
+        - name: http
+          port: 3000
+          targetPort: 3000
+          protocol: TCP
+
+  ingress:
+    enabled: false
+
+---
+# kustomize/base/grafana-operator/prometheus-datasource.yaml
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaDatasource
+metadata:
+  name: prometheus-datasource
+  namespace: grafana-operator
+spec:
+  instanceSelector:
+    matchLabels:
+      dashboards: "grafana"
+  datasource:
+    name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus-operated.prometheus:9090
+    isDefault: true
+    jsonData:
+      timeInterval: "30s"
+      httpMethod: "POST"
+    editable: true
+
+---
+# kustomize/base/grafana-operator/loki-datasource.yaml
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaDatasource
+metadata:
+  name: loki-datasource
+  namespace: grafana-operator
+spec:
+  instanceSelector:
+    matchLabels:
+      dashboards: "grafana"
+  datasource:
+    name: Loki
+    type: loki
+    access: proxy
+    url: http://loki-gateway.loki:3100
+    jsonData:
+      maxLines: 1000
+    editable: true
+
+---
+# kustomize/base/grafana-operator/jaeger-datasource.yaml
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaDatasource
+metadata:
+  name: jaeger-datasource
+  namespace: grafana-operator
+spec:
+  instanceSelector:
+    matchLabels:
+      dashboards: "grafana"
+  datasource:
+    name: Jaeger
+    type: jaeger
+    access: proxy
+    url: http://jaeger-query.jaeger:16686
+    editable: true
+
+---
+# kustomize/base/grafana-operator/azure-monitor-datasource.yaml
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaDatasource
+metadata:
+  name: azure-monitor-datasource
+  namespace: grafana-operator
+spec:
+  instanceSelector:
+    matchLabels:
+      dashboards: "grafana"
+  datasource:
+    name: Azure Monitor
+    type: grafana-azure-monitor-datasource
+    access: proxy
+    jsonData:
+      cloudName: "azuremonitor"
+      subscriptionId: "your-subscription-id"
+      tenantId: "your-tenant-id"
+    secureJsonData:
+      clientSecret: "your-client-secret"
+    editable: true
+
+---
+# kustomize/base/grafana-operator/hybrid-dashboard.yaml
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaDashboard
+metadata:
+  name: hybrid-monitoring-dashboard
+  namespace: grafana-operator
+spec:
+  instanceSelector:
+    matchLabels:
+      dashboards: "grafana"
+  json: |
+    {
+      "title": "Hybrid Monitoring Dashboard",
+      "uid": "hybrid-monitoring",
+      "panels": [
+        {
+          "id": 1,
+          "title": "CPU Usage",
+          "type": "graph",
+          "datasource": "Prometheus",
+          "targets": [
+            {
+              "expr": "rate(container_cpu_usage_seconds_total[5m])"
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "title": "Request Traces",
+          "type": "table",
+          "datasource": "Jaeger"
+        },
+        {
+          "id": 3,
+          "title": "Application Logs",
+          "type": "logs",
+          "datasource": "Loki"
+        }
+      ]
+    }
+
+---
+# kustomize/base/grafana-operator/helm-values.yaml
+# This file can be used for additional Helm chart deployments if needed
+# Currently placeholder for future use
+
+################################################################################
+# OVERLAY CONFIGURATION - EDIT ENVIRONMENT
+################################################################################
+
+---
+# kustomize/overlays/EDIT/06grafana/kustomization.yaml
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-namespace: elasticsearch
+namespace: grafana-operator
 
 resources:
-  - crds.yaml
+  - ../../../base/grafana-operator
+  - serviceaccount.yaml
 
-helmCharts:
-  - name: elasticsearch
-    repo: https://helm.elastic.co
-    version: 8.5.1
-    valuesFile: helm-values.yaml
-```
+patches:
+  - path: grafana-inst.yaml
+  - path: config-patch.yaml
+  - path: ordering-config.yaml
 
-### kustomize/base/elasticsearch/helm-values.yaml
-```yaml
-replicas: 3
-minimumMasterNodes: 2
-
-esConfig:
-  elasticsearch.yml: |
-    cluster.name: "elasticsearch"
-    network.host: 0.0.0.0
-    discovery.type: zen
-    discovery.zen.minimum_master_nodes: 2
-    discovery.zen.ping.unicast.hosts: elasticsearch-master-headless
-    xpack.security.enabled: false
-    xpack.monitoring.collection.enabled: true
-
-resources:
-  requests:
-    cpu: 500m
-    memory: 2Gi
-  limits:
-    cpu: 1000m
-    memory: 4Gi
-
-volumeClaimTemplate:
-  accessModes: ["ReadWriteOnce"]
-  storageClassName: "standard"
-  resources:
-    requests:
-      storage: 30Gi
-
-service:
-  type: ClusterIP
-  port: 9200
-```
-
-### kustomize/base/elasticsearch/crds.yaml
-```yaml
-# This file should contain Elasticsearch CRDs if any are required
-# For standard Elasticsearch deployment, this can be empty
-```
-
-## 2. Jaeger v2 Operator Configuration
-
-### helm/source/jaeger/Chart.yaml
-```yaml
-apiVersion: v2
-name: jaeger-operator
-version: 1.0.0
-dependencies:
-  - name: jaeger-operator
-    version: 2.49.0
-    repository: https://jaegertracing.github.io/helm-charts
-```
-
-### helm/source/jaeger/source.yaml
-```yaml
-apiVersion: source.toolkit.fluxcd.io/v1beta2
-kind: HelmRepository
+---
+# kustomize/overlays/EDIT/06grafana/grafana-inst.yaml
+apiVersion: grafana.integreatly.org/v1beta1
+kind: Grafana
 metadata:
-  name: jaeger
-  namespace: flux-system
+  name: grafana-instance
+  namespace: grafana-operator
 spec:
-  interval: 1m
-  url: https://jaegertracing.github.io/helm-charts
-```
-
-### helm/values/jaeger/Chart.yaml
-```yaml
-apiVersion: v2
-name: jaeger-values
-version: 1.0.0
-```
-
-### helm/values/jaeger/deploy.yaml
-```yaml
-apiVersion: helm.toolkit.fluxcd.io/v2beta1
-kind: HelmRelease
-metadata:
-  name: jaeger-operator
-  namespace: jaeger
-spec:
-  interval: 10m
-  dependsOn:
-    - name: elasticsearch
-      namespace: elasticsearch
-  chart:
+  config:
+    server:
+      root_url: "https://grafana.edit.example.com"
+  
+  persistentVolumeClaim:
     spec:
-      chart: jaeger-operator
-      version: 2.49.0
-      sourceRef:
-        kind: HelmRepository
-        name: jaeger
-        namespace: flux-system
-  valuesFrom:
-    - kind: ConfigMap
-      name: jaeger-values
-  postRenderers:
-    - kustomize:
-        patches:
-          - target:
-              kind: Deployment
-              name: jaeger-operator
-            patch: |
-              - op: add
-                path: /spec/template/spec/containers/0/env/-
-                value:
-                  name: WATCH_NAMESPACE
-                  value: ""
-```
+      storageClassName: fast-ssd  # EDIT environment uses fast storage
+      resources:
+        requests:
+          storage: 20Gi  # Increased storage for EDIT
+  
+  ingress:
+    enabled: false
 
-### helm/values/jaeger/values.yaml
-```yaml
+---
+# kustomize/overlays/EDIT/06grafana/config-patch.yaml
+apiVersion: grafana.integreatly.org/v1beta1
+kind: Grafana
+metadata:
+  name: grafana-instance
+  namespace: grafana-operator
+spec:
+  config:
+    auth.anonymous:
+      enabled: "false"
+    auth.basic:
+      enabled: "true"
+    analytics:
+      reporting_enabled: "false"
+      check_for_updates: "false"
+    log:
+      level: "debug"
+    alerting:
+      enabled: "true"
+
+---
+# kustomize/overlays/EDIT/06grafana/ordering-config.yaml
+# Ensures Grafana instance is created after operators and dependencies
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: jaeger-values
-  namespace: jaeger
+  name: grafana-ordering
+  namespace: grafana-operator
+  annotations:
+    argocd.argoproj.io/sync-wave: "6"
 data:
-  values.yaml: |
-    jaeger:
-      create: true
-      spec:
-        strategy: production
-        storage:
-          type: elasticsearch
-          elasticsearch:
-            serverUrls: http://elasticsearch-master.elasticsearch.svc.cluster.local:9200
-            indexPrefix: jaeger
-          options:
-            es:
-              server-urls: http://elasticsearch-master.elasticsearch.svc.cluster.local:9200
-              index-prefix: jaeger
-        
-        collector:
-          replicas: 3
-          resources:
-            requests:
-              cpu: 100m
-              memory: 128Mi
-            limits:
-              cpu: 500m
-              memory: 512Mi
-        
-        query:
-          replicas: 2
-          resources:
-            requests:
-              cpu: 100m
-              memory: 128Mi
-            limits:
-              cpu: 500m
-              memory: 512Mi
-        
-        ingester:
-          replicas: 2
-          resources:
-            requests:
-              cpu: 100m
-              memory: 128Mi
-            limits:
-              cpu: 500m
-              memory: 512Mi
-    
-    rbac:
-      create: true
-      clusterRole: true
-    
-    serviceAccount:
-      create: true
-    
-    resources:
-      limits:
-        cpu: 100m
-        memory: 128Mi
-      requests:
-        cpu: 100m
-        memory: 128Mi
-```
+  note: "This ensures Grafana deploys in wave 6 after all dependencies"
 
-### kustomize/base/jaeger/kustomization.yaml
-```yaml
+---
+# kustomize/overlays/EDIT/06grafana/serviceaccount.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: grafana-sa
+  namespace: grafana-operator
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: grafana-role
+  namespace: grafana-operator
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps", "secrets"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: grafana-rolebinding
+  namespace: grafana-operator
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: grafana-role
+subjects:
+  - kind: ServiceAccount
+    name: grafana-sa
+    namespace: grafana-operator
+
+################################################################################
+# OVERLAY CONFIGURATION - EDDV ENVIRONMENT
+################################################################################
+
+---
+# kustomize/overlays/EDDV/grafana/kustomization.yaml
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-namespace: jaeger
+namespace: grafana-operator
 
 resources:
-  - crds.yaml
-  - jaeger-instance.yaml
+  - ../../../base/grafana-operator
+  - serviceaccount.yaml
+
+patches:
+  - path: config-patch.yaml
+
+---
+# kustomize/overlays/EDDV/grafana/config-patch.yaml
+apiVersion: grafana.integreatly.org/v1beta1
+kind: Grafana
+metadata:
+  name: grafana-instance
+  namespace: grafana-operator
+spec:
+  config:
+    server:
+      root_url: "https://grafana.eddv.example.com"
+  
+  persistentVolumeClaim:
+    spec:
+      storageClassName: standard  # EDDV uses standard storage
+      resources:
+        requests:
+          storage: 10Gi
+  
+  ingress:
+    enabled: false
+
+---
+# kustomize/overlays/EDDV/grafana/serviceaccount.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: grafana-sa
+  namespace: grafana-operator
+
+################################################################################
+# HELM CONFIGURATION
+################################################################################
+
+---
+# helm/source/grafana/Chart.yaml
+apiVersion: v2
+name: grafana-operator-source
+description: Grafana Operator Helm Chart Source
+type: application
+version: 5.19.4
+appVersion: "5.19.4"
+
+---
+# helm/source/grafana/source.yaml
+apiVersion: source.toolkit.fluxcd.io/v1beta2
+kind: HelmRepository
+metadata:
+  name: grafana-operator
+  namespace: flux-system
+spec:
+  interval: 10m
+  type: oci
+  url: oci://ghcr.io/grafana/helm-charts
+
+---
+# helm/values/EDIT/grafana-operator/Chart.yaml
+apiVersion: v2
+name: grafana-operator-edit
+description: Grafana Operator deployment for EDIT environment
+type: application
+version: 5.19.4
+appVersion: "5.19.4"
+dependencies:
+  - name: grafana-operator
+    version: v5.19.4
+    repository: oci://ghcr.io/grafana/helm-charts
+
+---
+# helm/values/EDIT/grafana-operator/values.yaml
+namespaceScope: false
+watchNamespaces: ""
+
+operator:
+  resources:
+    limits:
+      cpu: 300m
+      memory: 512Mi
+    requests:
+      cpu: 150m
+      memory: 256Mi
+
+grafana:
+  enabled: true
+  persistence:
+    enabled: true
+    storageClassName: fast-ssd
+    size: 20Gi
+    accessModes:
+      - ReadWriteOnce
+
+---
+# helm/values/EDIT/grafana-operator/deploy.yaml
+apiVersion: helm.toolkit.fluxcd.io/v2beta1
+kind: HelmRelease
+metadata:
+  name: grafana-operator
+  namespace: grafana-operator
+spec:
+  interval: 5m
+  chart:
+    spec:
+      chart: grafana-operator
+      version: v5.19.4
+      sourceRef:
+        kind: HelmRepository
+        name: grafana-operator
+        namespace: flux-system
+  values:
+    namespaceScope: false
+    operator:
+      resources:
+        limits:
+          cpu: 300m
+          memory: 512Mi
+        requests:
+          cpu: 150m
+          memory: 256Mi
+
+################################################################################
+# CLUSTER OPERATOR BASE CONFIGURATION
+################################################################################
+
+---
+# cluster/base/grafana-operator/namespace.yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: grafana-operator
+
+---
+# cluster/base/grafana-operator/serviceaccount.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: grafana-operator
+  namespace: grafana-operator
+
+---
+# cluster/base/grafana-operator/kustomization.yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: grafana-operator
+
+resources:
+  - namespace.yaml
+  - serviceaccount.yaml
 
 helmCharts:
-  - name: jaeger-operator
-    repo: https://jaegertracing.github.io/helm-charts
-    version: 2.49.0
-    valuesFile: helm-values.yaml
-```
+  - name: grafana-operator
+    repo: oci://ghcr.io/grafana/helm-charts
+    version: v5.19.4
+    releaseName: grafana-operator
+    namespace: grafana-operator
 
-### kustomize/base/jaeger/helm-values.yaml
-```yaml
-rbac:
-  create: true
-  clusterRole: true
+################################################################################
+# CLUSTER OVERLAY CONFIGURATION
+################################################################################
 
-serviceAccount:
-  create: true
+---
+# cluster/overlays/EDIT/grafana-operator/kustomization.yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: grafana-operator
 
 resources:
-  limits:
-    cpu: 100m
-    memory: 128Mi
-  requests:
-    cpu: 100m
-    memory: 128Mi
+  - ../../../base/grafana-operator
+  - ordering-config.yaml
 
-env:
-  WATCH_NAMESPACE: ""
-```
-
-### kustomize/base/jaeger/jaeger-instance.yaml
-```yaml
-apiVersion: jaegertracing.io/v1
-kind: Jaeger
+---
+# cluster/overlays/EDIT/grafana-operator/ordering-config.yaml
+apiVersion: v1
+kind: ConfigMap
 metadata:
-  name: jaeger-production
-  namespace: jaeger
-spec:
-  strategy: production
-  
-  storage:
-    type: elasticsearch
-    elasticsearch:
-      serverUrls: http://elasticsearch-master.elasticsearch.svc.cluster.local:9200
-      indexPrefix: jaeger
-    options:
-      es:
-        server-urls: http://elasticsearch-master.elasticsearch.svc.cluster.local:9200
-        index-prefix: jaeger
-        num-shards: 1
-        num-replicas: 1
-  
-  collector:
-    replicas: 3
-    resources:
-      requests:
-        cpu: 100m
-        memory: 128Mi
-      limits:
-        cpu: 500m
-        memory: 512Mi
-    config:
-      log-level: info
-  
-  query:
-    replicas: 2
-    resources:
-      requests:
-        cpu: 100m
-        memory: 128Mi
-      limits:
-        cpu: 500m
-        memory: 512Mi
-    config:
-      log-level: info
-  
-  ingester:
-    replicas: 2
-    resources:
-      requests:
-        cpu: 100m
-        memory: 128Mi
-      limits:
-        cpu: 500m
-        memory: 512Mi
-    config:
-      log-level: info
-```
-
-## 3. Cluster Configuration
-
-### cluster/base/elasticsearch/kustomization.yaml
-```yaml
-apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
-
-resources:
-  - ../../../kustomize/base/elasticsearch
-  - namespace.yaml
-
-patches:
-  - target:
-      kind: Namespace
-    patch: |
-      - op: add
-        path: /metadata/labels
-        value:
-          name: elasticsearch
-```
-
-### cluster/base/jaeger/kustomization.yaml
-```yaml
-apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
-
-resources:
-  - ../../../kustomize/base/jaeger
-  - namespace.yaml
-
-patches:
-  - target:
-      kind: Namespace
-    patch: |
-      - op: add
-        path: /metadata/labels
-        value:
-          name: jaeger
-```
-
-### cluster/overlays/production/elasticsearch/kustomization.yaml
-```yaml
-apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
-
-resources:
-  - ../../../base/elasticsearch
-
-patchesStrategicMerge:
-  - elasticsearch-production-patch.yaml
-```
-
-### cluster/overlays/production/jaeger/kustomization.yaml
-```yaml
-apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
-
-resources:
-  - ../../../base/jaeger
-
-patchesStrategicMerge:
-  - jaeger-production-patch.yaml
-```
-
-## 4. Deployment Order
-
-To ensure proper deployment order, create this deployment script:
-
-```bash
-#!/bin/bash
-
-# Deploy cert-manager first (if not already deployed)
-kubectl apply -k cluster/overlays/production/cert-manager
-
-# Wait for cert-manager to be ready
-kubectl wait --for=condition=available --timeout=300s deployment/cert-manager -n cert-manager
-
-# Deploy Elasticsearch
-kubectl apply -k cluster/overlays/production/elasticsearch
-
-# Wait for Elasticsearch to be ready
-kubectl wait --for=condition=ready --timeout=600s pod -l app=elasticsearch-master -n elasticsearch
-
-# Deploy Jaeger Operator and instance
-kubectl apply -k cluster/overlays/production/jaeger
-
-# Wait for Jaeger to be ready
-kubectl wait --for=condition=available --timeout=300s deployment/jaeger-operator -n jaeger
-```
-
-## 5. Verification
-
-After deployment, verify the setup:
-
-```bash
-# Check Elasticsearch
-kubectl get pods -n elasticsearch
-kubectl logs -f deployment/elasticsearch-master -n elasticsearch
-
-# Check Jaeger
-kubectl get pods -n jaeger
-kubectl get jaeger -n jaeger
-
-# Access Jaeger UI (port-forward)
-kubectl port-forward svc/jaeger-production-query 16686:16686 -n jaeger
-```
-
-## Notes
-
-1. **Dependencies**: Elasticsearch must be deployed and running before Jaeger
-2. **Storage**: Adjust storage class and size based on your requirements
-3. **Resources**: Modify CPU/memory limits based on your cluster capacity
-4. **Security**: Consider enabling TLS and authentication for production
-5. **Monitoring**: Add monitoring and alerting for both Elasticsearch and Jaeger
-6. **Backup**: Implement backup strategies for Elasticsearch data
-
-This setup provides a production-ready Jaeger v2 deployment with Elasticsearch backend using the GitOps approach with Helm and Kustomize.
+  name: grafana-operator-ordering
+  namespace: grafana-operator
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+data:
+  deployment-order: "Deploy after cert-manager and before application components"
