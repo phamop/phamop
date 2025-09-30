@@ -1,11 +1,16 @@
+Grafana Operator Adoption
 
-To improve operational clarity and scalability, we have officially transitioned from a legacy naming convention to a standardized label selection system.
-Update: We've successfully moved from a naming convention to a label-based system.
+By adopting the Grafana Operator, we are moving from manual dashboard and data source management to a declarative, Kubernetes-native model that leverages Custom Resources.
 
-What this means: Finding and managing resources is now more consistent and tool-friendly.
+The operator allows us to:
 
-Action Needed: Please use the new label standards for all future work. The full schema and examples are documented in the wiki.
+Manage Grafana instances and their resources (dashboards, data sources, etc.) using Custom Resource Definitions (CRDs).
 
+Provision and configure Grafana resources through Kubernetes manifests, ensuring consistency and automation.
+
+Considerations:
+
+Finalizer Cleanup: The operator uses finalizers to remove resources from Grafana instances during deletion. However, if the operator is uninstalled before cleanup occurs, finalizers may remain, requiring manual removal to complete deletion.
 
 
 
