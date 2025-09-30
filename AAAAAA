@@ -1,3 +1,17 @@
+The provided AKS bootstrap pipeline requires several details to be finalized before deployment. Key concerns include:
+Critical Issue:
+
+Load Balancer Subnet Capacity: The current load balancer subnet has only 2 available IPs remaining. This concern has been escalated to John for review.
+
+Next Steps:
+
+Awaiting input from John regarding the subnet capacity issue
+Will schedule a meeting if needed to address all outstanding deployment requirements
+
+
+
+
+
 
 he summary of our Grafana Operator transition is now available on the wiki
 Grafana Operator Adoption
