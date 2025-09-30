@@ -1,3 +1,5 @@
+
+he summary of our Grafana Operator transition is now available on the wiki
 Grafana Operator Adoption
 
 By adopting the Grafana Operator, we are moving from manual dashboard and data source management to a declarative, Kubernetes-native model that leverages Custom Resources.
