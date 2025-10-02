@@ -1,5 +1,8 @@
+Primary Blocker: We are waiting for the Security IO team to complete the creation of a required NGS (Next-Generation Security) policy. This is a prerequisite for the Application Operations (AO) team to begin building the load balancer subnet.
 
-the load balancer is currently waiting on the security IO team for NGS creation once it created  the AO team will  proceed to create  the load balancer subnet. Also, I have submitted ticket to  provide access to the Build platform repo but it currently pending 2 approval
+Secondary Blocker: To prepare for future stages, I have requested access to the Build platform repository. This ticket is currently awaiting two mandatory approvals
+
+
 
 
 
