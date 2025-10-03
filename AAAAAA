@@ -1,1 +1,1 @@
- There is a need to update  the NSG for outbound internet. I was told I need to reach out to IO security for additional firewall rule to be updated to the NSG in order to have successful deployment
+ Our deployment process is failing due to a lack of outbound internet access. The defined procedure for resolving this is to request a firewall rule exception from the IO Security team. Once they approve and provide the rule, it will be applied to the relevant Network Security Group (NSG) to enable the required connectivity
