@@ -1,1 +1,1 @@
-az aks get-credentials --resource-group <resource-group-name> --name <cluster-name>
+ There is a need to update  the NSG for outbound internet. I was told I need to reach out to IO security for additional firewall rule to be updated to the NSG in order to have successful deployment
