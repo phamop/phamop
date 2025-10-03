@@ -1,1 +1,1 @@
-Ticket 909000023 is now complete: permission has been granted and the feature branch has been successfully created in the repository.
+az aks get-credentials --resource-group <resource-group-name> --name <cluster-name>
