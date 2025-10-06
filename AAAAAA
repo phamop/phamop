@@ -1,2 +1,1 @@
-The AKS deployment for OSS is failing because it lacks outbound internet access. To resolve this, we must follow a formal procedure: submit a firewall rule request form to the IO Security team. Once they approve and apply the rule to the relevant Network Security Group (NSG), the deployment will succeed.
-
+we require this ticket to be processed ahead of the standard 5-day SLA. Your help in expediting this would be greatly appreciated
