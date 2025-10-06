@@ -1,1 +1,88 @@
-We are escalating Ticket #23344 due to its critical nature. Adherence to its 5-day SLA is essential, as any delay will directly impact the delivery timeline for the dedicated AKS environment
+Architecture Decision Record (ADR): Monitoring Azure Resources
+1. Context
+We need a sustainable, cost‑efficient, and flexible observability approach for Azure‑hosted workloads. The decision concerns whether to adopt a predominantly Azure‑native monitoring stack (Azure Monitor + Application Insights, visualized in Grafana) or an OSS‑first approach using Event Hubs + OpenTelemetry (OTel) running in AKS with Prometheus/Loki/Jaeger and Grafana.
+2. Decision Drivers
+	Cost at scale (log ingestion, retention, egress, export, Event Hubs throughput, AKS compute/storage).
+	Operational complexity (managed services vs. operating Prometheus/Loki/Jaeger/Collectors).
+	Query & skills (KQL/Workbooks vs. PromQL/Alertmanager/Grafana).
+	Portability/multi‑cloud (vendor lock‑in vs. OSS standards).
+	Performance & resilience (spiky workloads, buffering, back‑pressure).
+	Security & compliance (data residency, audit, RBAC, private networking).
+3. Options Considered
+Option A — Azure‑Native (Azure Monitor + Application Insights + Grafana)
+Logs: Azure Monitor Logs (Log Analytics) queried via KQL, visualized in Grafana using the Azure Monitor data source.
+Metrics: Azure Monitor Metrics visualized in Grafana. (If Prometheus‑style metrics are required, consider Azure Managed Prometheus.)
+Traces: Application Insights; apps instrumented via OpenTelemetry send telemetry directly to App Insights.
+Advantages:
+•	Minimal operational overhead; fully managed ingestion, indexing, and query.
+•	Native KQL, Workbooks, Azure alerting, RBAC, and resource‑centric experiences.
+•	Direct Grafana integration with Azure Monitor data sources.
+Limitations / Cost Considerations:
+•	Log ingestion and retention in Log Analytics/App Insights billed per GB; can be high for verbose logs.
+•	Limited portability (data and dashboards tied to Azure stack).
+•	If exporting data (e.g., for downstream systems), export traffic may add cost (not needed in pure native path).
+Option B — OSS‑First (Event Hubs + OTel in AKS + Prometheus/Loki/Jaeger + Grafana)
+Logs: Resource Diagnostic Settings stream directly to Event Hubs; OTel Collector (AKS) ingests from EH and writes to Loki/Elastic; Grafana visualizes.
+Metrics: Azure metrics exporter (or Grafana Agent) pulls from Azure Monitor APIs; Prometheus scrapes; Grafana visualizes. Optionally, OTel Collector can remote_write to a Prometheus‑compatible backend.
+Traces: OTel SDK → OTel Collector (AKS) → Jaeger; optional dual‑export to App Insights if APM views are needed.
+Advantages:
+•	Lower log costs at scale (you control retention/compaction in object storage).
+•	Open standards ( Loki labels, OTel) and multi‑cloud portability.
+•	Event Hubs provides buffering/back‑pressure for bursty workloads.
+Limitations / Cost Considerations:
+•	Operate and scale Event Hubs, Prometheus, Loki, Jaeger, and OTel Collectors in AKS (SRE overhead).
+•	AKS compute/storage for the observability stack; capacity planning for TSDB/indices and retention.
+•	Metrics API/exporter calls and remote_write egress (if pushing to external backends).
+
+4. Cost Model & Estimation Framework
+Option A — Azure‑Native (indicative, plug in your rates):
+Component	Driver/Meter	Monthly Formula	Inputs (example)
+Log Analytics / App Insights	Ingestion (GB) + Retention	GB_per_day × Rate_per_GB × 30 + Retention_fee	GB_per_day, Rate_per_GB, Retention_plan
+Azure Monitor Metrics	Query/API usage (if heavy)	API_calls_per_day × Rate_per_1k × 30	API_calls_per_day, Rate_per_1k
+Grafana (Managed or Self‑hosted)	Seats/Instance/VM	Service_fee + VM_cost	Seats, VM_size
+(Optional) Export	Data Export (GB)	Exported_GB × Rate_per_GB	Exported_GB, Rate_per_GB
+Option B — OSS‑First (indicative, plug in your rates):
+Component	Driver/Meter	Monthly Formula	Inputs (example)
+Event Hubs	Throughput Units + Storage	TU_hours × TU_rate + Storage_GB × Storage_rate	TU_hours, TU_rate, Storage_GB
+OTel/Prometheus/Loki/Jaeger (AKS)	vCPU/RAM + Storage	Node_hours × Node_rate + Obj_Storage_GB × Storage_rate	Node_hours, Node_rate, Retention_days
+Prometheus remote_write (optional)	Egress + Backend fee	Egress_GB × Egress_rate + Backend_fee	Egress_GB, Backend_target
+Grafana	Seats/Instance/VM	Service_fee + VM_cost	Seats, VM_size
+
+Estimation workflow: 
+(1) baseline volume per service (GB/day logs, series/second for metrics, spans/min for traces); 
+(2) choose retention targets; 
+(3) multiply by provider rates; 
+(4) include AKS/VM costs for OSS; 
+(5) test with 30‑day and 90‑day horizons.
+
+5. Risks & Trade‑offs
+•	Option A may become costly for verbose logs; sampling and table‑level plans mitigate this.
+•	Option B introduces operational risk (scale, HA, backup/restore) for the OSS stack.
+•	Vendor lock‑in (A) vs. skills/ops burden (B).
+•	Latency and back‑pressure: Event Hubs buffering helps in (B); (A) relies on Azure ingestion SLAs.
+•	Security: private networking and RBAC must be enforced either way.
+6. Recommendation
+Adopt Option B - OSS‑First for high‑volume logs and platform telemetry, with selective use of Azure‑native services:
+	Logs: Diagnostic Settings → Event Hubs → OTel (AKS) → Loki; keep only critical audit/security tables in Log Analytics.
+	Metrics: Prometheus as source of truth via exporter/Collector pull; Grafana for visualization. Use Azure Managed Prometheus if you prefer a managed backend.
+	Traces: OTel → Collector → Jaeger/Tempo; dual‑export to App Insights only for services that require Azure APM experiences.
+	Rationale: better cost control for high‑volume telemetry, OSS portability (PromQL, OTel), buffering for spikes via Event Hubs, and unified Grafana dashboards.
+8. Consequences
+•	Teams must operate and scale the OSS stack in AKS (capacity planning, backups, upgrades).
+•	KQL remains available only for the subset retained in Log Analytics.
+•	Alerting split: Azure Alerts (Option A) vs. Prometheus/Alertmanager (Option B); standardize on one per domain where possible.
+9. Implementation Plan (Phased)
+1.	Phase 1: Stand up Event Hubs, OTel Collector in AKS, Prometheus, Loki, Jaeger, Grafana.
+2.	Phase 2: Enable Diagnostic Settings on top‑talkers (Front Door, App Gateway, API Mgmt, Functions).
+3.	Phase 3: Instrument critical apps with OTel SDK; add exemplars and correlation IDs.
+4.	Phase 4: Migrate dashboards/alerts (metrics, Loki for logs, Jaeger for traces).
+5.	Phase 5: Optimize cost (sampling, retention tiers, compaction, exporter throttling).
+10. Monitoring & Alerting Standards
+Metrics: SLO‑driven alerts in Prometheus/Alertmanager; page on burn‑rates. 
+Logs: Loki queries for anomaly/security with routing to SIEM if applicable. 
+Traces: tail‑based sampling and service‑level latency SLIs. 
+Dashboards: Grafana folders by domain; ownership clearly labeled.
+Appendix A — Assumptions
+OTel Collector runs in AKS; Prometheus is the metrics system of record unless managed Prometheus is chosen.
+Grafana is the single pane of glass; Azure Monitor data source is enabled for Azure‑native views where needed.
+Network paths are private (Private Link) and RBAC follows least‑privilege.
