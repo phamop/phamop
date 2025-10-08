@@ -1,3 +1,6 @@
+ Placeholder task has been created for the DNS record SCTASK00090889. the details will be updated once the AKS deployment has been completed successsfully
+
+
 Architecture Decision Record (ADR): Monitoring Azure Resources
 1. Context
 We need a sustainable, cost‑efficient, and flexible observability approach for Azure‑hosted workloads. The decision concerns whether to adopt a predominantly Azure‑native monitoring stack (Azure Monitor + Application Insights, visualized in Grafana) or an OSS‑first approach using Event Hubs + OpenTelemetry (OTel) running in AKS with Prometheus/Loki/Jaeger and Grafana.
