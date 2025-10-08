@@ -1,57 +1,203 @@
-apiVersion: jaegertracing.io/v1
-kind: Jaeger
+####Prometheus CRD & remoteWrite support
+========================================
+
+apiVersion: monitoring.coreos.com/v1
+kind: Prometheus
 metadata:
-  name: jaeger-eck
+  name: my-prometheus
   namespace: monitoring
 spec:
-  strategy: production   # separates collector, query, ingester
-  collector:
-    replicas: 2
-    options:
-      log-level: debug
-    resources:
-      requests:
-        cpu: "500m"
-        memory: "1Gi"
-      limits:
-        cpu: "1"
-        memory: "2Gi"
-    service:
-      type: ClusterIP
-  query:
-    replicas: 2
-    options:
-      log-level: debug
-    resources:
-      requests:
-        cpu: "500m"
-        memory: "1Gi"
-      limits:
-        cpu: "1"
-        memory: "2Gi"
-    service:
-      type: ClusterIP
-  ingester:
-    replicas: 1
-    resources:
-      requests:
-        cpu: "500m"
-        memory: "1Gi"
-      limits:
-        cpu: "1"
-        memory: "2Gi"
-    service:
-      type: ClusterIP
-  storage:
-    type: elasticsearch
-    options:
-      es:
-        server-urls: http://eck-elasticsearch-es-http.monitoring.svc.cluster.local:9200
-    esIndexCleaner:
-      enabled: true
-      numberOfDays: 7   # keep 7 days of traces
-      schedule: "55 23 * * *"
-    esRollover:
-      schedule: "0 0 * * *"
+  # ... other spec bits (replicas, storage, scrape selectors, etc.)
+  remoteWrite:
+    - url: https://mimir.example.com/api/v1/push
+      # optional fields
+      sendExemplars: true
+      queueConfig:
+        capacity: 20000
+        maxSamplesPerSend: 10000
+      # TLS, basicAuth, OAuth2, etc.
+      tlsConfig:
+        insecureSkipVerify: false
+      # plus write relabel configs, metadataConfig, etc.
+
+
+
+
+
+#####Prometheus → Mimir (remote_write)
+======================================
+
+prometheus:
+  prometheusSpec:
+    remoteWrite:
+      - url: https://mimir.example.com/api/v1/push
+        # Optional but recommended:
+        sendExemplars: true
+        queue_config:
+          max_samples_per_send: 10000
+          capacity: 20000
+          max_shards: 20
+        # If auth is enabled on Mimir, add basic auth or headers here
+        # basicAuth:
+        #   username:
+        #   password:
+
+
+
+
+
+
+
+
+
+
+
+####mimir-values.yaml
+=====================
+
+
+# Namespace: monitoring
+global:
+  podAnnotations: {}
+  labels: {}
+
+# Bind the SA to Azure Workload Identity (UAMI client id)
+serviceAccount:
+  create: true
+  name: mimir-sa
+  annotations:
+    azure.workload.identity/client-id: "<UAMI_CLIENT_ID>"   # <- fill with your value
+
+# Ensure pods can use projected service account tokens (AKS default is fine)
+podSecurityContext: {}
+securityContext: {}
+
+mimir:
+  # Use the structured (official) Mimir config block
+  structuredConfig:
+    multitenancy_enabled: false
+
+    # Common storage config (blocks storage engine)
+    common:
+      storage:
+        backend: azure
+        azure:
+          # REQUIRED: storage account and containers
+          account_name: "<STORAGE_ACCOUNT_NAME>"          # e.g., mimirst12345
+          container_name: "<NOT_USED>"                    # NOTE: set per component below
+          endpoint: "blob.core.windows.net"
+
+          # MSI / Workload Identity
+          use_managed_identity: true
+          # When using a User-Assigned MI, set client ID:
+          user_assigned_id: "<UAMI_CLIENT_ID>"
+
+    # Blocks storage (TSDB chunks, indexes, metas)
+    blocks_storage:
+      backend: azure
+      azure:
+        account_name: "<STORAGE_ACCOUNT_NAME>"
+        container_name: "mimir-blocks"                    # created above
+        endpoint: "blob.core.windows.net"
+        use_managed_identity: true
+        user_assigned_id: "<UAMI_CLIENT_ID>"
+      bucket_store:
+        sync_dir: /data/tsdb-sync
+
+    # Ruler configuration (rule files storage)
+    ruler:
+      storage:
+        backend: azure
+        azure:
+          account_name: "<STORAGE_ACCOUNT_NAME>"
+          container_name: "mimir-ruler"                   # created above
+          endpoint: "blob.core.windows.net"
+          use_managed_identity: true
+          user_assigned_id: "<UAMI_CLIENT_ID>"
+
+    # Alertmanager (silences/notifications)
+    alertmanager:
+      storage:
+        backend: azure
+        azure:
+          account_name: "<STORAGE_ACCOUNT_NAME>"
+          container_name: "mimir-alerts"                  # created above
+          endpoint: "blob.core.windows.net"
+          use_managed_identity: true
+          user_assigned_id: "<UAMI_CLIENT_ID>"
+
+    # Server & auth
+    server:
+      log_level: info
+    auth:
+      type: "anonymous"
+      # map everyone to the same tenant, since this is a single-tenant Prom → Mimir setup
+      tenancy:
+        anonymous:
+          org_id: "tenant-1"
+
+  # Optional: set compactor/ruler retention policy examples
+  compactor:
+    retention_enabled: true
+    retention_delete_delay: 24h
+    compaction_interval: 5m
+
+# Gateway / Ingress to accept Prom remote_write at /api/v1/push
+# Expose the mimir-gateway with an Ingress (AKS Ingress/Nginx example)
+gateway:
+  enabled: true
+
+  service:
+    type: ClusterIP
+    port: 80
+
   ingress:
-    enabled: false   # explicitly disable ingress
+    enabled: true
+    className: nginx
+    hosts:
+      - host: mimir.example.com           # <- your DNS
+        paths:
+          - path: /
+            pathType: Prefix
+    tls:
+      - secretName: mimir-tls              # <- provide cert (cert-manager recommended)
+        hosts:
+          - mimir.example.com
+
+# Make sure every Mimir component uses the same SA (with WI annotation)
+distributor:
+  serviceAccount:
+    create: false
+    name: mimir-sa
+ingester:
+  serviceAccount:
+    create: false
+    name: mimir-sa
+querier:
+  serviceAccount:
+    create: false
+    name: mimir-sa
+queryFrontend:
+  serviceAccount:
+    create: false
+    name: mimir-sa
+queryScheduler:
+  serviceAccount:
+    create: false
+    name: mimir-sa
+ruler:
+  serviceAccount:
+    create: false
+    name: mimir-sa
+compactor:
+  serviceAccount:
+    create: false
+    name: mimir-sa
+storeGateway:
+  serviceAccount:
+    create: false
+    name: mimir-sa
+alertmanager:
+  serviceAccount:
+    create: false
+    name: mimir-sa
