@@ -1,5 +1,4 @@
- Placeholder task has been created for the DNS record SCTASK00090889. the details will be updated once the AKS deployment has been completed successsfully
-
+A placeholder task has been created for DNS record SCTASK00090889. Details will be populated upon successful completion of the AKS deployment
 
 Architecture Decision Record (ADR): Monitoring Azure Resources
 1. Context
