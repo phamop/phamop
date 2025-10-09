@@ -1,4 +1,10 @@
-The NSG configuration was completed by the Firewall Team yesterday. Subsequently, we initiated the AKS deployment in coordination with the AO Team. However, the deployment failed because the cluster could not establish outbound connectivity. I have escalated this issue to the Firewall Team and notified the relevant stakeholders. My priority for today is to follow up and drive this issue toward a resolution.
+I have additional request based on the issue encountered during the AKS deployment, I have attached the updated firewall rule to the ticket, Please kindly assist to look into this and update
+
+
+
+
+
+
 
 Architecture Decision Record (ADR): Monitoring Azure Resources
 1. Context
