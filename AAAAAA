@@ -1,4 +1,4 @@
-A placeholder task has been created for DNS record SCTASK00090889. Details will be populated upon successful completion of the AKS deployment
+ the firewall team completed the NSG request yesterday and I worked with the AO team for the AKS deployment  but it failed due to inability to established outbound connectivity. I have reported the issue to the firewall team and relevant stakeholder. I will be follow up on this issue today
 
 Architecture Decision Record (ADR): Monitoring Azure Resources
 1. Context
