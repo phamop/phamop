@@ -1,6 +1,15 @@
-I've updated the documents on the wiki. They are now ready for your review.
+What I was looking for is a tech spike plan; a short, time-boxed investigation to validate Option 3 before committing to rollout.
 
-Please take a look when you have a moment and let me know what time works best for you to discuss them
+A tech spike should focus on proving feasibility and reducing unknowns (complexity, integration, cost). It doesn’t need to cover full phased adoption.
+
+  1. Objectives – what questions are we trying to answer (e.g., performance, SRE overhead, cost signals)?
+  2. Scope / Constraints – what’s in and out (e.g., test with one or two Azure resources, not full estate).
+  3. Experiments / Activities – small hands-on tests: route one resource’s logs via Event Hub → OTel → Loki, scrape sample metrics, push one trace into Jaeger.
+  4. Time-box – limit to a sprint or less.
+  5. Outputs – documented findings, cost estimates, risks, and a recommendation on whether to proceed.
+
+For now, drop the phased migration and optimization steps – that belongs in an implementation plan, not a spike.
+
 
 
 Architecture Decision Record (ADR): Monitoring Azure Resources
