@@ -1,3 +1,13 @@
+As part of the process to resolve the AKS deployment, firewall team advised to open a troubleshooting ticket -###, this ticket has been created and relevant details 
+has been attached to ticket.
+later , the firewall team came and update with plan  create change that will be implemented in Oct 20th @8PM
+ 
+their argument is that, it will go to the CAB first and it will be implemented a week after CAB approval
+
+
+
+
+
 What I was looking for is a tech spike plan; a short, time-boxed investigation to validate Option 3 before committing to rollout.
 
 A tech spike should focus on proving feasibility and reducing unknowns (complexity, integration, cost). It doesn’t need to cover full phased adoption.
