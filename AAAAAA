@@ -1,6 +1,4 @@
-During the recent AKS deployment, we encountered a firewall-related issue. I have attached the updated firewall rule required to resolve this. Could you please review and implement this change
-
-
+I have actually updated  the documents, please kindly review the wiki and let me know when we can do the review
 
 
 Architecture Decision Record (ADR): Monitoring Azure Resources
