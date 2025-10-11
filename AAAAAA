@@ -1,5 +1,4 @@
-$value = (Get-Variable -Name $envVar -ValueOnly)
-and this $value = (Get-Item "env:$envVar").Value
+https://us04web.zoom.us/j/77635419004?pwd=AVW4x0ES6ODluL0RAQMomacclMJL0B.1
 
 
 
