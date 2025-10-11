@@ -1,4 +1,5 @@
-https://us04web.zoom.us/j/76957108537?pwd=y5wRS2ykU22uL6RnYNhpi5hDyHS7Qp.1
+$value = (Get-Variable -Name $envVar -ValueOnly)
+and this $value = (Get-Item "env:$envVar").Value
 
 
 
