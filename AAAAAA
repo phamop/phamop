@@ -1,4 +1,7 @@
-https://us04web.zoom.us/j/76698437441?pwd=dHS2Ycvufnd3OBVjKabLcw8aEfH8xx.1
+$secret = Get-AzKeyVaultSecret -VaultName "your-keyvault-name" -Name "YourSecretName" -AsPlainText
+      
+      # Use the secret
+      Write-Host "Secret retrieved successfully"
 
 
 
