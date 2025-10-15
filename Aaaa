@@ -1,364 +1,55 @@
-global:
-  # -- Overrides the Docker registry globally for all images
-  imageRegistry: null
-  imagePullSecrets: []
+# Tech Spike Plan – Validate Option 3: OTel → Loki Integration via Event Hub
 
-rbac:
-  create: true
+## 1. Objectives
 
-serviceAccount:
-  create: false  # Set to false since SA already exists
-  name: grafana-sa   # reference to existing managed identity SA
-  labels: {}
-  automountServiceAccountToken: true
+Define the key questions this spike aims to answer:
 
-replicas: 1
+* Can OpenTelemetry Collector reliably ingest Azure resource logs via Event Hub and push to Loki?
+* What is the expected data latency and ingestion performance?
+* What SRE overhead (e.g., maintenance, scaling) does this setup imply?
+* Are there cost indicators that make this option viable or prohibitive?
 
-## Create a headless service for the deployment
-headlessService: false
+## 2. Scope / Constraints
 
-## Should the service account be auto mounted on the pod
-automountServiceAccountToken: true
+**In Scope:**
 
-## Create HorizontalPodAutoscaler object for deployment type
-autoscaling:
-  enabled: true
-  minReplicas: 1
-  maxReplicas: 5
-  targetCPU: "80"
-  targetMemory: ""
-  behavior: {}
+* Route logs from 1–2 Azure resources (e.g., App Service, Function App).
+* Configure Event Hub → OpenTelemetry Collector → Loki flow.
+* Push one trace sample into Jaeger.
 
-## See `kubectl explain poddisruptionbudget.spec` for more
-## ref: https://kubernetes.io/docs/tasks/run-application/configure-pdb/
-podDisruptionBudget: {}
+**Out of Scope:**
 
-deploymentStrategy:
-  type: RollingUpdate
+* Full environment rollout or optimization.
+* Automation, scaling, or CI/CD integration.
+* Security hardening or production monitoring.
 
-readinessProbe:
-  httpGet:
-    path: /api/health
-    port: 3000
-  initialDelaySeconds: 60
-  timeoutSeconds: 30
-  failureThreshold: 10
+## 3. Experiments / Activities
 
-livenessProbe:
-  httpGet:
-    path: /api/health
-    port: 3000
-  initialDelaySeconds: 60
-  timeoutSeconds: 30
-  failureThreshold: 10
+1. Deploy a lightweight OTel Collector in subscription/AKS for testing.
+2. Configure Event Hub namespace and set up diagnostics from one Azure resource.
+3. Forward logs from Event Hub → OTel → Loki (validate ingestion).
+4. Scrape sample metrics via OTel and confirm visibility in Grafana.
+5. Send one test trace into Jaeger to validate end-to-end pipeline.
+6. Record performance metrics (latency, resource consumption).
 
-image:
-  # -- The Docker registry
-  registry: docker.io
-  # -- Docker image repository
-  repository: grafana/grafana
-  # Overrides the Grafana image tag whose default is the chart appVersion
-  tag: ""
-  sha: ""
-  pullPolicy: IfNotPresent
-  pullSecrets: []
+## 4. Time-box
 
-testFramework:
-  enabled: true
-  image:
-    registry: docker.io
-    repository: bats/bats
-    tag: "v1.4.1"
-  imagePullPolicy: IfNotPresent
-  securityContext: {}
-  containerSecurityContext: {}
-  resources: {}
+Limit the spike to one sprint. The goal is to **learn fast**, not perfect the setup.
 
-# dns configuration for pod
-dnsPolicy: ~
-dnsConfig: {}
+## 5. Outputs
 
-# ✅ Pod-level security context
-securityContext:
-  runAsNonRoot: true
-  runAsUser: 472
-  runAsGroup: 472
-  fsGroup: 472
+Deliver concise, factual results:
 
-# ✅ Container-level security context
-containerSecurityContext:
-  allowPrivilegeEscalation: false
-  readOnlyRootFilesystem: true
-  runAsNonRoot: true
-  runAsUser: 472
-  runAsGroup: 472
-  capabilities:
-    drop:
-      - ALL
-  seccompProfile:
-    type: RuntimeDefault
+* Findings: what worked, what didn’t.
+* Evidence: screenshots, metrics, logs, or configuration snippets.
+* Estimated cost: Event Hub + Collector resource cost baseline.
+* Risks / Unknowns: integration challenges, scaling limits, support gaps.
+* Recommendation: proceed, pivot, or drop.
 
-# Enable creating the grafana configmap
-createConfigmap: true
+## 6. Outcome
 
-extraConfigmapMounts: []
-extraEmptyDirMounts: []
-extraLabels: {}
+This spike should prove or disprove feasibility of Option 3 and reduce uncertainty in:
 
-downloadDashboardsImage:
-  registry: docker.io
-  repository: curlimages/curl
-  tag: 8.9.1
-  sha: ""
-  pullPolicy: IfNotPresent
-
-downloadDashboards:
-  env: {}
-  envFromSecret: ""
-  resources: {}
-  securityContext:
-    allowPrivilegeEscalation: false
-    capabilities:
-      drop:
-        - ALL
-    seccompProfile:
-      type: RuntimeDefault
-  envValueFrom: {}
-
-podPortName: grafana
-gossipPortName: gossip
-
-# Service Configuration
-service:
-  enabled: true
-  type: ClusterIP
-  port: 80
-  targetPort: 3000
-  portName: grafana-http
-
-serviceMonitor:
-  enabled: false
-  path: /metrics
-  labels: {}
-  interval: 30s
-  scheme: http
-  tlsConfig: {}
-  scrapeTimeout: 30s
-  relabelings: []
-  metricRelabelings: []
-  basicAuth: {}
-  targetLabels: []
-
-extraExposePorts: []
-
-hostAliases: []
-
-resources: {}
-
-## Node labels for pod assignment
-nodeSelector: {}
-
-## Tolerations for pod assignment
-tolerations: []
-
-## Affinity for pod assignment (evaluated as template)
-affinity: {}
-
-## Topology Spread Constraints
-topologySpreadConstraints: []
-
-extraInitContainers: []
-
-extraContainers: ""
-
-extraContainerVolumes: []
-
-persistence:
-  type: pvc
-  enabled: true
-  accessModes:
-    - ReadWriteOnce
-  size: 10Gi
-  finalizers:
-    - kubernetes.io/pvc-protection
-  extraPvcLabels: {}
-  disableWarning: false
-  inMemory:
-    enabled: false
-  lookupVolumeName: true
-
-initChownData:
-  enabled: true
-  image:
-    registry: docker.io
-    repository: library/busybox
-    tag: "1.31.1"
-    sha: ""
-    pullPolicy: IfNotPresent
-  resources: {}
-  securityContext:
-    runAsNonRoot: false
-    runAsUser: 0
-    seccompProfile:
-      type: RuntimeDefault
-    capabilities:
-      add:
-        - CHOWN
-
-adminUser: admin
-
-admin:
-  existingSecret: ""
-  userKey: admin-user
-  passwordKey: admin-password
-
-env: {}
-envValueFrom: {}
-envFromSecret: "azure-monitors"
-envRenderSecret: {}
-envFromSecrets: []
-envFromConfigMaps: []
-
-enableServiceLinks: true
-
-extraSecretMounts: []
-extraVolumeMounts: []
-extraVolumes: []
-
-lifecycleHooks: {}
-
-plugins:
-  - grafana-azure-monitor-datasource
-
-datasources:
-  datasources.yaml:
-    apiVersion: 1
-    datasources:
-    - name: loki 
-      type: loki
-      access: proxy
-      url: http://loki-read.monitoring.svc.cluster.local:3100
-      isDefault: false
-      jsonData:
-        maxLines: 1000
-    - name: Jaeger
-      type: jaeger
-      access: proxy
-      url: http://jaeger-query-service.monitoring.svc.cluster.local:16686
-      isDefault: false
-      jsonData:
-        traceDuration: 24h
-        traceURL: "/jaeger"
-      secureJsonData: {}
-    - name: Prometheus
-      type: prometheus
-      access: proxy
-      url: http://prometheus-server.monitoring.svc.cluster.local
-      isDefault: true
-      jsonData:
-        timeInterval: "15s"
-    - name: Alertmanager
-      type: alertmanager  
-      access: proxy
-      url: http://prometheus-alertmanager.monitoring.svc.cluster.local:9093
-      isDefault: false
-      jsonData:
-        timeInterval: "15s"
-
-alerting: {}
-notifiers: {}
-
-dashboardProviders:
-  dashboardproviders.yaml:
-    apiVersion: 1
-    providers:
-    - name: 'default'
-      orgId: 1
-      folder: 'AKS monitoring'
-      type: file
-      disableDeletion: false
-      editable: true
-      options:
-        path: /var/lib/grafana/dashboards/default
-
-dashboardsConfigMaps: {}
-
-grafana.ini:
-  paths:
-    data: /var/lib/grafana/
-    logs: /var/log/grafana
-    plugins: /var/lib/grafana/plugins
-    provisioning: /etc/grafana/provisioning
-  analytics:
-    check_for_updates: true
-  log:
-    mode: console
-    level: debug 
-  grafana_net:
-    url: https://grafana.net
-  server:
-    serve_from_sub_path: true
-  auth.azuread:
-    enabled: true
-    client_id: "${AZUREAD_CLIENT_ID}"
-    client_secret: "${AZUREAD_CLIENT_SECRET}"
-    scopes: openid email profile
-    auth_url: "https://login.microsoftonline.com/${TENANTID}/oauth2/v2.0/authorize"  
-    token_url: "https://login.microsoftonline.com/${TENANTID}/oauth2/v2.0/token"    
-
-ldap:
-  enabled: false
-  existingSecret: ""
-  config: ""
-
-shareProcessNamespace: false
-
-smtp:
-  existingSecret: ""
-  userKey: "user"
-  passwordKey: "password"
-
-sidecar:
-  image:
-    registry: quay.io
-    repository: kiwigrid/k8s-sidecar
-    tag: 1.30.0
-    sha: ""
-  imagePullPolicy: IfNotPresent
-  resources: {}
-  securityContext:
-    allowPrivilegeEscalation: false
-    capabilities:
-      drop:
-        - ALL
-    seccompProfile:
-      type: RuntimeDefault
-  enableUniqueFilenames: false
-  readinessProbe: {}
-  livenessProbe: {}
-  alerts:
-    enabled: false
-  dashboards:
-    enabled: false
-  datasources:
-    enabled: false
-  plugins:
-    enabled: false
-  notifiers:
-    enabled: false
-
-namespaceOverride: ""
-revisionHistoryLimit: 10
-
-imageRenderer:
-  enabled: false
-
-networkPolicy:
-  enabled: false
-
-enableKubeBackwardCompatibility: false
-useStatefulSet: false
-
-extraObjects: []
-
-assertNoLeakedSecrets: true
+* Technical integration (Event Hub → OTel → Loki).
+* Cost and operational complexity.
+* Performance and maintainability.
