@@ -53,3 +53,101 @@ This spike should prove or disprove feasibility of Option 3 and reduce uncertain
 * Technical integration (Event Hub → OTel → Loki).
 * Cost and operational complexity.
 * Performance and maintainability.
+
+---
+
+## 7. Acceptance Criteria
+
+* Logs from Azure resources appear in Loki within **30 seconds (P50)** and **90 seconds (P95)** latency.
+* OpenTelemetry Collector shows no dropped records during a 1-hour continuous log test.
+* At least one trace is visible in Jaeger.
+* Metrics scraped by OTel are visible in Grafana.
+* Cost estimation report is completed and approved.
+
+---
+
+## 8. Example OTel Collector Configuration (YAML)
+
+```yaml
+receivers:
+  azureeventhub:
+    connection: ${EVENTHUB_CONN_STRING}
+    consumer_group: '$Default'
+  prometheus:
+    config:
+      scrape_configs:
+        - job_name: 'otel-self'
+          static_configs:
+            - targets: ['0.0.0.0:8888']
+
+exporters:
+  loki:
+    endpoint: https://<loki-endpoint>/loki/api/v1/push
+  jaeger:
+    endpoint: <jaeger-endpoint>:14250
+    tls:
+      insecure: true
+  logging:
+    loglevel: info
+
+processors:
+  batch: {}
+  attributes:
+    actions:
+      - key: resource.azure.service
+        action: insert
+        value: appservice
+  resource:
+    attributes:
+      - key: environment
+        value: spike
+        action: upsert
+
+service:
+  pipelines:
+    logs:
+      receivers: [azureeventhub]
+      processors: [attributes, resource, batch]
+      exporters: [loki, logging]
+    metrics:
+      receivers: [prometheus]
+      processors: [batch]
+      exporters: [logging]
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [jaeger]
+```
+
+---
+
+## 9. Cost Estimation Table
+
+| Resource                  | Unit                 | Estimated Usage  | Cost (Monthly CAD) | Notes                                |
+| ------------------------- | -------------------- | ---------------- | ------------------ | ------------------------------------ |
+| Event Hub (Standard Tier) | 1 Throughput Unit    | 30 GB ingress    | ~$35               | Includes egress & partition usage    |
+| AKS Node (B2s shared)     | 0.5 vCPU, 0.5 GB RAM | 720 hours        | ~$25               | For single OTel pod                  |
+| Loki Storage              | 10 GB                | 30-day retention | ~$15               | Based on blob storage cost           |
+| Grafana/Jaeger            | Shared existing      | N/A              | $0                 | Reused monitoring stack              |
+| **Total Estimate**        |                      |                  | **~$75/month**     | ± 20% variation depending on traffic |
+
+---
+
+## 10. Risks / Mitigations
+
+| Risk                                   | Impact | Mitigation                                               |
+| -------------------------------------- | ------ | -------------------------------------------------------- |
+| Schema mismatch in Event Hub logs      | High   | Use JSON parser in pipeline or attributes processor      |
+| High cardinality labels in Loki        | Medium | Normalize labels and drop excessive metadata             |
+| Network/auth issues between components | High   | Validate connectivity and credentials early              |
+| Event Hub throttling                   | Medium | Increase partition count or TUs temporarily              |
+| Lack of operational automation         | Low    | Document manual steps and plan automation in next sprint |
+
+---
+
+## 11. Next Steps
+
+1. Deploy Helm chart with the configuration above.
+2. Test ingestion end-to-end and document results.
+3. Generate cost and latency charts.
+4. Prepare go/no-go recommendation for Option 3 adoption.
