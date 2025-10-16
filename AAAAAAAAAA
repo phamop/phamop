@@ -1,3 +1,15 @@
+error: trouble configuring builtin PatchTransformer with config: `
+path: ServiceMonitor.yaml
+target:
+  kind: ServiceMonitor
+  name: otel-collector-monitor
+`: failed to get the patch file from path(ServiceMonitor.yaml): evalsymlink failure on '/azp/agent/_work/62/s/kustomize/overlays/EDIT/05opentelemetry/ServiceMonitor.yaml' : lstat /azp/agent/_work/62/s/kustomize/overlays/EDIT/05opentelemetry/ServiceMonitor.yaml: no such file or directory
+DONE resource /azp/agent/_work/62/s/kustomize/overlays/EDIT/05opentelemetry
+
+
+
+
+
 #collector.yaml 
 
 apiVersion: opentelemetry.io/v1beta1
