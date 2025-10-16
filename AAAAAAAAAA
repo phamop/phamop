@@ -1,10 +1,8 @@
-error: trouble configuring builtin PatchTransformer with config: `
-path: ServiceMonitor.yaml
-target:
-  kind: ServiceMonitor
-  name: otel-collector-monitor
-`: failed to get the patch file from path(ServiceMonitor.yaml): evalsymlink failure on '/azp/agent/_work/62/s/kustomize/overlays/EDIT/05opentelemetry/ServiceMonitor.yaml' : lstat /azp/agent/_work/62/s/kustomize/overlays/EDIT/05opentelemetry/ServiceMonitor.yaml: no such file or directory
-DONE resource /azp/agent/_work/62/s/kustomize/overlays/EDIT/05opentelemetry
+Current resource: /azp/agent/_work/8/s/kustomize/overlays/EDIT/05opentelemetry
+Set the helmGlobals.configHome to the appropriate value.
+About to run kubectl kustomize
+error: Multiple Strategic-Merge Patches in one `patches` entry is not allowed to set `patches.target` field: [path: "opentelemetry-webhook-patch.yaml"]
+DONE resource /azp/agent/_work/8/s/kustomize/overlays/EDIT/05opentelemetry
 
 
 
