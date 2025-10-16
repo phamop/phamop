@@ -1,4 +1,8 @@
-https://us04web.zoom.us/j/78411160944?pwd=F9x81tmdTZ49XBbvXrr0NUsZBbfu6i.1
+Current resource: /azp/agent/_work/28/s/kustomize/overlays/EDIT/05opentelemetry
+Set the helmGlobals.configHome to the appropriate value.
+About to run kubectl kustomize
+error: invalid Kustomization: json: unknown field "kind"
+DONE resource /azp/agent/_work/28/s/kustomize/overlays/EDIT/05opentelemetry
 
 
 
