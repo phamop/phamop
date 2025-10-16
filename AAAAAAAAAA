@@ -1,13 +1,10 @@
-error: Multiple Strategic-Merge Patches in one `patches` entry is not allowed to set `patches.target` field: [path: "opentelemetry-webhook-patch.yaml"]
-
-#base
-#collector.yaml
+#collector.yaml 
 
 apiVersion: opentelemetry.io/v1beta1
 kind: OpenTelemetryCollector
 metadata:
-  name: otel-collector  
-# namespace: monitoring
+  name: otel-collector
+  namespace: monitoring
   labels:
     app: opentelemetry-collector
 spec:
@@ -68,7 +65,7 @@ spec:
       cpu: 1000m
       memory: 1600Mi
 
-  config:
+  config: |
     extensions:
       health_check:
         endpoint: "0.0.0.0:13133"
@@ -94,12 +91,8 @@ spec:
             endpoint: "0.0.0.0:14268"
       loki:
         protocols:
-          grpc:
-            endpoint: "0.0.0.0:4317"
           http:
             endpoint: "0.0.0.0:4318"
-            include_metadata: true
-        use_incoming_timestamp: true
       prometheus/node:
         config:
           scrape_configs:
@@ -124,30 +117,6 @@ spec:
       groupbytrace: {}
       resource:
         attributes:
-          - key: service.name
-            from_attribute: service.name
-            action: insert
-          - key: k8s.container.name
-            from_attribute: k8s.container.name
-            action: insert
-          - key: k8s.namespace.name
-            from_attribute: k8s.namespace.name
-            action: insert
-          - key: k8s.pod.name
-            from_attribute: k8s.pod.name
-            action: insert
-          - key: k8s.node.name
-            from_attribute: k8s.node.name
-            action: insert
-          - key: host.name
-            from_attribute: host.name
-            action: insert
-          - key: service.name
-            from_attribute: service.name
-            action: upsert
-          - key: service.namespace
-            from_attribute: service.namespace
-            action: upsert
           - key: cluster.name
             value: clustername
             action: insert
@@ -231,22 +200,13 @@ spec:
           processors: [memory_limiter, resourcedetection, resource, transform, batch]
           exporters: [debug, otlphttp]
 
----
-apiVersion: admissionregistration.k8s.io/v1
-kind: MutatingWebhookConfiguration
-metadata:
-  name: opentelemetry-operator-mutating-webhook-configuration
-  annotations:
-    cert-manager.io/inject-ca-from: monitoring/opentelemetry-operator-service-cert
 
 #serviceMetric.yaml
-
-
 apiVersion: v1
 kind: Service
 metadata:
   name: otel-collector
-# namespace: eddv3-hbt
+  namespace: monitoring
   labels:
     app: opentelemetry-collector
 spec:
@@ -265,75 +225,22 @@ spec:
     - name: otlp-http
       port: 4318
       targetPort: 4318
----
 
-# apiVersion: monitoring.coreos.com/v1
-# kind: ServiceMonitor
-# metadata:
-#   name: otel-collector-monitor
-# # namespace: eddv3-hbt
-#   labels:
-#     release: kube-prometheus-stack
-# spec:
-#   selector:
-#     matchLabels:
-#       app: opentelemetry-collector
-#   endpoints:
-#     - port: prom-metrics
-#       interval: 10s
-#       path: /metrics
-#       honorLabels: true
-#       relabelings:
-#         - action: labelmap
-#           regex: __meta_kubernetes_pod_label_(.+)
-
-
-
-#kustomization.yaml
+#base/Kustomization 
 
 namespace: monitoring
 
 resources:
-# - certificate-multisan.yaml
 - collector.yaml
 - serviceMetric.yaml
 
 
-#Overlay
-# opentelemetry-webhook-patch.yaml
 
 
-apiVersion: admissionregistration.k8s.io/v1
-kind: MutatingWebhookConfiguration
-metadata:
-  name: opentelemetry-operator-mutation
-  annotations:
-    cert-manager.io/inject-ca-from: monitoring/opentelemetry-operator-serving-cert
-webhooks:
-  - name: mopentelemetrycollector.kb.io
-    clientConfig:
-      service:
-        name: opentelemetry-operator-webhook-service
-        namespace: monitoring
-        path: /mutate-opentelemetry-io-v1beta1-opentelemetrycollector
----
-apiVersion: admissionregistration.k8s.io/v1
-kind: ValidatingWebhookConfiguration
-metadata:
-  name: opentelemetry-operator-validation
-  annotations:
-    cert-manager.io/inject-ca-from: monitoring/opentelemetry-operator-serving-cert
-webhooks:
-  - name: vopentelemetrycollector.kb.io
-    clientConfig:
-      service:
-        name: opentelemetry-operator-webhook-service
-        namespace: monitoring
-        path: /validate-opentelemetry-io-v1beta1-opentelemetrycollector
 
 
+#overlay
 #ServiceMonitor.yaml
-
 
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
@@ -356,11 +263,6 @@ spec:
       relabelings:
         - action: labelmap
           regex: __meta_kubernetes_pod_label_(.+)
-
-
-
-
-
 
 
 #collector-patch.yaml
@@ -400,13 +302,13 @@ spec:
       port: 13133
       protocol: TCP
 
-#kustomization.yaml
 
+#Overlay/kustomization
 
 namespace: monitoring
 
 resources:
-- ../../../../kustomize/base/opentelemetry
+- ../../base
 
 patches:
   - target:
@@ -415,14 +317,11 @@ patches:
     path: opentelemetry-webhook-patch.yaml
 
   - target:
-      kind: OpenTelemetryCollector
-      name: collector
-      namespace: monitoring
-    path: serviceMonitor.yaml
+      kind: ServiceMonitor
+      name: otel-collector-monitor
+    path: ServiceMonitor.yaml
 
   - target:
       kind: OpenTelemetryCollector
-      name: collector
-      namespace: monitoring
+      name: otel-collector
     path: collector-patch.yaml
-
