@@ -1,203 +1,428 @@
-####Prometheus CRD & remoteWrite support
-========================================
+error: Multiple Strategic-Merge Patches in one `patches` entry is not allowed to set `patches.target` field: [path: "opentelemetry-webhook-patch.yaml"]
+
+#base
+#collector.yaml
+
+apiVersion: opentelemetry.io/v1beta1
+kind: OpenTelemetryCollector
+metadata:
+  name: otel-collector  
+# namespace: monitoring
+  labels:
+    app: opentelemetry-collector
+spec:
+  mode: deployment
+  image: otel/opentelemetry-collector-contrib:0.128.0
+  serviceAccount: opentelemetry-collector
+  replicas: 2
+  
+  ports:
+    - name: otlp-grpc
+      port: 4317
+      protocol: TCP
+    - name: otlp-http
+      port: 4318
+      protocol: TCP
+    - name: jaeger-grpc
+      port: 14250
+      protocol: TCP
+    - name: jaeger-thrift-c  
+      port: 6831
+      protocol: TCP
+    - name: jaeger-thrift-h  
+      port: 14268
+      protocol: TCP
+    - name: metrics
+      port: 8888
+      protocol: TCP
+    - name: prom-metrics
+      port: 8889
+      protocol: TCP
+    - name: health
+      port: 13133
+      protocol: TCP
+
+  env:
+    - name: K8S_NODE_NAME
+      valueFrom:
+        fieldRef:
+          fieldPath: spec.nodeName
+    - name: K8S_POD_NAME
+      valueFrom:
+        fieldRef:
+          fieldPath: metadata.name
+    - name: K8S_POD_NAMESPACE
+      valueFrom:
+        fieldRef:
+          fieldPath: metadata.namespace
+    - name: K8S_POD_IP
+      valueFrom:
+        fieldRef:
+          fieldPath: status.podIP
+
+  resources:
+    requests:
+      cpu: 500m
+      memory: 800Mi
+    limits:
+      cpu: 1000m
+      memory: 1600Mi
+
+  config:
+    extensions:
+      health_check:
+        endpoint: "0.0.0.0:13133"
+      pprof:
+        endpoint: "0.0.0.0:1777"
+      zpages:
+        endpoint: "0.0.0.0:55679"
+
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: "0.0.0.0:4317"
+          http:
+            endpoint: "0.0.0.0:4318"
+      jaeger:
+        protocols:
+          grpc:
+            endpoint: "0.0.0.0:14250"
+          thrift_compact:
+            endpoint: "0.0.0.0:6831"
+          thrift_http:
+            endpoint: "0.0.0.0:14268"
+      loki:
+        protocols:
+          grpc:
+            endpoint: "0.0.0.0:4317"
+          http:
+            endpoint: "0.0.0.0:4318"
+            include_metadata: true
+        use_incoming_timestamp: true
+      prometheus/node:
+        config:
+          scrape_configs:
+            - job_name: 'node-exporter'
+              scrape_interval: 10s
+              static_configs:
+                - targets: ['prometheus-prometheus-node-exporter.monitoring.svc:9100']
+                  labels:
+                    job: 'node-exporter'
+                    cluster: 'clustername'
+
+    processors:
+      batch:
+        timeout: 200ms
+        send_batch_size: 1024
+        send_batch_max_size: 4096
+      memory_limiter:
+        check_interval: 5s
+        limit_percentage: 80
+        spike_limit_mib: 64
+        limit_mib: 512
+      groupbytrace: {}
+      resource:
+        attributes:
+          - key: service.name
+            from_attribute: service.name
+            action: insert
+          - key: k8s.container.name
+            from_attribute: k8s.container.name
+            action: insert
+          - key: k8s.namespace.name
+            from_attribute: k8s.namespace.name
+            action: insert
+          - key: k8s.pod.name
+            from_attribute: k8s.pod.name
+            action: insert
+          - key: k8s.node.name
+            from_attribute: k8s.node.name
+            action: insert
+          - key: host.name
+            from_attribute: host.name
+            action: insert
+          - key: service.name
+            from_attribute: service.name
+            action: upsert
+          - key: service.namespace
+            from_attribute: service.namespace
+            action: upsert
+          - key: cluster.name
+            value: clustername
+            action: insert
+          - key: exporter
+            value: "node-exporter"
+            action: insert
+      resourcedetection:
+        detectors: [env, system]
+        override: false
+        timeout: 2s
+      transform:
+        log_statements:
+          - context: log
+            statements:
+              - set(attributes["processing.note"], "Log enriched with resource and trace context")
+              - set(attributes["service.name"], resource.attributes["service.name"])
+              - set(attributes["k8s.pod.name"], resource.attributes["k8s.pod.name"])
+              - set(attributes["k8s.node.name"], resource.attributes["k8s.node.name"])
+              - set(attributes["host.name"], resource.attributes["host.name"])
+              - set(attributes["cluster.name"], resource.attributes["cluster.name"])
+              - set(attributes["trace_id"], trace_id)
+              - set(attributes["span_id"], span_id)
+      metricstransform:
+        transforms:
+          - include: system.cpu.usage
+            action: update
+            operations:
+              - action: add_label
+                new_label: host.name
+                new_value: host.name
+              - action: add_label
+                new_label: cluster.name
+                new_value: clustername
+          - include: system.memory.usage
+            action: update
+            operations:
+              - action: add_label
+                new_label: host.name
+                new_value: host.name
+              - action: add_label
+                new_label: cluster.name
+                new_value: clustername
+
+    exporters:
+      debug:
+        verbosity: detailed
+      otlphttp:
+        endpoint: http://loki-write.monitoring.svc.cluster.local:3100/otlp
+        tls:
+          insecure: true
+        headers:
+          X-Scope-OrgID: tenant-1
+      prometheus:
+        endpoint: "0.0.0.0:8889"  
+        namespace: monitoring
+        const_labels:
+          k8s_cluster: clustername
+        send_timestamps: true
+        enable_open_metrics: true
+      otlp/jaeger:
+        endpoint: jaeger-collector.monitoring.svc.cluster.local:4317
+        tls:
+          insecure: true
+
+    service:
+      telemetry:
+        metrics:
+          level: detailed
+      extensions: [health_check, pprof, zpages]
+      pipelines:
+        metrics:
+          receivers: [otlp, prometheus/node]
+          processors: [memory_limiter, resourcedetection, resource, metricstransform, batch]
+          exporters: [debug, prometheus]
+        traces:
+          receivers: [otlp, jaeger]
+          processors: [memory_limiter, resourcedetection, resource, groupbytrace, batch]
+          exporters: [debug, otlp/jaeger]
+        logs:
+          receivers: [otlp, loki]
+          processors: [memory_limiter, resourcedetection, resource, transform, batch]
+          exporters: [debug, otlphttp]
+
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: opentelemetry-operator-mutating-webhook-configuration
+  annotations:
+    cert-manager.io/inject-ca-from: monitoring/opentelemetry-operator-service-cert
+
+#serviceMetric.yaml
+
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: otel-collector
+# namespace: eddv3-hbt
+  labels:
+    app: opentelemetry-collector
+spec:
+  selector:
+    app: opentelemetry-collector
+  ports:
+    - name: prom-metrics
+      port: 8889
+      targetPort: 8889
+    - name: metrics
+      port: 8888
+      targetPort: 8888
+    - name: otlp-grpc
+      port: 4317
+      targetPort: 4317
+    - name: otlp-http
+      port: 4318
+      targetPort: 4318
+---
+
+# apiVersion: monitoring.coreos.com/v1
+# kind: ServiceMonitor
+# metadata:
+#   name: otel-collector-monitor
+# # namespace: eddv3-hbt
+#   labels:
+#     release: kube-prometheus-stack
+# spec:
+#   selector:
+#     matchLabels:
+#       app: opentelemetry-collector
+#   endpoints:
+#     - port: prom-metrics
+#       interval: 10s
+#       path: /metrics
+#       honorLabels: true
+#       relabelings:
+#         - action: labelmap
+#           regex: __meta_kubernetes_pod_label_(.+)
+
+
+
+#kustomization.yaml
+
+namespace: monitoring
+
+resources:
+# - certificate-multisan.yaml
+- collector.yaml
+- serviceMetric.yaml
+
+
+#Overlay
+# opentelemetry-webhook-patch.yaml
+
+
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: opentelemetry-operator-mutation
+  annotations:
+    cert-manager.io/inject-ca-from: monitoring/opentelemetry-operator-serving-cert
+webhooks:
+  - name: mopentelemetrycollector.kb.io
+    clientConfig:
+      service:
+        name: opentelemetry-operator-webhook-service
+        namespace: monitoring
+        path: /mutate-opentelemetry-io-v1beta1-opentelemetrycollector
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: opentelemetry-operator-validation
+  annotations:
+    cert-manager.io/inject-ca-from: monitoring/opentelemetry-operator-serving-cert
+webhooks:
+  - name: vopentelemetrycollector.kb.io
+    clientConfig:
+      service:
+        name: opentelemetry-operator-webhook-service
+        namespace: monitoring
+        path: /validate-opentelemetry-io-v1beta1-opentelemetrycollector
+
+
+#ServiceMonitor.yaml
+
 
 apiVersion: monitoring.coreos.com/v1
-kind: Prometheus
+kind: ServiceMonitor
 metadata:
-  name: my-prometheus
+  name: otel-collector-monitor
+  namespace: monitoring
+  labels:
+    release: kube-prometheus-stack
+spec:
+  selector:
+    matchLabels:
+      app: opentelemetry-collector
+  namespaceSelector:
+    matchNames: ["monitoring"]
+  endpoints:
+    - port: prom-metrics
+      interval: 10s
+      path: /metrics
+      honorLabels: true
+      relabelings:
+        - action: labelmap
+          regex: __meta_kubernetes_pod_label_(.+)
+
+
+
+
+
+
+
+#collector-patch.yaml
+
+apiVersion: opentelemetry.io/v1beta1
+kind: OpenTelemetryCollector
+metadata:
+  name: otel-collector
   namespace: monitoring
 spec:
-  # ... other spec bits (replicas, storage, scrape selectors, etc.)
-  remoteWrite:
-    - url: https://mimir.example.com/api/v1/push
-      # optional fields
-      sendExemplars: true
-      queueConfig:
-        capacity: 20000
-        maxSamplesPerSend: 10000
-      # TLS, basicAuth, OAuth2, etc.
-      tlsConfig:
-        insecureSkipVerify: false
-      # plus write relabel configs, metadataConfig, etc.
+  resources:
+    limits:
+      cpu: "1000m"
+  ports:
+    - name: otlp-grpc
+      port: 4317
+      protocol: TCP
+    - name: otlp-http
+      port: 4318
+      protocol: TCP
+    - name: jaeger-grpc
+      port: 14250
+      protocol: TCP
+    - name: jaeger-thrift-c
+      port: 6831
+      protocol: TCP
+    - name: jaeger-thrift-h
+      port: 14268
+      protocol: TCP
+    - name: metrics
+      port: 8888
+      protocol: TCP
+    - name: prom-metrics
+      port: 8889
+      protocol: TCP
+    - name: health
+      port: 13133
+      protocol: TCP
+
+#kustomization.yaml
 
 
+namespace: monitoring
 
+resources:
+- ../../../../kustomize/base/opentelemetry
 
+patches:
+  - target:
+      kind: MutatingWebhookConfiguration
+      name: opentelemetry-operator-mutating-webhook-configuration
+    path: opentelemetry-webhook-patch.yaml
 
-#####Prometheus → Mimir (remote_write)
-======================================
+  - target:
+      kind: OpenTelemetryCollector
+      name: collector
+      namespace: monitoring
+    path: serviceMonitor.yaml
 
-prometheus:
-  prometheusSpec:
-    remoteWrite:
-      - url: https://mimir.example.com/api/v1/push
-        # Optional but recommended:
-        sendExemplars: true
-        queue_config:
-          max_samples_per_send: 10000
-          capacity: 20000
-          max_shards: 20
-        # If auth is enabled on Mimir, add basic auth or headers here
-        # basicAuth:
-        #   username:
-        #   password:
+  - target:
+      kind: OpenTelemetryCollector
+      name: collector
+      namespace: monitoring
+    path: collector-patch.yaml
 
-
-
-
-
-
-
-
-
-
-
-####mimir-values.yaml
-=====================
-
-
-# Namespace: monitoring
-global:
-  podAnnotations: {}
-  labels: {}
-
-# Bind the SA to Azure Workload Identity (UAMI client id)
-serviceAccount:
-  create: true
-  name: mimir-sa
-  annotations:
-    azure.workload.identity/client-id: "<UAMI_CLIENT_ID>"   # <- fill with your value
-
-# Ensure pods can use projected service account tokens (AKS default is fine)
-podSecurityContext: {}
-securityContext: {}
-
-mimir:
-  # Use the structured (official) Mimir config block
-  structuredConfig:
-    multitenancy_enabled: false
-
-    # Common storage config (blocks storage engine)
-    common:
-      storage:
-        backend: azure
-        azure:
-          # REQUIRED: storage account and containers
-          account_name: "<STORAGE_ACCOUNT_NAME>"          # e.g., mimirst12345
-          container_name: "<NOT_USED>"                    # NOTE: set per component below
-          endpoint: "blob.core.windows.net"
-
-          # MSI / Workload Identity
-          use_managed_identity: true
-          # When using a User-Assigned MI, set client ID:
-          user_assigned_id: "<UAMI_CLIENT_ID>"
-
-    # Blocks storage (TSDB chunks, indexes, metas)
-    blocks_storage:
-      backend: azure
-      azure:
-        account_name: "<STORAGE_ACCOUNT_NAME>"
-        container_name: "mimir-blocks"                    # created above
-        endpoint: "blob.core.windows.net"
-        use_managed_identity: true
-        user_assigned_id: "<UAMI_CLIENT_ID>"
-      bucket_store:
-        sync_dir: /data/tsdb-sync
-
-    # Ruler configuration (rule files storage)
-    ruler:
-      storage:
-        backend: azure
-        azure:
-          account_name: "<STORAGE_ACCOUNT_NAME>"
-          container_name: "mimir-ruler"                   # created above
-          endpoint: "blob.core.windows.net"
-          use_managed_identity: true
-          user_assigned_id: "<UAMI_CLIENT_ID>"
-
-    # Alertmanager (silences/notifications)
-    alertmanager:
-      storage:
-        backend: azure
-        azure:
-          account_name: "<STORAGE_ACCOUNT_NAME>"
-          container_name: "mimir-alerts"                  # created above
-          endpoint: "blob.core.windows.net"
-          use_managed_identity: true
-          user_assigned_id: "<UAMI_CLIENT_ID>"
-
-    # Server & auth
-    server:
-      log_level: info
-    auth:
-      type: "anonymous"
-      # map everyone to the same tenant, since this is a single-tenant Prom → Mimir setup
-      tenancy:
-        anonymous:
-          org_id: "tenant-1"
-
-  # Optional: set compactor/ruler retention policy examples
-  compactor:
-    retention_enabled: true
-    retention_delete_delay: 24h
-    compaction_interval: 5m
-
-# Gateway / Ingress to accept Prom remote_write at /api/v1/push
-# Expose the mimir-gateway with an Ingress (AKS Ingress/Nginx example)
-gateway:
-  enabled: true
-
-  service:
-    type: ClusterIP
-    port: 80
-
-  ingress:
-    enabled: true
-    className: nginx
-    hosts:
-      - host: mimir.example.com           # <- your DNS
-        paths:
-          - path: /
-            pathType: Prefix
-    tls:
-      - secretName: mimir-tls              # <- provide cert (cert-manager recommended)
-        hosts:
-          - mimir.example.com
-
-# Make sure every Mimir component uses the same SA (with WI annotation)
-distributor:
-  serviceAccount:
-    create: false
-    name: mimir-sa
-ingester:
-  serviceAccount:
-    create: false
-    name: mimir-sa
-querier:
-  serviceAccount:
-    create: false
-    name: mimir-sa
-queryFrontend:
-  serviceAccount:
-    create: false
-    name: mimir-sa
-queryScheduler:
-  serviceAccount:
-    create: false
-    name: mimir-sa
-ruler:
-  serviceAccount:
-    create: false
-    name: mimir-sa
-compactor:
-  serviceAccount:
-    create: false
-    name: mimir-sa
-storeGateway:
-  serviceAccount:
-    create: false
-    name: mimir-sa
-alertmanager:
-  serviceAccount:
-    create: false
-    name: mimir-sa
