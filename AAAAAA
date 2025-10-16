@@ -5,7 +5,43 @@ error: invalid Kustomization: json: unknown field "kind"
 DONE resource /azp/agent/_work/28/s/kustomize/overlays/EDIT/05opentelemetry
 
 
+namespace: monitoring
 
+
+
+resources:
+- ../../../../kustomize/base/opentelemetry
+# - serviceMonitor.yaml
+
+patches:
+
+  - path: opentelemetry-webhook-patch.yaml
+    target:
+      kind: MutatingWebhookConfiguration
+      name: opentelemetry-operator-mutating-webhook-configuration
+  
+
+  - path: serviceMonitor.yaml
+    target:
+    kind: OpenTelemetryCollector
+    name: collector
+    namespace: monitoring
+  
+  - path: collector-patch.yaml
+    target:
+    kind: OpenTelemetryCollector
+    name: collector
+    namespace: monitoring
+
+# - certifcate-multisan.yaml
+# - ../../../base/opentelemetry
+# - serviceMonitor.yaml
+
+# patches:
+# - path: collector-patch.yaml
+#   target:
+#     kind: OpenTelemetryCollector
+#     name: collector
 
 
 
