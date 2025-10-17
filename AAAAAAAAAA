@@ -1,3 +1,8 @@
+All our applications send trace data using the OpenTelemetry standard to a central collector, which then forwards it to our chosen tracing database (either Jaeger or Tempo), I was trying to be too broad I should have just keep to the content"
+The second will be  for services that require Azure APM experiences, and will require  secondary pipeline for a specific subset of services that will send their traces to the second destination
+
+
+
 All our applications send trace data using the OpenTelemetry standard to a central collector, which then forwards it to our chosen tracing database (either Jaeger or Tempo)."
 This is the conditional, secondary pipeline for a specific subset of services
 a select group of services will send their traces to a second destination.
