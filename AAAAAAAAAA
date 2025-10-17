@@ -1,4 +1,9 @@
-o	Traces: OTel → Collector → Jaeger/Tempo; dual export to App Insights only for services that require Azure APM experiences.
+All our applications send trace data using the OpenTelemetry standard to a central collector, which then forwards it to our chosen tracing database (either Jaeger or Tempo)."
+This is the conditional, secondary pipeline for a specific subset of services
+a select group of services will send their traces to a second destination.
+App Insights: Short for Azure Application Insights. This is a commercial Application Performance Management (APM) service on Microsoft Azure. It provides deep monitoring, performance analytics, and smart detection.
+
+"only for services that require Azure APM experiences
 
 mkdir -p /etc/apt/keyrings
 curl -sL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor | sudo tee /etc/apt/keyrings/microsoft.gpg > /dev/null
