@@ -1,3 +1,19 @@
+All applications instrumented with OpenTelemetry send their trace data to a central OpenTelemetry Collector. This Collector is then configured to export that data to our chosen open-source tracing backends, which are Jaeger and Tempo.
+
+Secondary Pipeline (Conditional)
+For a specific subset of services—those that require the specific Application Performance Monitoring (APM) features and integration offered by Azure—a secondary export path is required. These services will dual-write their trace data, sending it to Azure Application Insights in addition to the primary pipeline.
+
+
+
+First Statement (OpenTelemetry Pipeline):
+"All applications send trace data using OpenTelemetry to a central collector, which forwards traces to our tracing backend (Jaeger or Tempo)."
+Second Statement (Azure APM Pipeline):
+"Services requiring Azure APM capabilities will use a secondary pipeline that routes their traces to Azure Application Insights alongside the primary pipeline."
+
+
+
+
+
 All our applications send trace data using the OpenTelemetry standard to a central collector, which then forwards it to our chosen tracing database (either Jaeger or Tempo), I was trying to be too broad I should have just keep to the content"
 The second will be  for services that require Azure APM experiences, and will require  secondary pipeline for a specific subset of services that will send their traces to the second destination
 
