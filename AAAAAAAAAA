@@ -1,14 +1,6 @@
-All applications instrumented with OpenTelemetry send their trace data to a central OpenTelemetry Collector. This Collector is then configured to export that data to our chosen open-source tracing backends, which are Jaeger and Tempo.
+Option 3 says we'll keep Azure Monitor for metrics of non-AKS components, yet later on we say in Recommendation:
 
-Secondary Pipeline (Conditional)
-For a specific subset of services—those that require the specific Application Performance Monitoring (APM) features and integration offered by Azure—a secondary export path is required. These services will dual-write their trace data, sending it to Azure Application Insights in addition to the primary pipeline.
-
-
-
-First Statement (OpenTelemetry Pipeline):
-"All applications send trace data using OpenTelemetry to a central collector, which forwards traces to our tracing backend (Jaeger or Tempo)."
-Second Statement (Azure APM Pipeline):
-"Services requiring Azure APM capabilities will use a secondary pipeline that routes their traces to Azure Application Insights alongside the primary pipeline."
+Metrics: Prometheus as source of truth via exporter/Collector pull; Grafana for visualization. Use Azure Managed Prometheus if you prefer a managed backend.
 
 
 
