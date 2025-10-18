@@ -1,3 +1,32 @@
+ Internal error occurred: failed calling webhook "mopentelemetrycollectorbeta.kb.io": failed to call webhook: 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 Of course. Here is the updated architecture proposal, refactoring **Option HA** to use a **dedicated AKS cluster** as the hosting platform for the centralized observability stack, replacing the VM Scale Set (VMSS) concept.
 
 The executive summary, security checklist, and NFRs have been revised to reflect this container-native approach.
