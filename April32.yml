@@ -1,3 +1,5 @@
+https://us04web.zoom.us/j/75906239940?pwd=5wEnarhrC7mhVPUo9nz57OARQ8uWtz.1
+
 Error from server (Invalid): error when creating "/azp/agent/_work/8/s/cluster/overlays/EDIT/opentelemetry-operator/kustomization-output.yaml": MutatingWebhookConfiguration.admissionregistration.k8s.io "opentelemetry-operator-mutation" is invalid: [webhooks[0].sideEffects: Required value: must specify one of None, NoneOnDryRun, webhooks[0].admissionReviewVersions: Required value: must specify one of v1, v1beta1]
 Error from server (Invalid): error when creating "/azp/agent/_work/8/s/cluster/overlays/EDIT/opentelemetry-operator/kustomization-output.yaml": ValidatingWebhookConfiguration.admissionregistration.k8s.io "opentelemetry-operator-validation" is invalid: [webhooks[0].sideEffects: Required value: must specify one of None, NoneOnDryRun, webhooks[0].admissionReviewVersions: Required value: must specify one of v1, v1beta1]
 *** Done
