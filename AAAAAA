@@ -1,12 +1,12 @@
-Current app: cert-manager-operator
-Get-Content : Cannot find path '/azp/agent/_work/8/s/cluster/overlays/EDITAKSCLUS01/cert-manager-operator/kustomization.yaml' because it does not exist.
-At /azp/agent/_work/_temp/azureclitaskscript1760976431769_inlinescript.ps1:24 char:4
-+   (Get-Content $kustomizeFilePath).Replace('ado_agent_helm_config_dir …
-+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-+ CategoryInfo          : ObjectNotFound: (/azp/agent/_work/8/…/kustomization.yaml:String) [Get-Content], ItemNotFoundException
-+ FullyQualifiedErrorId : PathNotFound,Microsoft.PowerShell.Commands.GetContentCommand
+# cluster/overlays/EDITAKSCLUS01/cert-manager-operator/kustomization.yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
 
-##[error]Script failed with exit code: 1
+# First include cert-manager installation overlay
+resources:
+  - ../../../cert-manager-operator/overlays/00-install
+  - ../../../cert-manager-operator/overlays/10-issuer
+
 
 
 
