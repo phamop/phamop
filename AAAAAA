@@ -1,9 +1,5 @@
-2025-10-20T19:00:42.388Z        info    lokireceiver@v0.128.0/loki.go:124       Starting HTTP server    {"resource": {"service.instance.id": "9baee56b-57f8-4bb2-902d-e439244b2180", "service.name": "otelcol-contrib", "service.version": "0.128.0"}, "otelcol.component.id": "loki", "otelcol.component.kind": "receiver", "otelcol.signal": "logs", "endpoint": "0.0.0.0:4318"}
-2025-10-20T19:00:42.388Z        error   graph/graph.go:438      Failed to start component       {"resource": {"service.instance.id": "9baee56b-57f8-4bb2-902d-e439244b2180", "service.name": "otelcol-contrib", "service.version": "0.128.0"}, "error": "failed to start http server error: listen tcp 0.0.0.0:4318: bind: address already in use", "type": "Receiver", "id": "loki"}
-2025-10-20T19:00:42.388Z        info    service@v0.128.0/service.go:324 Starting shutdown...    {"resource": {"service.instance.id": "9baee56b-57f8-4bb2-902d-e439244b2180", "service.name": "otelcol-contrib", "service.version": "0.128.0"}}
+CHG7026817 is schedule for implementation at 8PM and testing will commence immediately after successful implementation. AKS deployment will be use as validation for the successful implementation
 
-Error: cannot start pipelines: failed to start "otlp" receiver: listen tcp 0.0.0.0:4318: bind: address already in use
-2025/10/20 19:05:45 collector server run finished with error: cannot start pipelines: failed to start "otlp" receiver: listen tcp 0.0.0.0:4318: bind: address already in use
 
 
 
