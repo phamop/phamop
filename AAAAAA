@@ -1,3 +1,25 @@
+resources:
+- namespace.yaml
+- issuer.yaml
+
+helmGlobals:
+  chartHome: ./charts
+# configHome: ado_agent_helm_config_dir
+  configHome: /root/.config/helm
+helmCharts:
+  - name: cert-manager
+    repo: oci://xxxxxxxxxxxx/xxxxx/charts
+    includeCRDs: true
+    releaseName: cert-manager
+    version: v1.18.2
+    valuesFile: helm-values.yaml
+    namespace: cert-manager
+    valuesInline: |
+      crds:
+        install: true
+        enabled: true
+
+
 error: accumulating resources: accumulation err='accumulating resources from '../../../base/cert-manager-operator': '/azp/agent/_work/8/s/cluster/base/cert-manager-operator' must resolve to a file': couldn't make target for path '/azp/agent/_work/8/s/cluster/base/cert-manager-operator': invalid Kustomization: json: cannot unmarshal string into Go struct field HelmChart.helmCharts.valuesInline of type map[string]interface {}
 DONE app cert-manager-operator
 
