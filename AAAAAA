@@ -1,3 +1,16 @@
+Current app: cert-manager-operator
+Get-Content : Cannot find path '/azp/agent/_work/8/s/cluster/overlays/EDITAKSCLUS01/cert-manager-operator/kustomization.yaml' because it does not exist.
+At /azp/agent/_work/_temp/azureclitaskscript1760976431769_inlinescript.ps1:24 char:4
++   (Get-Content $kustomizeFilePath).Replace('ado_agent_helm_config_dir …
++    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
++ CategoryInfo          : ObjectNotFound: (/azp/agent/_work/8/…/kustomization.yaml:String) [Get-Content], ItemNotFoundException
++ FullyQualifiedErrorId : PathNotFound,Microsoft.PowerShell.Commands.GetContentCommand
+
+##[error]Script failed with exit code: 1
+
+
+
+
 error: resource mapping not found for name: "selfsigned-issuer" namespace: "cert-manager" from "/azp/agent/_work/3/s/cluster/overlays/EDITAKSCLUS01/cert-manager-operator/kustomization-output.yaml": no matches for kind "ClusterIssuer" in version "cert-manager.io/v1"
 ensure CRDs are installed first
 
