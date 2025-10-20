@@ -1,11 +1,5 @@
-# cluster/overlays/EDITAKSCLUS01/cert-manager-operator/kustomization.yaml
-apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
-
-# First include cert-manager installation overlay
-resources:
-  - ../../../cert-manager-operator/overlays/00-install
-  - ../../../cert-manager-operator/overlays/10-issuer
+error: accumulating resources: accumulation err='accumulating resources from '../../../cert-manager-operator/overlays/00-install': evalsymlink failure on '/azp/agent/_work/3/s/cluster/cert-manager-operator/overlays/00-install' : lstat /azp/agent/_work/3/s/cluster/cert-manager-operator: no such file or directory': must build at directory: not a valid directory: evalsymlink failure on '/azp/agent/_work/3/s/cluster/cert-manager-operator/overlays/00-install' : lstat /azp/agent/_work/3/s/cluster/cert-manager-operator: no such file or directory
+DONE app cert-manager-operator
 
 
 
