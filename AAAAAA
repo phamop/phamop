@@ -1,6 +1,42 @@
+error: accumulating resources: accumulation err='accumulating resources from '../../../base/cert-manager-operator': '/azp/agent/_work/8/s/cluster/base/cert-manager-operator' must resolve to a file': recursed accumulation of path '/azp/agent/_work/8/s/cluster/base/cert-manager-operator': Error: values don't meet the specifications of the schema(s) in the following chart(s):
+cert-manager:
+- (root): Additional property includeCRDs is not allowed
+
+: unable to run: 'helm template cert-manager /azp/agent/_work/8/s/cluster/base/cert-manager-operator/charts/cert-manager-v1.18.2/cert-manager --namespace cert-manager -f /tmp/kustomize-helm-3416696123/cert-manager-kustomize-values.yaml' with env=[HELM_CONFIG_HOME=/root/.config/helm HELM_CACHE_HOME=/root/.config/helm/.cache HELM_DATA_HOME=/root/.config/helm/.data] (is 'helm' installed?): exit status 1
+DONE app cert-manager-operator
+
+
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: selfsigned-issuer
+#  namespace: monitoring
+spec:
+  selfSigned: {}
+
+
+# helm-values.yaml
+global:
+  leaderElection:
+    namespace: cert-manager
+includeCRDs: true
+resources:
+  requests:
+    cpu: 100m 
+    memory: 128Mi
+
+
 resources:
 - namespace.yaml
 - issuer.yaml
+
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: cert-manager
+# spec: {}
+
 
 helmGlobals:
   chartHome: ./charts
@@ -9,15 +45,15 @@ helmGlobals:
 helmCharts:
   - name: cert-manager
     repo: oci://xxxxxxxxxxxx/xxxxx/charts
-    includeCRDs: true
+   # includeCRDs: true
     releaseName: cert-manager
     version: v1.18.2
     valuesFile: helm-values.yaml
     namespace: cert-manager
-    valuesInline: |
-      crds:
-        install: true
-        enabled: true
+ #   valuesInline: |
+  #    crds:
+  #      install: true
+  #      enabled: true
 
 
 error: accumulating resources: accumulation err='accumulating resources from '../../../base/cert-manager-operator': '/azp/agent/_work/8/s/cluster/base/cert-manager-operator' must resolve to a file': couldn't make target for path '/azp/agent/_work/8/s/cluster/base/cert-manager-operator': invalid Kustomization: json: cannot unmarshal string into Go struct field HelmChart.helmCharts.valuesInline of type map[string]interface {}
