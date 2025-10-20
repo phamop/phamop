@@ -1,4 +1,4 @@
-error: accumulating resources: accumulation err='accumulating resources from '../../../cert-manager-operator/overlays/00-install': evalsymlink failure on '/azp/agent/_work/3/s/cluster/cert-manager-operator/overlays/00-install' : lstat /azp/agent/_work/3/s/cluster/cert-manager-operator: no such file or directory': must build at directory: not a valid directory: evalsymlink failure on '/azp/agent/_work/3/s/cluster/cert-manager-operator/overlays/00-install' : lstat /azp/agent/_work/3/s/cluster/cert-manager-operator: no such file or directory
+error: accumulating resources: accumulation err='accumulating resources from '../../../cert-manager-operator/overlay/00-install': evalsymlink failure on '/azp/agent/_work/3/s/cluster/cert-manager-operator/overlay/00-install' : lstat /azp/agent/_work/3/s/cluster/cert-manager-operator: no such file or directory': must build at directory: not a valid directory: evalsymlink failure on '/azp/agent/_work/3/s/cluster/cert-manager-operator/overlay/00-install' : lstat /azp/agent/_work/3/s/cluster/cert-manager-operator: no such file or directory
 DONE app cert-manager-operator
 
 
