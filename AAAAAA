@@ -1,10 +1,12 @@
-The firewall update was successful, but the AKS deployment failed due to a DNS issue in the new subnet, which couldn't resolve any hostnames. The network team has a task to fix it, and I will follow up
+Summary: Our AKS deployment is currently on hold due to a critical infrastructure dependency. We have successfully completed a mandatory migration from a deprecated Microsoft backend to a new Network Virtual Appliance (NVA). However, the deployment is now failing because a newly created subnet lacks essential DNS configuration.
 
+Key Issue:
 
+Blocker: The Network team must configure DNS for the new AKS subnet. A ticket is submitted but pending action.
 
-CHG7026817 The Change Request (CR) is scheduled for implementation at 8 PM. Upon success, testing will commence immediately, using the AKS deployment as the validation criteria.
+Impact: This unresolved ticket is the single point of failure, halting all deployment progress and causing significant timeline delays.
 
-
+Next Steps & Risk: We are actively following up on the network ticket. Once resolved, we will immediately resume deployment. However, due to the complexity of the new NVA environment, we anticipate a risk of encountering additional, unforeseen configuration issues post-DNS resolution.
 
 
 
