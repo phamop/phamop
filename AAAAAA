@@ -1,18 +1,16 @@
-Summary: Our AKS deployment is currently on hold due to a critical infrastructure dependency. Previous AKS deployment were implemented on the Microsoft backend.
-Microsoft has depreciated Microsoft backend to a new Network Virtual Appliance (NVA). So firewall ticket were created  for firewall implementation, which was  implemented successfully on Oct 20th
-However, the  AKS deployment is now failing because a newly created subnet (Exxx-SUBNETxx) lacks essential DNS configuration.
+The AKS deployment is currently on hold due to a critical infrastructure dependency. Previous deployments were implemented using the Microsoft backend, which has since been deprecated and replaced by a new Network Virtual Appliance (NVA) architecture. A firewall request was submitted and successfully implemented on October 20th to align with this new setup.
 
 Key Issue:
+Deployment is now failing because the newly created subnet (Exxx-SUBNETxx) is missing the required DNS configuration.
 
-Blocker: The Network team must configure DNS for the new AKS subnet. A ticket (SCxxxxxx) is submitted but pending action.
+Blocker:
+The Network team must configure DNS for the new AKS subnet. A ticket (SCxxxxxx) has been submitted but remains pending action.
 
-Impact: This unresolved ticket is the single point of failure, halting all deployment progress and causing significant timeline delays.
+Impact:
+This outstanding ticket represents a single point of failure, halting all AKS deployment activities and introducing significant delays to the project timeline.
 
-Next Steps & Risk: We are actively following up on the network ticket. Once resolved, we will immediately resume deployment. 
-However, due to the complexity of the new NVA environment, we anticipate a risk of encountering additional, unforeseen configuration issues post-DNS resolution.
-
-
-
+Next Steps & Risk:
+We are actively following up with the Network team for DNS configuration completion. Deployment will resume immediately upon resolution. However, given the complexity of the new NVA infrastructure, there is a potential risk of additional configuration issues arising after DNS setup is completed.
 
 
 
