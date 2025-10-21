@@ -1,3 +1,7 @@
+The firewall update was successful, but the AKS deployment failed due to a DNS issue in the new subnet, which couldn't resolve any hostnames. The network team has a task to fix it, and I will follow up
+
+
+
 CHG7026817 The Change Request (CR) is scheduled for implementation at 8 PM. Upon success, testing will commence immediately, using the AKS deployment as the validation criteria.
 
 
