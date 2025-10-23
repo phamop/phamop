@@ -1,3 +1,13 @@
+ Deployment of an AKS pipeline is failing during the "AKS Secrets for Server Certificates" phase. The pipeline is likely attempting to create a Kubernetes Secret (e.g., tls-secret) to store a TLS certificate and private key for securing an ingress endpoint, but is encountering an error.
+
+Objective: Identify the root cause of this secret creation failure and implement a solution to allow the pipeline to proceed successfully.
+
+
+
+
+
+
+
 The AKS deployment is currently on hold due to a critical infrastructure dependency. Previous deployments were implemented using the Microsoft backend, which has since been deprecated and replaced by a new Network Virtual Appliance (NVA) architecture. A firewall request was submitted and successfully implemented on October 20th to align with this new setup.
 
 Key Issue:
