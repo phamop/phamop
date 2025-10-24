@@ -1,287 +1,252 @@
- Deployment of an AKS pipeline is failing during the "AKS Secrets for Server Certificates" phase. The pipeline is likely attempting to create a Kubernetes Secret (e.g., tls-secret) to store a TLS certificate and private key for securing an ingress endpoint, but is encountering an error.
-
-Objective: Identify the root cause of this secret creation failure and implement a solution to allow the pipeline to proceed successfully.
-
-
-
-
-
-
-
-The AKS deployment is currently on hold due to a critical infrastructure dependency. Previous deployments were implemented using the Microsoft backend, which has since been deprecated and replaced by a new Network Virtual Appliance (NVA) architecture. A firewall request was submitted and successfully implemented on October 20th to align with this new setup.
-
-Key Issue:
-Deployment is now failing because the newly created subnet (Exxx-SUBNETxx) is missing the required DNS configuration.
-
-Blocker:
-The Network team must configure DNS for the new AKS subnet. A ticket (SCxxxxxx) has been submitted but remains pending action.
-
-Impact:
-This outstanding ticket represents a single point of failure, halting all AKS deployment activities and introducing significant delays to the project timeline.
-
-Next Steps & Risk:
-We are actively following up with the Network team for DNS configuration completion. Deployment will resume immediately upon resolution. However, given the complexity of the new NVA infrastructure, there is a potential risk of additional configuration issues arising after DNS setup is completed.
-
-
-
-
-
-
-
-
-
-Summary: Our AKS deployment is currently on hold due to a critical infrastructure dependency. We have successfully completed a mandatory migration from a deprecated Microsoft backend to a new Network Virtual Appliance (NVA). However, the deployment is now failing because a newly created subnet lacks essential DNS configuration.
-
-Key Issue:
-
-Blocker: The Network team must configure DNS for the new AKS subnet. A ticket is submitted but pending action.
-
-Impact: This unresolved ticket is the single point of failure, halting all deployment progress and causing significant timeline delays.
-
-Next Steps & Risk: We are actively following up on the network ticket. Once resolved, we will immediately resume deployment. However, due to the complexity of the new NVA environment, we anticipate a risk of encountering additional, unforeseen configuration issues post-DNS resolution.
-
-
-
-apiVersion: cert-manager.io/v1
-kind: ClusterIssuer
-metadata:
-  name: selfsigned-issuer
-#  namespace: monitoring
-spec:
-  selfSigned: {}
-
-
-# helm-values.yaml
-global:
-  leaderElection:
-    namespace: cert-manager
-includeCRDs: true
-resources:
-  requests:
-    cpu: 100m 
-    memory: 128Mi
-
-
-resources:
-- namespace.yaml
-- issuer.yaml
-
----
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: cert-manager
-# spec: {}
-
-
-helmGlobals:
-  chartHome: ./charts
-# configHome: ado_agent_helm_config_dir
-  configHome: /root/.config/helm
-helmCharts:
-  - name: cert-manager
-    repo: oci://xxxxxxxxxxxx/xxxxx/charts
-   # includeCRDs: true
-    releaseName: cert-manager
-    version: v1.18.2
-    valuesFile: helm-values.yaml
-    namespace: cert-manager
- #   valuesInline: |
-  #    crds:
-  #      install: true
-  #      enabled: true
-
-
-error: accumulating resources: accumulation err='accumulating resources from '../../../base/cert-manager-operator': '/azp/agent/_work/8/s/cluster/base/cert-manager-operator' must resolve to a file': couldn't make target for path '/azp/agent/_work/8/s/cluster/base/cert-manager-operator': invalid Kustomization: json: cannot unmarshal string into Go struct field HelmChart.helmCharts.valuesInline of type map[string]interface {}
-DONE app cert-manager-operator
-
-
-error: Multiple Strategic-Merge Patches in one `patches` entry is not allowed to set `patches.target` field: [path: "opentelemetry-webhook-patch.yaml"]
-
-
-namespace: monitoring
-
-resources:
-- ../../../../kustomize/base/opentelemetry
-
-patches:
-  - target:
-      kind: MutatingWebhookConfiguration
-      name: opentelemetry-operator-mutating-webhook-configuration
-    path: opentelemetry-webhook-patch.yaml
-
-  - target:
-      kind: OpenTelemetryCollector
-      name: collector
-      namespace: monitoring
-    path: serviceMonitor.yaml
-
-  - target:
-      kind: OpenTelemetryCollector
-      name: collector
-      namespace: monitoring
-    path: collector-patch.yaml
-
-
-
-
-
-
-
-
-
-
-
-
-Current resource: /azp/agent/_work/28/s/kustomize/overlays/EDIT/05opentelemetry
-Set the helmGlobals.configHome to the appropriate value.
-About to run kubectl kustomize
-error: invalid Kustomization: json: unknown field "kind"
-DONE resource /azp/agent/_work/28/s/kustomize/overlays/EDIT/05opentelemetry
-
-
-namespace: monitoring
-
-
-
-resources:
-- ../../../../kustomize/base/opentelemetry
-# - serviceMonitor.yaml
-
-patches:
-
-  - path: opentelemetry-webhook-patch.yaml
-    target:
-      kind: MutatingWebhookConfiguration
-      name: opentelemetry-operator-mutating-webhook-configuration
-  
-
-  - path: serviceMonitor.yaml
-    target:
-    kind: OpenTelemetryCollector
-    name: collector
-    namespace: monitoring
-  
-  - path: collector-patch.yaml
-    target:
-    kind: OpenTelemetryCollector
-    name: collector
-    namespace: monitoring
-
-# - certifcate-multisan.yaml
-# - ../../../base/opentelemetry
-# - serviceMonitor.yaml
-
-# patches:
-# - path: collector-patch.yaml
-#   target:
-#     kind: OpenTelemetryCollector
-#     name: collector
-
-
-
-
-
-
-What I was looking for is a tech spike plan; a short, time-boxed investigation to validate Option 3 before committing to rollout.
-
-A tech spike should focus on proving feasibility and reducing unknowns (complexity, integration, cost). It doesn’t need to cover full phased adoption.
-
-  1. Objectives – what questions are we trying to answer (e.g., performance, SRE overhead, cost signals)?
-  2. Scope / Constraints – what’s in and out (e.g., test with one or two Azure resources, not full estate).
-  3. Experiments / Activities – small hands-on tests: route one resource’s logs via Event Hub → OTel → Loki, scrape sample metrics, push one trace into Jaeger.
-  4. Time-box – limit to a sprint or less.
-  5. Outputs – documented findings, cost estimates, risks, and a recommendation on whether to proceed.
-
-For now, drop the phased migration and optimization steps – that belongs in an implementation plan, not a spike.
-
-
-
-Architecture Decision Record (ADR): Monitoring Azure Resources
-1. Context
-We need a sustainable, cost‑efficient, and flexible observability approach for Azure‑hosted workloads. The decision concerns whether to adopt a predominantly Azure‑native monitoring stack (Azure Monitor + Application Insights, visualized in Grafana) or an OSS‑first approach using Event Hubs + OpenTelemetry (OTel) running in AKS with Prometheus/Loki/Jaeger and Grafana.
-2. Decision Drivers
-	Cost at scale (log ingestion, retention, egress, export, Event Hubs throughput, AKS compute/storage).
-	Operational complexity (managed services vs. operating Prometheus/Loki/Jaeger/Collectors).
-	Query & skills (KQL/Workbooks vs. PromQL/Alertmanager/Grafana).
-	Portability/multi‑cloud (vendor lock‑in vs. OSS standards).
-	Performance & resilience (spiky workloads, buffering, back‑pressure).
-	Security & compliance (data residency, audit, RBAC, private networking).
-3. Options Considered
-Option A — Azure‑Native (Azure Monitor + Application Insights + Grafana)
-Logs: Azure Monitor Logs (Log Analytics) queried via KQL, visualized in Grafana using the Azure Monitor data source.
-Metrics: Azure Monitor Metrics visualized in Grafana. (If Prometheus‑style metrics are required, consider Azure Managed Prometheus.)
-Traces: Application Insights; apps instrumented via OpenTelemetry send telemetry directly to App Insights.
-Advantages:
-•	Minimal operational overhead; fully managed ingestion, indexing, and query.
-•	Native KQL, Workbooks, Azure alerting, RBAC, and resource‑centric experiences.
-•	Direct Grafana integration with Azure Monitor data sources.
-Limitations / Cost Considerations:
-•	Log ingestion and retention in Log Analytics/App Insights billed per GB; can be high for verbose logs.
-•	Limited portability (data and dashboards tied to Azure stack).
-•	If exporting data (e.g., for downstream systems), export traffic may add cost (not needed in pure native path).
-Option B — OSS‑First (Event Hubs + OTel in AKS + Prometheus/Loki/Jaeger + Grafana)
-Logs: Resource Diagnostic Settings stream directly to Event Hubs; OTel Collector (AKS) ingests from EH and writes to Loki/Elastic; Grafana visualizes.
-Metrics: Azure metrics exporter (or Grafana Agent) pulls from Azure Monitor APIs; Prometheus scrapes; Grafana visualizes. Optionally, OTel Collector can remote_write to a Prometheus‑compatible backend.
-Traces: OTel SDK → OTel Collector (AKS) → Jaeger; optional dual‑export to App Insights if APM views are needed.
-Advantages:
-•	Lower log costs at scale (you control retention/compaction in object storage).
-•	Open standards ( Loki labels, OTel) and multi‑cloud portability.
-•	Event Hubs provides buffering/back‑pressure for bursty workloads.
-Limitations / Cost Considerations:
-•	Operate and scale Event Hubs, Prometheus, Loki, Jaeger, and OTel Collectors in AKS (SRE overhead).
-•	AKS compute/storage for the observability stack; capacity planning for TSDB/indices and retention.
-•	Metrics API/exporter calls and remote_write egress (if pushing to external backends).
-
-4. Cost Model & Estimation Framework
-Option A — Azure‑Native (indicative, plug in your rates):
-Component	Driver/Meter	Monthly Formula	Inputs (example)
-Log Analytics / App Insights	Ingestion (GB) + Retention	GB_per_day × Rate_per_GB × 30 + Retention_fee	GB_per_day, Rate_per_GB, Retention_plan
-Azure Monitor Metrics	Query/API usage (if heavy)	API_calls_per_day × Rate_per_1k × 30	API_calls_per_day, Rate_per_1k
-Grafana (Managed or Self‑hosted)	Seats/Instance/VM	Service_fee + VM_cost	Seats, VM_size
-(Optional) Export	Data Export (GB)	Exported_GB × Rate_per_GB	Exported_GB, Rate_per_GB
-Option B — OSS‑First (indicative, plug in your rates):
-Component	Driver/Meter	Monthly Formula	Inputs (example)
-Event Hubs	Throughput Units + Storage	TU_hours × TU_rate + Storage_GB × Storage_rate	TU_hours, TU_rate, Storage_GB
-OTel/Prometheus/Loki/Jaeger (AKS)	vCPU/RAM + Storage	Node_hours × Node_rate + Obj_Storage_GB × Storage_rate	Node_hours, Node_rate, Retention_days
-Prometheus remote_write (optional)	Egress + Backend fee	Egress_GB × Egress_rate + Backend_fee	Egress_GB, Backend_target
-Grafana	Seats/Instance/VM	Service_fee + VM_cost	Seats, VM_size
-
-Estimation workflow: 
-(1) baseline volume per service (GB/day logs, series/second for metrics, spans/min for traces); 
-(2) choose retention targets; 
-(3) multiply by provider rates; 
-(4) include AKS/VM costs for OSS; 
-(5) test with 30‑day and 90‑day horizons.
-
-5. Risks & Trade‑offs
-•	Option A may become costly for verbose logs; sampling and table‑level plans mitigate this.
-•	Option B introduces operational risk (scale, HA, backup/restore) for the OSS stack.
-•	Vendor lock‑in (A) vs. skills/ops burden (B).
-•	Latency and back‑pressure: Event Hubs buffering helps in (B); (A) relies on Azure ingestion SLAs.
-•	Security: private networking and RBAC must be enforced either way.
-6. Recommendation
-Adopt Option B - OSS‑First for high‑volume logs and platform telemetry, with selective use of Azure‑native services:
-	Logs: Diagnostic Settings → Event Hubs → OTel (AKS) → Loki; keep only critical audit/security tables in Log Analytics.
-	Metrics: Prometheus as source of truth via exporter/Collector pull; Grafana for visualization. Use Azure Managed Prometheus if you prefer a managed backend.
-	Traces: OTel → Collector → Jaeger/Tempo; dual‑export to App Insights only for services that require Azure APM experiences.
-	Rationale: better cost control for high‑volume telemetry, OSS portability (PromQL, OTel), buffering for spikes via Event Hubs, and unified Grafana dashboards.
-8. Consequences
-•	Teams must operate and scale the OSS stack in AKS (capacity planning, backups, upgrades).
-•	KQL remains available only for the subset retained in Log Analytics.
-•	Alerting split: Azure Alerts (Option A) vs. Prometheus/Alertmanager (Option B); standardize on one per domain where possible.
-9. Implementation Plan (Phased)
-1.	Phase 1: Stand up Event Hubs, OTel Collector in AKS, Prometheus, Loki, Jaeger, Grafana.
-2.	Phase 2: Enable Diagnostic Settings on top‑talkers (Front Door, App Gateway, API Mgmt, Functions).
-3.	Phase 3: Instrument critical apps with OTel SDK; add exemplars and correlation IDs.
-4.	Phase 4: Migrate dashboards/alerts (metrics, Loki for logs, Jaeger for traces).
-5.	Phase 5: Optimize cost (sampling, retention tiers, compaction, exporter throttling).
-10. Monitoring & Alerting Standards
-Metrics: SLO‑driven alerts in Prometheus/Alertmanager; page on burn‑rates. 
-Logs: Loki queries for anomaly/security with routing to SIEM if applicable. 
-Traces: tail‑based sampling and service‑level latency SLIs. 
-Dashboards: Grafana folders by domain; ownership clearly labeled.
-Appendix A — Assumptions
-OTel Collector runs in AKS; Prometheus is the metrics system of record unless managed Prometheus is chosen.
-Grafana is the single pane of glass; Azure Monitor data source is enabled for Azure‑native views where needed.
-Network paths are private (Private Link) and RBAC follows least‑privilege.
+<#
+.DESCRIPTION
+    Adds new Secrets or Removes/Soft-Deletes existing secrets based on the availability and value of the current secret
+
+#>
+function Update-AzKeyVaultSecretV2 {
+    param(
+        [Parameter(Mandatory)]
+        [string]$VaultName,
+
+        [Parameter(Mandatory)]
+        [string]$SecretName,
+
+        [Parameter(Mandatory)]
+        [string]$SecretValue,
+
+        [Parameter()]
+        [bool]$OverwriteExisting = $false
+    )
+
+    $updateSecret = $true
+    Write-Verbose "Fetching existing secret ($SecretName)"
+    $existing = Get-AzKeyVaultSecret -VaultName $VaultName -Name $SecretName -AsPlainText
+    if ($existing) {
+        # if it's different or overwrite flag is present
+        if (($existing -ne $SecretValue) -or $OverwriteExisting) {
+
+            # TODO: Revisit this logic...
+            #    Shouldn't we be keeping older versions of the secret if SoftDelete isn't enabled?
+            #    SoftDelete allows secrets to be recovered if they're deleted.    
+            if ((Get-AzKeyVault -VaultName $VaultName).EnableSoftDelete) {
+                Write-Verbose "Soft delete: Marking previous secret ($SecretName) as disabled"
+                Update-AzKeyVaultSecret -VaultName $VaultName -Name $SecretName -Enable $false -ErrorAction SilentlyContinue
+            }
+            else {
+                Write-Verbose "Hard delete: Removing existing secret ($SecretName)"
+                $null = Remove-AzKeyVaultSecret -VaultName $VaultName -Name $SecretName -PassThru -Force -ErrorAction SilentlyContinue
+            }
+        } else {
+            # don't update the secret because it hasn't changed and we're not overwriting
+            Write-Host "Skipping secret '$SecretName' because the current value is already present in KeyVault '$VaultName'"
+            $updateSecret = $false
+        }
+    }
+
+    if ($updateSecret) {
+        Write-Verbose "Adding secret $SecretName"
+        $secureSecret = $SecretValue | ConvertTo-SecureString -AsPlainText -Force
+        $null = Set-AzKeyVaultSecret -VaultName $VaultName -Name $SecretName -SecretValue $secureSecret
+        Write-Host "Added secret '$SecretName' to Key Vault '$VaultName'."
+        Write-Output $SecretName
+    }
+}
+
+<#
+.DESCRIPTION
+    Evaulates if a secret exists in a key vault
+#>
+function Test-AzKeyVaultSecretV2 {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [string]$VaultName,
+
+        [Parameter(Mandatory)]
+        [string]$SecretName
+    )
+
+    if (Get-AzKeyVaultSecret -VaultName $VaultName -Name $SecretName -AsPlainText) {
+        return $true
+    } else {
+        return $false
+    }
+}
+
+
+<#
+.SYNOPSIS
+Imports a certificate and private key to the indicated Key Vault.
+
+.DESCRIPTION
+Imports a certificate and private key to the indicated Key Vault.  If the certificate already exists, a new version
+will be created.
+
+.PARAMETER VaultName
+The name of the Key Vault.
+
+.PARAMETER VaultCertificateName
+The name of the certificate for use when importing to Key Vault.
+
+.PARAMETER CertificatePath
+The path to the certificate file.  At the time of this writing, PEM files cannot be directly uploaded
+using the Import-AzKeyVaultCertificate cmdlet.  Reference: https://github.com/MicrosoftDocs/azure-docs/issues/16543.
+Instead, this function will combine the certificate and private key file to a PFX keystore, set a temporary
+passphrase, then upload the PFX.
+
+.PARAMETER PrivateKeyPath
+The path to the private key file.  At the time of this writing, PEM files cannot be directly uploaded
+using the Import-AzKeyVaultCertificate cmdlet.  Reference: https://github.com/MicrosoftDocs/azure-docs/issues/16543.
+Instead, this function will combine the certificate and private key file to a PFX keystore, set a temporary
+passphrase, then upload the PFX.
+#>
+function Import-AzKeyVaultCertificateV2 {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]
+        $VaultName,
+
+        [Parameter(Mandatory = $true)]
+        [string]
+        $VaultCertificateName,
+
+        [Parameter(Mandatory = $true)]
+        [string]
+        $CertificatePath,
+
+        [Parameter(Mandatory = $true)]
+        [string]
+        $PrivateKeyPath
+    )
+
+    # Terminates the script on an error action.
+    $ErrorActionPreference = "Stop"
+
+    $keystorePath = $PrivateKeyPath.Replace(".key", ".pfx")
+    $keystorePassphrase = "Password1"
+
+    # Uncomment the block below for troubleshooting purposes.
+    Write-Output $("-" * 125)
+    Write-Output "Importing a certificate to Key Vault with these settings:`n"
+    Write-Output "`tKey Vault Name:              $VaultName"
+    Write-Output "`tKey Vault Certificate Name:  $VaultCertificateName"
+    Write-Output "`tCertificate Path:            $CertificatePath"
+    Write-Output "`tPrivate Key Path:            $PrivateKeyPath"
+    Write-Output $("-" * 125)
+
+    # Combine the certificate and private key to a PFX and add a passphrase.
+    # At the time of this writing, PEM files cannot be uploaded to Azure Key Vault via Azure CLI or Azure PowerShell.
+    # Only PKCS #12 (PFX) keystores are supported and must be secured with a passphrase.  References:
+    #   https://github.com/MicrosoftDocs/azure-docs/issues/23558#issuecomment-460485031
+    #   https://github.com/MicrosoftDocs/azure-docs/issues/16543
+    openssl pkcs12 `
+        -export -inkey "$PrivateKeyPath" -in "$CertificatePath" `
+        -out $keystorePath -passout pass:"$keystorePassphrase"
+
+    # Import the new PFX keystore to Key Vault.
+    $secureKeystorePassphrase = ConvertTo-SecureString "$keystorePassphrase" -AsPlainText -Force
+    $null = Import-AzKeyVaultCertificate -VaultName $VaultName -Name $VaultCertificateName -FilePath $keystorePath -Password $secureKeystorePassphrase
+    Write-Output "*** Imported Certificate ($VaultCertificateName) to Key Vault ($VaultName) from $keystorePath."
+}
+
+
+<#
+.SYNOPSIS
+Downloads a certificate from the indicated Key Vault.
+
+.DESCRIPTION
+Downloads a certificate from the indicated Key Vault.  A PKCS #12 (PFX) keystore and the public certificate
+file will be generated.  Use the one appropriate for your needs.  These files should be deleted when done
+due to the security risks.
+
+.PARAMETER VaultName
+The name of the Key Vault.
+
+.PARAMETER VaultCertificateName
+The name of the certificate to download.
+
+.PARAMETER CertificatePath
+The path to save the downloaded certificate file.
+
+.PARAMETER CertificatePasspharse
+The passpharse to set for the PKCS #12 (PFX) keystore.  This parameter is optional as the passphrase is
+temporary.  Upon uploading to Azure resources (e.g., Key Vault, APIM), the passphrase is stripped in any case.
+
+.PARAMETER CertificateThumbprintVariableName
+The name of the variable to use for setting the certificate thumbprint value.  This parameter is optional as
+the thumbprint is not always needed downstream.
+
+.NOTES
+Most of the code below is from Microsoft Docs for Get-AzKeyVaultCertificate:
+- https://docs.microsoft.com/en-us/powershell/module/az.keyvault/get-azkeyvaultcertificate?view=azps-5.0.0#example-2--get-cert-and-save-it-as-pfx
+#>
+function Get-AzKeyVaultCertificateV2 {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]
+        $VaultName,
+
+        [Parameter(Mandatory = $true)]
+        [string]
+        $VaultCertificateName,
+
+        [Parameter(Mandatory = $true)]
+        [string]
+        $CertificatePath,
+
+        [Parameter(Mandatory = $false)]
+        [System.Security.SecureString]
+        $CertificatePassphrase = $(ConvertTo-SecureString "Password1" -AsPlainText -Force),
+
+        [Parameter(Mandatory = $false)]
+        [string]
+        $CertificateThumbprintVariableName
+    )
+
+    # Terminates the script on an error action.
+    $ErrorActionPreference = "Stop"
+
+    # Uncomment the block below for troubleshooting purposes.
+    # Write-Output $("-" * 125)
+    # Write-Output "Downloading a certificate from Key Vault with these settings:`n"
+    # Write-Output "`tKey Vault Name:              $VaultName"
+    # Write-Output "`tKey Vault Certificate Name:  $VaultCertificateName"
+    # Write-Output "`tCertificate Path:            $CertificatePath"
+    # Write-Output $("-" * 125)
+
+    # Download the certificate from Key Vault.
+    # Reference: https://docs.microsoft.com/en-us/powershell/module/az.keyvault/get-azkeyvaultcertificate?view=azps-5.0.0#example-2--get-cert-and-save-it-as-pfx
+    $cert = Get-AzKeyVaultCertificate -VaultName $VaultName -Name $VaultCertificateName
+    Write-Output "My certname: $cert.Name "
+    $secret = Get-AzKeyVaultSecret -VaultName $VaultName -Name $cert.Name
+     Write-Output "The secret: $secret.SecretValue"
+     Write-Output "The certname: $cert.Name "
+    $secretValueText = '';
+    $ssPtr = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($secret.SecretValue)
+
+    try {
+        $secretValueText = [System.Runtime.InteropServices.Marshal]::PtrToStringBSTR($ssPtr)
+    } finally {
+        [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($ssPtr)
+    }
+
+    $secretBytes = [Convert]::FromBase64String($secretValueText)
+    $x509Cert = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2($secretBytes, "", "Exportable,PersistKeySet")
+
+    # Save the keystore to a PFX file.
+    $pfxType = [System.Security.Cryptography.X509Certificates.X509ContentType]::Pfx
+    $pfxFileBytes = $x509Cert.Export($pfxType, $CertificatePassphrase)
+
+    [System.IO.File]::WriteAllBytes("$CertificatePath/$($VaultCertificateName).pfx", $pfxFileBytes)
+
+    # Save the public certificate to a CER file.
+    $cerType = [System.Security.Cryptography.X509Certificates.X509ContentType]::Cert
+    $cerFileBytes = $x509Cert.Export($cerType, $CertificatePassphrase)
+
+    [System.IO.File]::WriteAllBytes("$CertificatePath/$($VaultCertificateName).cer", $cerFileBytes)
+
+    # Set the thumbprint of the new certificate to a pipeline variable if the variable name is set.
+    if (-not [string]::IsNullOrEmpty("$CertificateThumbprintVariableName")) {
+        Write-Output "##vso[task.setvariable variable=$CertificateThumbprintVariableName;]$($x509Cert.Thumbprint)"
+    }
+}
