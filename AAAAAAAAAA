@@ -1,12 +1,3 @@
-error: accumulating resources: accumulation err='accumulating resources from '../../../base/loki': '/azp/agent/_work/7/s/kustomize/base/loki' must resolve to a file': recursed accumulation of path '/azp/agent/_work/7/s/kustomize/base/loki': Error: template: loki/templates/write/statefulset-write.yaml:50:28: executing "loki/templates/write/statefulset-write.yaml" at <include "loki.configMapOrSecretContentHash" (dict "ctx" . "name" "/config.yaml")>: error calling include: template: loki/templates/_helpers.tpl:1168:8: executing "loki.configMapOrSecretContentHash" at <include (print .ctx.Template.BasePath .name) .ctx>: error calling include: template: loki/templates/config.yaml:19:7: executing "loki/templates/config.yaml" at <include "loki.calculatedConfig" .>: error calling include: template: loki/templates/_helpers.tpl:523:24: executing "loki.calculatedConfig" at <tpl .Values.loki.config .>: error calling tpl: error during tpl function execution for "{{- if .Values.enterprise.enabled}}\n{{- tpl .Values.enterprise.config . }}\n{{- else }}\nauth_enabled: {{ .Values.loki.auth_enabled }}\n{{- end }}\n\n{{- with .Values.loki.server }}\nserver:\n  {{- toYaml . | nindent 2}}\n{{- end}}\n\npattern_ingester:\n  enabled: {{ .Values.loki.pattern_ingester.enabled }}\n\nmemberlist:\n{{- if .Values.loki.memberlistConfig }}\n  {{- toYaml .Values.loki.memberlistConfig | nindent 2 }}\n{{- else }}\n{{- if .Values.loki.extraMemberlistConfig}}\n{{- toYaml .Values.loki.extraMemberlistConfig | nindent 2}}\n{{- end }}\n  join_members:\n    - {{ include \"loki.memberlist\" . }}\n    {{- with .Values.migrate.fromDistributed }}\n    {{- if .enabled }}\n    - {{ .memberlistService }}\n    {{- end }}\n    {{- end }}\n{{- end }}\n\n{{- with .Values.loki.ingester }}\ningester:\n  {{- tpl (. | toYaml) $ | nindent 4 }}\n{{- end }}\n\n{{- with .Values.loki.block_builder }}\nblock_builder:\n  {{- tpl (. | toYaml) $ | nindent 4 }}\n{{- end }}\n\n{{- if .Values.loki.commonConfig}}\ncommon:\n{{- toYaml .Values.loki.commonConfig | nindent 2}}\n  storage:\n  {{- include \"loki.commonStorageConfig\" . | nindent 4}}\n{{- end}}\n\n{{- with .Values.loki.limits_config }}\nlimits_config:\n  {{- tpl (. | toYaml) $ | nindent 4 }}\n{{- end }}\n\nruntime_config:\n  file: /etc/loki/runtime-config/runtime-config.yaml\n\n{{- with .Values.chunksCache }}\n{{- if .enabled }}\nchunk_store_config:\n  chunk_cache_config:\n    default_validity: {{ .defaultValidity }}\n    background:\n      writeback_goroutines: {{ .writebackParallelism }}\n      writeback_buffer: {{ .writebackBuffer }}\n      writeback_size_limit: {{ .writebackSizeLimit }}\n    memcached:\n      batch_size: {{ .batchSize }}\n      parallelism: {{ .parallelism }}\n    memcached_client:\n      addresses: {{ .addresses }}\n      consistent_hash: true\n      timeout: {{ .timeout }}\n      max_idle_conns: 72\n{{- end }}\n{{- end }}\n\n{{- if .Values.loki.schemaConfig }}\nschema_config:\n{{- toYaml .Values.loki.schemaConfig | nindent 2}}\n{{- end }}\n\n{{- if .Values.loki.useTestSchema }}\nschema_config:\n{{- toYaml .Values.loki.testSchemaConfig | nindent 2}}\n{{- end }}\n\n{{- if .Values.ruler.enabled }}\n{{ include \"loki.rulerConfig\" . }}\n{{- end }}\n\n{{- if and .Values.loki.storage.use_thanos_objstore .Values.ruler.enabled}}\nruler_storage:\n  {{- include \"loki.rulerThanosStorageConfig\" . | nindent 2 }}\n{{- end }}\n\n{{- if or .Values.tableManager.retention_deletes_enabled .Values.tableManager.retention_period }}\ntable_manager:\n  retention_deletes_enabled: {{ .Values.tableManager.retention_deletes_enabled }}\n  retention_period: {{ .Values.tableManager.retention_period }}\n{{- end }}\n\nquery_range:\n  align_queries_with_step: true\n  {{- with .Values.loki.query_range }}\n  {{- tpl (. | toYaml) $ | nindent 2 }}\n  {{- end }}\n  {{- if .Values.resultsCache.enabled }}\n  {{- with .Values.resultsCache }}\n  cache_results: true\n  results_cache:\n    cache:\n      default_validity: {{ .defaultValidity }}\n      background:\n        writeback_goroutines: {{ .writebackParallelism }}\n        writeback_buffer: {{ .writebackBuffer }}\n        writeback_size_limit: {{ .writebackSizeLimit }}\n      memcached_client:\n        addresses: {{ .addresses }}\n        consistent_hash: true\n        timeout: {{ .timeout }}\n        update_interval: 1m\n  {{- end }}\n  {{- end }}\n\n{{- with .Values.loki.storage_config }}\nstorage_config:\n  {{- tpl (. | toYaml) $ | nindent 4 }}\n{{- end }}\n\n{{- with .Values.loki.query_scheduler }}\nquery_scheduler:\n  {{- tpl (. | toYaml) $ | nindent 4 }}\n{{- end }}\n\n{{- with .Values.loki.compactor }}\ncompactor:\n  {{- tpl (. | toYaml) $ | nindent 4 }}\n{{- end }}\n\n{{- with .Values.loki.analytics }}\nanalytics:\n  {{- tpl (. | toYaml) $ | nindent 4 }}\n{{- end }}\n\n{{- if .Values.loki.ui.enabled }}\nui:\n  enabled: true\n  discovery:\n    join_peers:\n      - '{{ include \"loki.queryFrontendFullname\" . }}.{{ $.Release.Namespace }}.svc.{{ .Values.global.clusterDomain }}'\n{{- end }}\n{{- with .Values.loki.querier }}\nquerier:\n  {{- tpl (. | toYaml) $ | nindent 4 }}\n{{- end }}\n\n{{- with .Values.loki.index_gateway }}\nindex_gateway:\n  {{- tpl (. | toYaml) $ | nindent 4 }}\n{{- end }}\n\n{{- with .Values.loki.frontend }}\nfrontend:\n  {{- tpl (. | toYaml) $ | nindent 4 }}\n{{- end }}\n\n{{- with .Values.loki.frontend_worker }}\nfrontend_worker:\n  {{- tpl (. | toYaml) $ | nindent 4 }}\n{{- end }}\n\n{{- with .Values.loki.distributor }}\ndistributor:\n  {{- tpl (. | toYaml) $ | nindent 4 }}\n{{- end }}\n\ntracing:\n  enabled: {{ .Values.loki.tracing.enabled }}\n\n{{- with .Values.loki.bloom_build }}\nbloom_build:\n  {{- tpl (. | toYaml) $ | nindent 4 }}\n{{- end }}\n\n{{- with .Values.loki.bloom_gateway }}\nbloom_gateway:\n  {{- tpl (. | toYaml) $ | nindent 4 }}\n{{- end }}\n": template: gotpl:45:6: executing "gotpl" at <include "loki.commonStorageConfig" .>: error calling include: template: loki/templates/_helpers.tpl:231:19: executing "loki.commonStorageConfig" at <$.Values.loki.storage.bucketNames.chunks>: nil pointer evaluating interface {}.chunks
-
-Use --debug flag to render out invalid YAML
-: unable to run: 'helm template loki /azp/agent/_work/7/s/kustomize/base/loki/charts/loki-6.31.0/loki -f /tmp/kustomize-helm-1438344218/loki-kustomize-values.yaml --include-crds' with env=[HELM_CONFIG_HOME=/root/.config/helm HELM_CACHE_HOME=/root/.config/helm/.cache HELM_DATA_HOME=/root/.config/helm/.data] (is 'helm' installed?): exit status 1
-DONE app loki
-
-
-
-
 loki:
   auth_enabled: false
   limits_config:
@@ -21,10 +12,12 @@ loki:
         index:
           prefix: loki_index_
           period: 24h
-
+  loki:
+    auth_enabled: false
+  
   storage_config:
     azure:
-      account_name: xxxxxx
+      account_name: xxxxxxxx
       container_name: loki
       use_federated_token: true
 
@@ -33,7 +26,7 @@ loki:
     storage:
       type: azure
       azure:
-        account_name: xxxxxxx
+        account_name: xxxxxx
         container_name: ruler
         use_federated_token: true
 
@@ -43,9 +36,9 @@ loki:
 # Create + annotate the SA via chart, and label pods for Workload Identity
 serviceAccount:
   create: true
-  name: xxxxxxxsa
+  name: xxxxxxx
   annotations:
-    azure.workload.identity/client-id: "xxxxxx-xxxx-xxxx-xxxxxx"
+    azure.workload.identity/client-id: "exxx"
 
 # Make sure the WI label is on every pod template
 backend:
@@ -97,7 +90,8 @@ gateway:
     http:
       enabled: true
       service:
-        port: 4318
+        port: 4320
+
 
 
 
