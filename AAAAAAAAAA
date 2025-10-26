@@ -1,5 +1,10 @@
-https://us02web.zoom.us/j/83694401401?pwd=0hDhO82x73dDP4TPGt2ivyf4OGgUR5.1
-
+ruler:
+    storage:
+      type: azure
+      azure:
+        account_name: "<STORAGE_ACCOUNT>"
+        container_name: "<RULER_CONTAINER>"
+        use_federated_token: true
 
 
 
