@@ -1,8 +1,15 @@
+# Explicit mode to match your backend/read/write groups
+deploymentMode: Microservices
+
 loki:
   auth_enabled: false
+
+  # Retention & limits
   limits_config:
     allow_structured_metadata: true
-    retention_period: 744h   # 31 days
+    retention_period: 744h  # 31 days
+
+  # TSDB + Azure object store
   schemaConfig:
     configs:
       - from: "2024-04-01"
@@ -12,16 +19,17 @@ loki:
         index:
           prefix: loki_index_
           period: 24h
-  loki:
-    auth_enabled: false
-  
+
+  # >>> IMPORTANT <<<
+  # Use the *direct* storage_config stanza for Azure (prevents the helper from
+  # requiring loki.storage.bucketNames.* which caused your error).
   storage_config:
     azure:
       account_name: xxxxxxxx
       container_name: loki
       use_federated_token: true
 
-  # Ruler storage lives in Loki config
+  # Ruler storage is defined inside Loki config as well
   ruler:
     storage:
       type: azure
@@ -30,17 +38,18 @@ loki:
         container_name: ruler
         use_federated_token: true
 
+  # Compactor feature flags (NOT the replica group)
   compactor:
     retention_enabled: true
 
-# Create + annotate the SA via chart, and label pods for Workload Identity
+# ServiceAccount + Workload Identity
 serviceAccount:
   create: true
   name: xxxxxxx
   annotations:
     azure.workload.identity/client-id: "exxx"
 
-# Make sure the WI label is on every pod template
+# Label pods so WI works
 backend:
   replicas: 1
   podLabels:
@@ -56,7 +65,7 @@ write:
   podLabels:
     azure.workload.identity/use: "true"
 
-# Keep these disabled for SimpleScalable
+# Disable singleBinary & other groups (you're in Microservices mode)
 singleBinary:
   replicas: 0
 ingester:
