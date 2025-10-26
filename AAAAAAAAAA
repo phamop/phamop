@@ -1,10 +1,6 @@
-ruler:
-    storage:
-      type: azure
-      azure:
-        account_name: "<STORAGE_ACCOUNT>"
-        container_name: "<RULER_CONTAINER>"
-        use_federated_token: true
+error: accumulating resources: accumulation err='accumulating resources from '../../../base/loki': '/azp/agent/_work/7/s/kustomize/base/loki' must resolve to a file': recursed accumulation of path '/azp/agent/_work/7/s/kustomize/base/loki': Error: failed to parse /tmp/kustomize-helm-3817009296/loki-kustomize-values.yaml: error converting YAML to JSON: yaml: line 66: found unexpected document indicator
+: unable to run: 'helm template loki /azp/agent/_work/7/s/kustomize/base/loki/charts/loki-6.31.0/loki -f /tmp/kustomize-helm-3817009296/loki-kustomize-values.yaml --include-crds' with env=[HELM_CONFIG_HOME=/root/.config/helm HELM_CACHE_HOME=/root/.config/helm/.cache HELM_DATA_HOME=/root/.config/helm/.data] (is 'helm' installed?): exit status 1
+
 
 
 
