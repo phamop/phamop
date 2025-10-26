@@ -1,3 +1,17 @@
+├── cluster
+│   ├── base
+│   └── overlays
+├── helm
+│       ├── loki
+├── kustomize
+│   ├── base
+│   │   ├── loki
+│   └── overlays
+│       │   ├── loki
+
+
+
+
 loki:
   auth_enabled: false
   limits_config:
