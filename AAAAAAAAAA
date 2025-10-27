@@ -1,3 +1,54 @@
+error: Multiple Strategic-Merge Patches in one `patches` entry is not allowed to set `patches.target` field: [path: "grafana-inst.yaml"]
+DONE app grafana
+apiVersion: grafana.integreatly.org/v1alpha1
+kind: Grafana
+metadata:
+  name: grafana
+  namespace: dashboard
+  labels:
+    app: grafana
+spec:
+  ingress:
+    enabled: true
+  config:
+    log:
+      level: debug
+---
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: grafana-ingress
+  namespace: dashboard
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
+    # If using cert-manager for TLS
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+spec:
+  tls:
+  - hosts:
+    - grafana.devoss10hbt-oss.cmhc-schl.gc.ca
+    secretName: tls-secret
+  rules:
+  - host: grafana.devoss10hbt-oss.cmhc-schl.gc.ca
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: grafana-service
+            port:
+              number: 3000
+
+
+
+
+
+
+
+
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
