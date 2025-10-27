@@ -1,6 +1,10 @@
-his is to confirm the pipeline issue has been resolved and is now running successfully. The original error message was misleading and did not point to the root cause.
+This is to confirm the pipeline issue has been resolved and is now running successfully. The original error message was misleading and did not point to the root cause.
 
-The resolution involved creating several new Azure resources. To ensure this is documented and properly managed, I will be creating separate tickets for the following:
+The error was pointing to parameter name but after debugging we are realized the function Sever was using different root.ca so we adjust the values and the issue was resolved.
+
+The next step is to continue with other necessary step as part of OSs objective. 
+ 
+To ensure this is documented and properly managed, I will be creating separate tickets for the following:
 
 Creating a new Storage Account.
 
@@ -9,16 +13,6 @@ Setting up a Managed Identity.
 Granting the necessary roles to the identity.
 
 Configuring required DNS records.
-
-Additionally, we've identified a need for more Kubernetes resources to support the CRD operator we are using."
-
-Why it's better:
-
-Structured: Separates the resolution from the action items.
-
-Professional: Uses clear, formal language.
-
-Scannable: The bullet points make the required work easy to digest.
 
 Additional Finding:
 We have identified that the current Kubernetes cluster requires additional resource allocations (CPU/Memory) to reliably support the CRD Operator.
