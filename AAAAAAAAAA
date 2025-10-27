@@ -1,3 +1,34 @@
+1. Pipeline Issue: Resolved
+
+Status: The previously failing pipeline is now operational and running successfully.
+
+Root Cause: The function app's Service Principal (Server) was using an incorrect Root Certificate Authority (root CA), leading to a trust failure.
+
+Resolution: The correct root CA values were identified and configured, resolving the underlying authentication issue.
+
+Note: The original error message was misleading, as it referenced an incorrect parameter name, which complicated the initial diagnosis.
+
+2. Action Plan & Next Steps
+
+To progress towards the OS team's objective, the following tasks have been prioritized:
+
+Creation of a new Storage Account.
+
+Setup and configuration of a Managed Identity.
+
+Assignment of necessary roles to the new identity.
+
+Configuration of required DNS records.
+
+Separate, detailed tickets will be created for each of these items to ensure proper tracking and management.
+
+3. Additional Infrastructure Recommendation
+
+A separate review has identified a need to enhance the reliability of our current Kubernetes cluster. It is recommended to allocate additional CPU and Memory resources to ensure stable support for the CRD Operator.
+
+
+
+
 This is to confirm the pipeline issue has been resolved and is now running successfully. The original error message was misleading and did not point to the root cause.
 
 The error was pointing to parameter name but after debugging we are realized the function Sever was using different root.ca so we adjust the values and the issue was resolved.
