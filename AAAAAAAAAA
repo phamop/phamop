@@ -1,3 +1,40 @@
+apiVersion: grafana.integreatly.org/v1beta1
+kind: Grafana
+metadata:
+  name: grafana
+  namespace: dashboard
+  labels:
+    app: grafana
+spec:
+  config:
+    log:
+      mode: console
+      level: info
+    auth:
+      disable_login_form: "false"
+      disable_signout_menu: "false"
+    security:
+      cookie_secure: "true"
+      allow_embedding: "false"
+[server]
+domain = xxxx
+root_url = %(protocol)s://%(domain)s:%(http_port)s
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana-service
+  namespace: dashboard
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 3000
+      targetPort: 3000
+  selector:
+    app: grafana
+
 error: Multiple Strategic-Merge Patches in one `patches` entry is not allowed to set `patches.target` field: [path: "grafana-inst.yaml"]
 DONE app grafana
 apiVersion: grafana.integreatly.org/v1alpha1
