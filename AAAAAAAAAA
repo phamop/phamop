@@ -1,3 +1,14 @@
+The Grafana "grafana" is invalid: 
+* spec.config.client.preferService: Invalid value: "boolean": spec.config.client.preferService in body must be of type string: "boolean"
+* spec.config.deployment.replica: Invalid value: "integer": spec.config.deployment.replica in body must be of type string: "integer"
+* spec.config.server.serve_from_sub_path: Invalid value: "boolean": spec.config.server.serve_from_sub_path in body must be of type string: "boolean"
+* spec.config.server.enforce_domain: Invalid value: "boolean": spec.config.server.enforce_domain in body must be of type string: "boolean"
+* <nil>: Invalid value: "null": some validation rules were not checked because the object was invalid; correct the existing errors to complete validation
+
+
+
+
+
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
