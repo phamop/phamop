@@ -1,3 +1,90 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: grafana-ingress
+  namespace: monitoring
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
+    # If using cert-manager for TLS
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+spec:
+  tls:
+  - hosts:
+    - grafana.example.com
+    secretName: grafana-tls-secret
+  rules:
+  - host: grafana.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: grafana-service
+            port:
+              number: 3000
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: otel-collector-ingress
+  namespace: monitoring
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
+spec:
+  tls:
+  - hosts:
+    - monitoring.example.com
+    secretName: monitoring-tls-secret
+  rules:
+  - host: monitoring.example.com
+    http:
+      paths:
+      - path: /otel(/|$)(.*)
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: otel-collector-service
+            port:
+              number: 4318
+      - path: /v1/metrics(/|$)(.*)
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: otel-collector-service
+            port:
+              number: 4318
+      - path: /v1/traces(/|$)(.*)
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: otel-collector-service
+            port:
+              number: 4318
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 1. Pipeline Issue: Resolved
 
 Status: The previously failing pipeline is now operational and running successfully.
