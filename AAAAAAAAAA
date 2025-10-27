@@ -1,3 +1,105 @@
+apiVersion: grafana.integreatly.org/v1beta1
+kind: Grafana
+metadata:
+  name: grafana
+  namespace: dashboard
+  labels:
+    app: grafana
+spec:
+  # Operator client settings (NOT part of grafana.ini)
+  client:
+    preferService: true   # <-- was wrongly under spec.config; boolean here is OK. :contentReference[oaicite:4]{index=4}
+
+  # grafana.ini expressed as YAML; all values must be strings. :contentReference[oaicite:5]{index=5}
+  config:
+    log:
+      mode: "console"
+      level: "info"
+    auth:
+      disable_login_form: "false"
+      disable_signout_menu: "false"
+    security:
+      cookie_secure: "true"
+      allow_embedding: "false"
+    server:
+      # If serving at domain root:
+      domain: "grafana.devoss10hbt-oss.cmhc-schl.gc.ca"
+      root_url: "%(protocol)s://%(domain)s"
+      serve_from_sub_path: "false"   # must be a string here
+      enforce_domain: "true"         # must be a string here
+
+  # Deployment spec (K8s Deployment fields go here, not in config)
+  deployment:
+    spec:
+      replicas: 1
+      template:
+        spec:
+          containers:
+            - name: grafana
+              imagePullPolicy: IfNotPresent
+
+
+
+
+
+
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana-service
+  namespace: dashboard
+spec:
+  type: ClusterIP
+  selector:
+    app: grafana
+  ports:
+    - name: http
+      port: 3000
+      targetPort: 3000
+
+
+
+
+
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: grafana-ingress
+  namespace: dashboard
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+spec:
+  tls:
+    - hosts:
+        - grafana.devoss10hbt-oss.cmhc-schl.gc.ca
+      secretName: grafana-tls
+  rules:
+    - host: grafana.devoss10hbt-oss.cmhc-schl.gc.ca
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: grafana-service
+                port:
+                  number: 3000
+
+
+
+
+
+
+
+
+
+
+
 The Grafana "grafana" is invalid: 
 * spec.config.client.preferService: Invalid value: "boolean": spec.config.client.preferService in body must be of type string: "boolean"
 * spec.config.deployment.replica: Invalid value: "integer": spec.config.deployment.replica in body must be of type string: "integer"
