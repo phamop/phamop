@@ -1,1 +1,1 @@
-https://us04web.zoom.us/j/79658084355?pwd=FUnK78mS9EFgjEDnKLiNAbqBtcZASj.1
+error: error validating "/azp/agent/_work/2/s/kustomize/overlays/EDDVAKSOSSCLUS01/grafana/kustomization-output.yaml": error validating data: apiVersion not set; if you choose to ignore these errors, turn validation off with --validate=false
