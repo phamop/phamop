@@ -1,3 +1,8 @@
+
+level=error ts=2025-10-28T23:46:40.526681965Z caller=main.go:70 msg="validating config" err="CONFIG ERROR: invalid compactor config: compactor.delete-request-store should be configured when retention is enabled"
+
+
+
 patches:
   - target:
       kind: StatefulSet
