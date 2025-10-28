@@ -1,3 +1,7 @@
+error: no resource matches strategic merge patch "StatefulSet.v1.apps/loki-ingester.monitoring": no matches for Id StatefulSet.v1.apps/loki-ingester.monitoring; failed to find unique target for patch StatefulSet.v1.apps/loki-ingester.monitoring
+DONE app loki
+
+
 ###############################################################################
 # helm/loki/values.yaml
 ###############################################################################
