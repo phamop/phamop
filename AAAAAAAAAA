@@ -1,56 +1,29 @@
-apiVersion: grafana.integreatly.org/v1beta1
-kind: Grafana
-metadata:
-  name: grafana
-  namespace: dashboard
-  labels:
-    app: grafana
-spec:
-  client:
-    preferIngress: true
+kubectl get po -n dashboard -o yaml | grep -A 20 "labels:"
+    labels:
+      app.kubernetes.io/component: operator
+      app.kubernetes.io/instance: grafana-operator
+      app.kubernetes.io/managed-by: Helm
+      app.kubernetes.io/name: grafana-operator
+      app.kubernetes.io/part-of: grafana-operator
+      app.kubernetes.io/version: v5.19.4
+      helm.sh/chart: grafana-operator-v5.19.4
+      pod-template-hash: 84789df6d9
+    name: grafana-operator-84789df6d9-8w28l
+    namespace: dashboard
+    ownerReferences:
+    - apiVersion: apps/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: ReplicaSet
+      name: grafana-operator-84789df6d9
+      uid: 45cf9de8-7a0d-4c4b-96f9-2a848ec0ca31
+    resourceVersion: "2015052"
+    uid: b291d7ba-054e-46ed-a523-107f6d01a2ec
+  spec:
 
-  config:
-    server:
-      domain: "devoss10hbt-oss.cmhc-schl.gc.ca"
-      root_url: "%(protocol)s://%(domain)s/grafana"
-      serve_from_sub_path: "true"
-      enforce_domain: "true"
 
-  deployment:
-    spec:
-      replicas: 1
-      template:
-        metadata:
-          labels:
-            # Ensure pods carry the labels your Service selects
-            app.kubernetes.io/name: grafana
-            app.kubernetes.io/instance: grafana
-            app: grafana
-        spec:
-          serviceAccountName: grafana-managed-sa
-          containers:
-            - name: grafana
-              imagePullPolicy: IfNotPresent
-              # Explicitly expose the port the Service targets
-              ports:
-                - name: http
-                  containerPort: 3000
-  version: "12.1.0"
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: grafana-service
-  namespace: dashboard
-spec:
-  type: ClusterIP
-  selector:
-    app.kubernetes.io/name: grafana
-    app.kubernetes.io/instance: grafana
-  ports:
-    - name: http
-      port: 3000
-      targetPort: 3000
+
+
 
 
 
