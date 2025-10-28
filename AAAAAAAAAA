@@ -1,25 +1,112 @@
-kubectl get po -n dashboard -o yaml | grep -A 20 "labels:"
-    labels:
-      app.kubernetes.io/component: operator
-      app.kubernetes.io/instance: grafana-operator
-      app.kubernetes.io/managed-by: Helm
-      app.kubernetes.io/name: grafana-operator
-      app.kubernetes.io/part-of: grafana-operator
-      app.kubernetes.io/version: v5.19.4
-      helm.sh/chart: grafana-operator-v5.19.4
-      pod-template-hash: 84789df6d9
-    name: grafana-operator-84789df6d9-8w28l
+# Check if the Grafana CR exists
+kubectl get grafana -n dashboard
+
+# Check the status and any errors
+kubectl describe grafana grafana -n dashboard
+
+# Check operator logs for errors
+kubectl logs -n dashboard -l app.kubernetes.io/name=grafana-operator --tail=100
+
+
+
+# Check if the ServiceAccount exists
+kubectl get serviceaccount grafana-managed-sa -n dashboard
+
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: grafana-managed-sa
+  namespace: dashboard
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: grafana-clusterrole
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps", "secrets", "services", "serviceaccounts"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: grafana-clusterrolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: grafana-clusterrole
+subjects:
+  - kind: ServiceAccount
+    name: grafana-managed-sa
     namespace: dashboard
-    ownerReferences:
-    - apiVersion: apps/v1
-      blockOwnerDeletion: true
-      controller: true
-      kind: ReplicaSet
-      name: grafana-operator-84789df6d9
-      uid: 45cf9de8-7a0d-4c4b-96f9-2a848ec0ca31
-    resourceVersion: "2015052"
-    uid: b291d7ba-054e-46ed-a523-107f6d01a2ec
-  spec:
+
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: grafana-managed-sa
+  namespace: dashboard
+---
+apiVersion: grafana.integreatly.org/v1beta1
+kind: Grafana
+metadata:
+  name: grafana
+  namespace: dashboard
+  labels:
+    app: grafana
+spec:
+  config:
+    log:
+      mode: "console"
+      level: "info"
+    server:
+      domain: "xxxxxx"  # Replace with your actual domain
+      root_url: "%(protocol)s://%(domain)s/grafana"
+      serve_from_sub_path: "true"
+  
+  deployment:
+    spec:
+      replicas: 1
+      template:
+        metadata:
+          labels:
+            app: grafana
+        spec:
+          serviceAccountName: grafana-managed-sa
+          containers:
+            - name: grafana
+              image: grafana/grafana:12.1.0
+              imagePullPolicy: IfNotPresent
+              ports:
+                - name: grafana-http
+                  containerPort: 3000
+                  protocol: TCP
+  
+  version: "12.1.0"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana-service
+  namespace: dashboard
+  labels:
+    app: grafana
+spec:
+  type: ClusterIP
+  selector:
+    app: grafana
+  ports:
+    - name: http
+      port: 3000
+      targetPort: 3000
+      protocol: TCP
+
+
+
 
 
 
