@@ -1,3 +1,45 @@
+kubectl -n dashboard describe grafana grafana
+Name:         grafana
+Namespace:    dashboard
+Labels:       app=grafana
+              hbt.cmhc.schl.gc.ca/owner=devops
+Annotations:  <none>
+API Version:  grafana.integreatly.org/v1beta1
+Kind:         Grafana
+Metadata:
+  Creation Timestamp:  2025-10-27T22:42:08Z
+  Generation:          4
+  Resource Version:    2047259
+  UID:                 7e24f663-b088-4d7d-b2c4-a0c864b999bf
+Spec:
+  Client:
+    Prefer Ingress:  true
+  Config:
+    Server:
+      Domain:               devoss10hbt-oss.cmhc-schl.gc.ca
+      enforce_domain:       true
+      root_url:             %(protocol)s://%(domain)s/grafana
+      serve_from_sub_path:  true
+  Deployment:
+    Spec:
+      Replicas:  1
+      Template:
+        Spec:
+          Containers:
+            Image Pull Policy:   IfNotPresent
+            Name:                grafana
+          Service Account Name:  grafana-sa
+  Version:                       12.1.0
+Status:
+  Last Message:  serviceaccounts "grafana-sa" already exists
+  Stage:         service account
+  Stage Status:  failed
+Events:          <none>
+
+
+
+
+
 # See CR status/conditions
 kubectl -n dashboard get grafana grafana -o yaml | yq '.status'
 kubectl -n dashboard describe grafana grafana
