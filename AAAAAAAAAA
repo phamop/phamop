@@ -1,1 +1,1 @@
-error: error validating "/azp/agent/_work/2/s/kustomize/overlays/EDDVAKSOSSCLUS01/grafana/kustomization-output.yaml": error validating data: apiVersion not set; if you choose to ignore these errors, turn validation off with --validate=false
+5 loki-query-frontend.monitoring.svc.cluster.local could not be resolved (3: Host not found), client: 10.244.2.11, server: , request: "GET /loki/api/v1/tail?query=%7Bstream%3D%22stdout%22%2Cpod%3D%22loki-canary-4hk6z%22%7D+ HTTP/1.1", host: "loki-gateway.monitoring.svc.cluster.local.:80"
