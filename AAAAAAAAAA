@@ -1,3 +1,7 @@
+failed parsing config: /etc/loki/config/config.yaml: yaml: unmarshal errors:
+  line 42: field shared_store not found in type compactor.Config
+  line 52: field enforce_metric_name not found in type validation.plain. Use `-config.expand-env=true` flag if you want to expand environment variables in your config file
+
 loki:
   auth_enabled: false
   
