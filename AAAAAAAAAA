@@ -1,3 +1,161 @@
+patches:
+  - target:
+      kind: StatefulSet
+      name: loki-ingester
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/resources
+        value:
+          limits:
+            cpu: 150m
+            memory: 200Mi
+          requests:
+            cpu: 50m
+            memory: 100Mi
+  
+  - target:
+      kind: Deployment
+      name: loki-distributor
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/resources
+        value:
+          limits:
+            cpu: 150m
+            memory: 200Mi
+          requests:
+            cpu: 50m
+            memory: 100Mi
+  
+  - target:
+      kind: Deployment
+      name: loki-querier
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/resources
+        value:
+          limits:
+            cpu: 150m
+            memory: 200Mi
+          requests:
+            cpu: 50m
+            memory: 100Mi
+  
+  - target:
+      kind: Deployment
+      name: loki-query-frontend
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/resources
+        value:
+          limits:
+            cpu: 150m
+            memory: 200Mi
+          requests:
+            cpu: 50m
+            memory: 100Mi
+  
+  - target:
+      kind: Deployment
+      name: loki-query-scheduler
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/resources
+        value:
+          limits:
+            cpu: 50m
+            memory: 100Mi
+          requests:
+            cpu: 25m
+            memory: 50Mi
+  
+  - target:
+      kind: StatefulSet
+      name: loki-compactor
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/resources
+        value:
+          limits:
+            cpu: 150m
+            memory: 200Mi
+          requests:
+            cpu: 50m
+            memory: 100Mi
+  
+  - target:
+      kind: StatefulSet
+      name: loki-index-gateway
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/resources
+        value:
+          limits:
+            cpu: 150m
+            memory: 200Mi
+          requests:
+            cpu: 50m
+            memory: 100Mi
+  
+  - target:
+      kind: Deployment
+      name: loki-ruler
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/resources
+        value:
+          limits:
+            cpu: 100m
+            memory: 128Mi
+          requests:
+            cpu: 50m
+            memory: 64Mi
+  
+  - target:
+      kind: Deployment
+      name: loki-gateway
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/resources
+        value:
+          limits:
+            cpu: 50m
+            memory: 64Mi
+          requests:
+            cpu: 25m
+            memory: 32Mi
+  
+  - target:
+      kind: ServiceAccount
+      name: oss-sa
+    patch: |-
+      - op: replace
+        path: /metadata/annotations/azure.workload.identity~1client-id
+        value: "ACTUAL_CLIENT_ID_HERE"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 error: no resource matches strategic merge patch "StatefulSet.v1.apps/loki-ingester.monitoring": no matches for Id StatefulSet.v1.apps/loki-ingester.monitoring; failed to find unique target for patch StatefulSet.v1.apps/loki-ingester.monitoring
 DONE app loki
 
