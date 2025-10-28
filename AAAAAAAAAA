@@ -1,13 +1,54 @@
-I1028 03:02:34.722248       6 controller.go:216] "Backend successfully reloaded"
-I1028 03:02:34.722904       6 event.go:377] Event(v1.ObjectReference{Kind:"Pod", Namespace:"ingress", Name:"ingress-nginx-controller-5d75b6bd49-5c626", UID:"57dd0be2-b86a-46eb-9950-83f97a1a972f", APIVersion:"v1", ResourceVersion:"2004388", FieldPath:""}): type: 'Normal' reason: 'RELOAD' NGINX reload triggered due to a change in configuration   
-W1028 03:17:19.652460       6 controller.go:1113] Error obtaining Endpoints for Service "dashboard/grafana-service": no object matching key "dashboard/grafana-service" in local store
-I1028 03:17:19.652542       6 controller.go:196] "Configuration changes detected, backend reload required"
-I1028 03:17:19.725302       6 controller.go:216] "Backend successfully reloaded"
-I1028 03:17:19.726043       6 event.go:377] Event(v1.ObjectReference{Kind:"Pod", Namespace:"ingress", Name:"ingress-nginx-controller-5d75b6bd49-5c626", UID:"57dd0be2-b86a-46eb-9950-83f97a1a972f", APIVersion:"v1", ResourceVersion:"2004388", FieldPath:""}): type: 'Normal' reason: 'RELOAD' NGINX reload triggered due to a change in configuration   
-W1028 03:20:12.931694       6 controller.go:1219] Service "dashboard/grafana-service" does not have any active Endpoint.
-I1028 03:20:12.931909       6 controller.go:196] "Configuration changes detected, backend reload required"
-I1028 03:20:13.016892       6 controller.go:216] "Backend successfully reloaded"
-I1028 03:20:13.017192       6 event.go:377] Event(v1.ObjectReference{Kind:"Pod", Namespace:"ingress", Name:"ingress-nginx-controller-5d75b6bd49-5c626", UID:"57dd0be2-b86a-46eb-9950-83f97a1a972f", APIVersion:"v1", ResourceVersion:"2004388", FieldPath:""}): type: 'Normal' reason: 'RELOAD' NGINX reload triggered due to a change in configuratio
+# gRPC Ingress
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: otel-collector-grpc-ingress
+  namespace: monitoring
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/backend-protocol: "GRPC"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+spec:
+  rules:
+  - host: otel-grpc.example.com
+    http:
+      paths:
+      - path: /otel
+        pathType: Prefix
+        backend:
+          service:
+            name: otel-collector
+            port:
+              number: 4317
+
+---
+# HTTP Ingress
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: otel-collector-http-ingress
+  namespace: monitoring
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
+spec:
+  rules:
+  - host: otel-http.example.com
+    http:
+      paths:
+      - path: /otel
+        pathType: Prefix
+        backend:
+          service:
+            name: otel-collector
+            port:
+              number: 4318  # OTLP HTTP port
+
+
+
+
+
+
 
 
 
