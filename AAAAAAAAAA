@@ -1,3 +1,14 @@
+├── cluster
+│   ├── base
+│   └── overlays
+├── helm
+│       ├── loki
+├── kustomize
+│   ├── base
+│   │   ├── loki
+│   └── overlays
+│       │   ├── loki
+
 ---
 # kustomization.yaml
 apiVersion: kustomize.config.k8s.io/v1beta1
