@@ -1,15 +1,133 @@
+apiVersion: grafana.integreatly.org/v1beta1
+kind: Grafana
+metadata:
+  name: grafana
+  namespace: dashboard
+  labels:
+    app: grafana
+spec:
+  
+  client:
+    preferIngress: true 
 
-# choose a name that doesn't exist
-NEW_SA=grafana-managed-sa
-NS=dashboard
+  
+  config:
+    # log:
+    #   mode: "console"
+    #   level: "info"
+    # auth:
+    #   disable_login_form: "false"
+    #   disable_signout_menu: "false"
+    # security:
+    #   cookie_secure: "true"
+    #   allow_embedding: "false"
+    server:
+      domain: "devoss10hbt-oss.cmhc-schl.gc.ca"
+      root_url: "%(protocol)s://%(domain)s/grafana"
+      serve_from_sub_path: "true"   
+      enforce_domain: "true"         
 
-# sanity: ensure it doesn't exist
-kubectl -n $NS get sa $NEW_SA || true
+ 
+  deployment:
+    spec:
+      replicas: 1
+      template:
+        spec:
+          serviceAccountName: grafana-managed-sa
+          containers:
+            - name: grafana
+              imagePullPolicy: IfNotPresent
+  version: "12.1.0"
+---
 
-# patch the Grafana CR to set serviceAccountName
-kubectl -n $NS patch grafana grafana \
-  --type=merge \
-  -p "{\"spec\":{\"deployment\":{\"spec\":{\"template\":{\"spec\":{\"serviceAccountName\":\"$NEW_SA\"}}}}}}"
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana-service
+  namespace: dashboard
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: grafana
+    app.kubernetes.io/instance: grafana
+  ports:
+    - name: http
+      port: 3000
+      targetPort: 3000
+
+# ---
+
+# apiVersion: v1
+# kind: Service
+# metadata:
+#   name: grafana-service
+#   namespace: dashboard
+# spec:
+#   type: ClusterIP
+#   ports:
+#     - port: 3000
+#       targetPort: 3000
+#       protocol: TCP
+#   selector:
+#     app: grafana
+
+
+
+
+
+
+
+# apiVersion: grafana.integreatly.org/v1beta1
+# kind: Grafana
+# metadata:
+#   name: grafana-inst
+#   namespace: monitoring
+#   labels:
+#     app: grafana
+# spec:
+#   service:
+#     type: Clusterip
+#   # deployment:
+#   #   replicas: 1
+#   #   storage:
+#   #     size: 10Gi
+#   #     class: default 
+#   # serviceAccount:
+#   #   name: grafana-sa
+#   # ingress:
+#   #   enabled: false
+#   # configFrom:
+#   #   secretRef:
+#   #     name: grafana-admin-temporary
+#   config:
+#     log:
+#       mode: console
+#       level: info
+#     auth:
+#       disable_login_form: false
+#       disable_signout_menu: false
+#   dashboardLabelSelector:
+#     - matchExpressions:
+#         - key: app
+#           operator: In
+#           values:
+#             - grafana
+#   # persistenceVolumeClaim:
+#   #   spec:
+#   #    accessModes:
+#   #       - ReadWriteOnce
+#   #    resources:
+#   #       requests:
+#   #         storage:  10Gi 
+#   # StorageClassName: managed-premium
+
+
+
+
+
+
+
+
 
 
 
