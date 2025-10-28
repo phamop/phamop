@@ -1,11 +1,59 @@
 # Check if the Grafana CR exists
 kubectl get grafana -n dashboard
 
+kubectl get grafana -n dashboard
+NAME      VERSION   STAGE             STAGE STATUS   AGE
+grafana             service account   failed         3h59m
+
 # Check the status and any errors
 kubectl describe grafana grafana -n dashboard
 
+     Service Account Name:  grafana-managed-sa
+  Version:                       12.1.0
+Status:
+  Last Message:  serviceaccounts "grafana-sa" already exists
+  Stage:         service account
+  Stage Status:  failed
+Events:          <none>
+
 # Check operator logs for errors
 kubectl logs -n dashboard -l app.kubernetes.io/name=grafana-operator --tail=100
+
+
+2025-10-28T02:40:58Z    INFO    GrafanaReconciler       running stage   {"controller": "grafana", "controllerGroup": "grafana.integreatly.org", "controllerKind": "Grafana", "Grafana": {"name":"grafana","namespace":"monitoring"}, "namespace": "monitoring", "name": "grafana", "reconcileID": "e266fbe2-5c2e-4040-ba11-3bbade0677e4", "stage": "pvc"} 
+2025-10-28T02:40:58Z    INFO    GrafanaReconciler.PvcReconciler skip creating persistent volume claim   {"controller": "grafana", "controllerGroup": "grafana.integreatly.org", "controllerKind": "Grafana", "Grafana": {"name":"grafana","namespace":"monitoring"}, "namespace": "monitoring", "name": "grafana", "reconcileID": "e266fbe2-5c2e-4040-ba11-3bbade0677e4"}
+2025-10-28T02:40:58Z    INFO    GrafanaReconciler       running stage   {"controller": "grafana", "controllerGroup": "grafana.integreatly.org", "controllerKind": "Grafana", "Grafana": {"name":"grafana","namespace":"monitoring"}, "namespace": "monitoring", "name": "grafana", "reconcileID": "e266fbe2-5c2e-4040-ba11-3bbade0677e4", "stage": "service account"}
+2025-10-28T02:40:58Z    ERROR   Reconciler error        {"controller": "grafana", "controllerGroup": "grafana.integreatly.org", "controllerKind": "Grafana", "Grafana": {"name":"grafana","namespace":"monitoring"}, "namespace": "monitoring", "name": "grafana", "reconcileID": "e266fbe2-5c2e-4040-ba11-3bbade0677e4", "error": "reconciler error in stage 'service account': serviceaccounts \"grafana-sa\" already exists"}
+sigs.k8s.io/controller-runtime/pkg/internal/controller.(*Controller[...]).reconcileHandler
+        sigs.k8s.io/controller-runtime@v0.21.0/pkg/internal/controller/controller.go:353
+sigs.k8s.io/controller-runtime/pkg/internal/controller.(*Controller[...]).processNextWorkItem
+        sigs.k8s.io/controller-runtime@v0.21.0/pkg/internal/controller/controller.go:300
+sigs.k8s.io/controller-runtime/pkg/internal/controller.(*Controller[...]).Start.func2.1
+        sigs.k8s.io/controller-runtime@v0.21.0/pkg/internal/controller/controller.go:202
+2025-10-28T02:42:24Z    INFO    GrafanaReconciler       running stage   {"controller": "grafana", "controllerGroup": "grafana.integreatly.org", "controllerKind": "Grafana", "Grafana": {"name":"grafana","namespace":"dashboard"}, "namespace": "dashboard", "name": "grafana", "reconcileID": "33ff8cf6-233b-42c1-b27c-0d003ebb5f53", "stage": "admin user"}
+2025-10-28T02:42:24Z    INFO    GrafanaReconciler       running stage   {"controller": "grafana", "controllerGroup": "grafana.integreatly.org", "controllerKind": "Grafana", "Grafana": {"name":"grafana","namespace":"dashboard"}, "namespace": "dashboard", "name": "grafana", "reconcileID": "33ff8cf6-233b-42c1-b27c-0d003ebb5f53", "stage": "config"}
+2025-10-28T02:42:24Z    INFO    GrafanaReconciler       running stage   {"controller": "grafana", "controllerGroup": "grafana.integreatly.org", "controllerKind": "Grafana", "Grafana": {"name":"grafana","namespace":"dashboard"}, "namespace": "dashboard", "name": "grafana", "reconcileID": "33ff8cf6-233b-42c1-b27c-0d003ebb5f53", "stage": "pvc"}   
+2025-10-28T02:42:24Z    INFO    GrafanaReconciler.PvcReconciler skip creating persistent volume claim   {"controller": "grafana", "controllerGroup": "grafana.integreatly.org", "controllerKind": "Grafana", "Grafana": {"name":"grafana","namespace":"dashboard"}, "namespace": "dashboard", "name": "grafana", "reconcileID": "33ff8cf6-233b-42c1-b27c-0d003ebb5f53"}
+2025-10-28T02:42:24Z    INFO    GrafanaReconciler       running stage   {"controller": "grafana", "controllerGroup": "grafana.integreatly.org", "controllerKind": "Grafana", "Grafana": {"name":"grafana","namespace":"dashboard"}, "namespace": "dashboard", "name": "grafana", "reconcileID": "33ff8cf6-233b-42c1-b27c-0d003ebb5f53", "stage": "service account"}
+2025-10-28T02:42:24Z    ERROR   Reconciler error        {"controller": "grafana", "controllerGroup": "grafana.integreatly.org", "controllerKind": "Grafana", "Grafana": {"name":"grafana","namespace":"dashboard"}, "namespace": "dashboard", "name": "grafana", "reconcileID": "33ff8cf6-233b-42c1-b27c-0d003ebb5f53", "error": "reconciler error in stage 'service account': serviceaccounts \"grafana-sa\" already exists"}
+sigs.k8s.io/controller-runtime/pkg/internal/controller.(*Controller[...]).reconcileHandler
+        sigs.k8s.io/controller-runtime@v0.21.0/pkg/internal/controller/controller.go:353
+sigs.k8s.io/controller-runtime/pkg/internal/controller.(*Controller[...]).processNextWorkItem
+        sigs.k8s.io/controller-runtime@v0.21.0/pkg/internal/controller/controller.go:300
+sigs.k8s.io/controller-runtime/pkg/internal/controller.(*Controller[...]).Start.func2.1
+        sigs.k8s.io/controller-runtime@v0.21.0/pkg/internal/controller/controller.go:202
+2025-10-28T02:42:58Z    INFO    GrafanaReconciler       running stage   {"controller": "grafana", "controllerGroup": "grafana.integreatly.org", "controllerKind": "Grafana", "Grafana": {"name":"grafana","namespace":"monitoring"}, "namespace": "monitoring", "name": "grafana", "reconcileID": "297be3be-3f28-43df-ab79-4ded5b1e4401", "stage": "admin user"}
+2025-10-28T02:42:58Z    INFO    GrafanaReconciler       running stage   {"controller": "grafana", "controllerGroup": "grafana.integreatly.org", "controllerKind": "Grafana", "Grafana": {"name":"grafana","namespace":"monitoring"}, "namespace": "monitoring", "name": "grafana", "reconcileID": "297be3be-3f28-43df-ab79-4ded5b1e4401", "stage": "config"}
+2025-10-28T02:42:58Z    INFO    GrafanaReconciler       running stage   {"controller": "grafana", "controllerGroup": "grafana.integreatly.org", "controllerKind": "Grafana", "Grafana": {"name":"grafana","namespace":"monitoring"}, "namespace": "monitoring", "name": "grafana", "reconcileID": "297be3be-3f28-43df-ab79-4ded5b1e4401", "stage": "pvc"} 
+2025-10-28T02:42:58Z    INFO    GrafanaReconciler.PvcReconciler skip creating persistent volume claim   {"controller": "grafana", "controllerGroup": "grafana.integreatly.org", "controllerKind": "Grafana", "Grafana": {"name":"grafana","namespace":"monitoring"}, "namespace": "monitoring", "name": "grafana", "reconcileID": "297be3be-3f28-43df-ab79-4ded5b1e4401"}
+2025-10-28T02:42:58Z    INFO    GrafanaReconciler       running stage   {"controller": "grafana", "controllerGroup": "grafana.integreatly.org", "controllerKind": "Grafana", "Grafana": {"name":"grafana","namespace":"monitoring"}, "namespace": "monitoring", "name": "grafana", "reconcileID": "297be3be-3f28-43df-ab79-4ded5b1e4401", "stage": "service account"}
+2025-10-28T02:42:58Z    ERROR   Reconciler error        {"controller": "grafana", "controllerGroup": "grafana.integreatly.org", "controllerKind": "Grafana", "Grafana": {"name":"grafana","namespace":"monitoring"}, "namespace": "monitoring", "name": "grafana", "reconcileID": "297be3be-3f28-43df-ab79-4ded5b1e4401", "error": "reconciler error in stage 'service account': serviceaccounts \"grafana-sa\" already exists"}
+sigs.k8s.io/controller-runtime/pkg/internal/controller.(*Controller[...]).reconcileHandler
+        sigs.k8s.io/controller-runtime@v0.21.0/pkg/internal/controller/controller.go:353
+sigs.k8s.io/controller-runtime/pkg/internal/controller.(*Controller[...]).processNextWorkItem
+        sigs.k8s.io/controller-runtime@v0.21.0/pkg/internal/controller/controller.go:300
+sigs.k8s.io/controller-runtime/pkg/internal/controller.(*Controller[...]).Start.func2.1
+        sigs.k8s.io/controller-runtime@v0.21.0/pkg/internal/controller/controller.go:202
 
 
 
