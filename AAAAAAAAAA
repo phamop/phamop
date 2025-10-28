@@ -1,3 +1,18 @@
+
+# choose a name that doesn't exist
+NEW_SA=grafana-managed-sa
+NS=dashboard
+
+# sanity: ensure it doesn't exist
+kubectl -n $NS get sa $NEW_SA || true
+
+# patch the Grafana CR to set serviceAccountName
+kubectl -n $NS patch grafana grafana \
+  --type=merge \
+  -p "{\"spec\":{\"deployment\":{\"spec\":{\"template\":{\"spec\":{\"serviceAccountName\":\"$NEW_SA\"}}}}}}"
+
+
+
 kubectl -n dashboard describe grafana grafana
 Name:         grafana
 Namespace:    dashboard
