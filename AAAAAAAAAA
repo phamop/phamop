@@ -1,1 +1,140 @@
-5 loki-query-frontend.monitoring.svc.cluster.local could not be resolved (3: Host not found), client: 10.244.2.11, server: , request: "GET /loki/api/v1/tail?query=%7Bstream%3D%22stdout%22%2Cpod%3D%22loki-canary-4hk6z%22%7D+ HTTP/1.1", host: "loki-gateway.monitoring.svc.cluster.local.:80"
+loki:
+  auth_enabled: false
+  
+  commonConfig:
+    replication_factor: 1
+  
+  storage:
+    type: azure
+    azure:
+      accountName: eddv1sa01
+      # Using workload identity - no accountKey needed
+      useManagedIdentity: true
+      userAssignedId: ""  # Will be set via managed identity
+      containerName: loki
+      endpointSuffix: blob.core.windows.net
+    
+    bucketNames:
+      chunks: loki
+      ruler: loki
+      admin: loki-admin
+  
+  schemaConfig:
+    configs:
+      - from: 2024-01-01
+        store: tsdb
+        object_store: azure
+        schema: v13
+        index:
+          prefix: index_
+          period: 24h
+  
+  storageConfig:
+    tsdb_shipper:
+      active_index_directory: /var/loki/tsdb-index
+      cache_location: /var/loki/tsdb-cache
+    
+    azure:
+      account_name: eddv1sa01
+      use_managed_identity: true
+      container_name: loki
+      endpoint_suffix: blob.core.windows.net
+
+  limits_config:
+    retention_period: 744h
+    enforce_metric_name: false
+    reject_old_samples: true
+    reject_old_samples_max_age: 168h
+    max_cache_freshness_per_query: 10m
+    split_queries_by_interval: 15m
+
+  compactor:
+    working_directory: /var/loki/compactor
+    shared_store: azure
+    compaction_interval: 10m
+    retention_enabled: true
+    retention_delete_delay: 2h
+    retention_delete_worker_count: 150
+
+  ruler:
+    storage:
+      type: azure
+      azure:
+        account_name: eddv1sa01
+        container_name: ruler
+        use_managed_identity: true
+
+# Microservice mode components with minimal resources
+write:
+  replicas: 1
+  resources:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+read:
+  replicas: 1
+  resources:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+backend:
+  replicas: 1
+  resources:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+gateway:
+  enabled: true
+  replicas: 1
+  resources:
+    limits:
+      cpu: 100m
+      memory: 128Mi
+    requests:
+      cpu: 50m
+      memory: 64Mi
+
+# Disable single binary mode
+singleBinary:
+  replicas: 0
+
+# Service account for workload identity
+serviceAccount:
+  create: true
+  name: oss-sa
+  annotations:
+    azure.workload.identity/client-id: ""  # Add your client ID here
+    azure.workload.identity/tenant-id: ""  # Add your tenant ID here
+
+# Pod labels for workload identity
+podLabels:
+  azure.workload.identity/use: "true"
+
+# Monitoring
+monitoring:
+  dashboards:
+    enabled: false
+  rules:
+    enabled: false
+  serviceMonitor:
+    enabled: false
+  selfMonitoring:
+    enabled: false
+    grafanaAgent:
+      installOperator: false
+
+# Disable test pods
+test:
+  enabled: false
