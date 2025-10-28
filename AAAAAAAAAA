@@ -1,4 +1,15 @@
- kubectl -n dashboard get pods  --show-labels | grep grafana
+# See CR status/conditions
+kubectl -n dashboard get grafana grafana -o yaml | yq '.status'
+kubectl -n dashboard describe grafana grafana
+
+# List all objects the operator should have created for this CR
+kubectl -n dashboard get deploy,sts,svc,ingress,cm,secret -l app.kubernetes.io/instance=grafana
+
+
+
+
+
+kubectl -n dashboard get pods  --show-labels | grep grafana
 grafana-operator-84789df6d9-8w28l   1/1     Running   0          3h3m   app.kubernetes.io/component=operator,app.kubernetes.io/instance=grafana-operator,app.kubernetes.io/managed-by=Helm,app.kubernetes.io/name=grafana-operator,app.kubernetes.io/part-of=grafana-operator,app.kubernetes.io/version=v5.19.4,helm.sh/chart=grafana-operator-v5.19.4,pod-template-hash=84789df6d9
 
 
