@@ -1,7 +1,27 @@
-failed parsing config: /etc/loki/config/config.yaml: yaml: unmarshal errors:
-  line 42: field shared_store not found in type compactor.Config
-  line 52: field enforce_metric_name not found in type validation.plain. Use `-config.expand-env=true` flag if you want to expand environment variables in your config file
+---
+# kustomization.yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
 
+namespace: monitoring
+
+helmCharts:
+  - name: loki
+    repo: https://grafana.github.io/helm-charts
+    version: 6.6.4
+    releaseName: loki
+    namespace: monitoring
+    valuesFile: loki-values.yaml
+
+resources:
+  - service-account.yaml
+
+# Apply additional resource patches
+patches:
+  - path: resource-patches.yaml
+
+---
+# loki-values.yaml
 loki:
   auth_enabled: false
   
@@ -12,9 +32,8 @@ loki:
     type: azure
     azure:
       accountName: eddv1sa01
-      # Using workload identity - no accountKey needed
+      # Using managed identity - no accountKey needed
       useManagedIdentity: true
-      userAssignedId: ""  # Will be set via managed identity
       containerName: loki
       endpointSuffix: blob.core.windows.net
     
@@ -33,62 +52,35 @@ loki:
           prefix: index_
           period: 24h
   
-  storageConfig:
-    tsdb_shipper:
-      active_index_directory: /var/loki/tsdb-index
-      cache_location: /var/loki/tsdb-cache
-    
-    azure:
-      account_name: eddv1sa01
-      use_managed_identity: true
-      container_name: loki
-      endpoint_suffix: blob.core.windows.net
-
   limits_config:
     retention_period: 744h
-    enforce_metric_name: false
-    reject_old_samples: true
-    reject_old_samples_max_age: 168h
-    max_cache_freshness_per_query: 10m
-    split_queries_by_interval: 15m
-
+    ingestion_rate_mb: 10
+    ingestion_burst_size_mb: 20
+    max_global_streams_per_user: 10000
+  
   compactor:
     working_directory: /var/loki/compactor
-    shared_store: azure
     compaction_interval: 10m
     retention_enabled: true
     retention_delete_delay: 2h
     retention_delete_worker_count: 150
+  
+  ingester:
+    chunk_encoding: snappy
+    chunk_target_size: 1536000
+    chunk_retain_period: 30s
+    max_chunk_age: 2h
+  
+  querier:
+    max_concurrent: 2
+  
+  query_scheduler:
+    max_outstanding_requests_per_tenant: 256
 
-  ruler:
-    storage:
-      type: azure
-      azure:
-        account_name: eddv1sa01
-        container_name: ruler
-        use_managed_identity: true
+# Microservice mode components
+deploymentMode: Distributed
 
-# Microservice mode components with minimal resources
-write:
-  replicas: 1
-  resources:
-    limits:
-      cpu: 200m
-      memory: 256Mi
-    requests:
-      cpu: 100m
-      memory: 128Mi
-
-read:
-  replicas: 1
-  resources:
-    limits:
-      cpu: 200m
-      memory: 256Mi
-    requests:
-      cpu: 100m
-      memory: 128Mi
-
+# Backend (Ingester, Store Gateway, Compactor)
 backend:
   replicas: 1
   resources:
@@ -99,6 +91,29 @@ backend:
       cpu: 100m
       memory: 128Mi
 
+# Read component (Query Frontend, Querier)
+read:
+  replicas: 1
+  resources:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+# Write component (Distributor)
+write:
+  replicas: 1
+  resources:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+# Gateway
 gateway:
   enabled: true
   replicas: 1
@@ -110,30 +125,15 @@ gateway:
       cpu: 50m
       memory: 64Mi
 
-# Disable single binary mode
-singleBinary:
-  replicas: 0
-
-# Service account for workload identity
+# Service Account configuration
 serviceAccount:
-  create: true
+  create: false
   name: oss-sa
   annotations:
-    azure.workload.identity/client-id: ""  # Add your client ID here
-    azure.workload.identity/tenant-id: ""  # Add your tenant ID here
-
-# Pod labels for workload identity
-podLabels:
-  azure.workload.identity/use: "true"
+    azure.workload.identity/client-id: ""  # Add your managed identity client ID
 
 # Monitoring
 monitoring:
-  dashboards:
-    enabled: false
-  rules:
-    enabled: false
-  serviceMonitor:
-    enabled: false
   selfMonitoring:
     enabled: false
     grafanaAgent:
@@ -142,3 +142,140 @@ monitoring:
 # Disable test pods
 test:
   enabled: false
+
+# Chunk cache
+chunksCache:
+  enabled: false
+
+# Results cache
+resultsCache:
+  enabled: false
+
+---
+# service-account.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: oss-sa
+  namespace: monitoring
+  annotations:
+    azure.workload.identity/client-id: "YOUR_MANAGED_IDENTITY_CLIENT_ID"
+  labels:
+    azure.workload.identity/use: "true"
+
+---
+# loki-runtime-config.yaml (Optional - for ruler if needed)
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: loki-runtime
+  namespace: monitoring
+data:
+  runtime-config.yaml: |
+    overrides:
+      "fake":
+        ingestion_rate_mb: 10
+        ingestion_burst_size_mb: 20
+        max_global_streams_per_user: 10000
+
+---
+# Deployment Instructions:
+# 
+# 1. Prerequisites:
+#    - Azure Workload Identity enabled on your AKS cluster
+#    - Managed Identity 'oss-sa' created with Storage Blob Data Contributor role on eddv1sa01
+#    - Containers created: loki, loki-admin, ruler
+#    - Federated credential configured for oss-sa with monitoring namespace
+#
+# 2. Update the client ID:
+#    Replace YOUR_MANAGED_IDENTITY_CLIENT_ID in service-account.yaml with actual client ID
+#
+# 3. Deploy using Kustomize with Helm:
+#    kubectl create namespace monitoring
+#    kustomize build --enable-helm . | kubectl apply -f -
+#
+# 4. Verify deployment:
+#    kubectl get pods -n monitoring
+#    kubectl logs -n monitoring -l app.kubernetes.io/name=loki --tail=50
+#
+# 5. Test Azure Blob Storage access:
+#    kubectl exec -n monitoring deployment/loki-backend -c loki -- \
+#      wget -O- "https://eddv1sa01.blob.core.windows.net/loki?restype=container"
+
+---
+# Alternative: patch.yaml for further resource reduction
+# resource-patches.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: loki-backend
+  namespace: monitoring
+spec:
+  template:
+    spec:
+      containers:
+      - name: loki
+        resources:
+          limits:
+            cpu: 150m
+            memory: 200Mi
+          requests:
+            cpu: 50m
+            memory: 100Mi
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: loki-read
+  namespace: monitoring
+spec:
+  template:
+    spec:
+      containers:
+      - name: loki
+        resources:
+          limits:
+            cpu: 150m
+            memory: 200Mi
+          requests:
+            cpu: 50m
+            memory: 100Mi
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: loki-write
+  namespace: monitoring
+spec:
+  template:
+    spec:
+      containers:
+      - name: loki
+        resources:
+          limits:
+            cpu: 150m
+            memory: 200Mi
+          requests:
+            cpu: 50m
+            memory: 100Mi
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: loki-gateway
+  namespace: monitoring
+spec:
+  template:
+    spec:
+      containers:
+      - name: nginx
+        resources:
+          limits:
+            cpu: 50m
+            memory: 64Mi
+          requests:
+            cpu: 25m
+            memory: 32Mi
