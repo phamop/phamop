@@ -1,0 +1,413 @@
+###############################################################################
+# helm/loki/values.yaml
+###############################################################################
+deploymentMode: SimpleScalable
+
+loki:
+  auth_enabled: false
+  
+  commonConfig:
+    replication_factor: 1
+  
+  storage:
+    type: azure
+    azure:
+      accountName: eddv1sa01
+      useManagedIdentity: true
+      containerName: loki
+      endpointSuffix: blob.core.windows.net
+    
+    bucketNames:
+      chunks: loki
+      ruler: ruler
+      admin: loki-admin
+  
+  schemaConfig:
+    configs:
+      - from: "2024-01-01"
+        store: tsdb
+        object_store: azure
+        schema: v13
+        index:
+          prefix: loki_index_
+          period: 24h
+  
+  limits_config:
+    retention_period: 744h
+    ingestion_rate_mb: 10
+    ingestion_burst_size_mb: 20
+    max_global_streams_per_user: 10000
+    per_stream_rate_limit: 5MB
+    per_stream_rate_limit_burst: 15MB
+  
+  compactor:
+    working_directory: /var/loki/compactor
+    compaction_interval: 10m
+    retention_enabled: true
+    retention_delete_delay: 2h
+    retention_delete_worker_count: 150
+    delete_request_store: azure
+  
+  ingester:
+    chunk_encoding: snappy
+    chunk_target_size: 1536000
+    chunk_retain_period: 30s
+    max_chunk_age: 2h
+  
+  querier:
+    max_concurrent: 2
+  
+  query_scheduler:
+    max_outstanding_requests_per_tenant: 256
+  
+  storage_config:
+    tsdb_shipper:
+      active_index_directory: /var/loki/index
+      cache_location: /var/loki/cache
+    azure:
+      account_name: eddv1sa01
+      use_managed_identity: true
+      container_name: loki
+      endpoint_suffix: blob.core.windows.net
+
+enterprise:
+  enabled: false
+
+# SimpleScalable mode has 3 components: read, write, backend
+# Write path (distributor, ingester)
+write:
+  replicas: 1
+  podAnnotations:
+    azure.workload.identity/use: "true"
+  resources:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+  persistence:
+    enabled: false
+
+# Read path (query-frontend, querier)
+read:
+  replicas: 1
+  podAnnotations:
+    azure.workload.identity/use: "true"
+  resources:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+# Backend (compactor, index-gateway, ruler)
+backend:
+  replicas: 1
+  podAnnotations:
+    azure.workload.identity/use: "true"
+  resources:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+  persistence:
+    enabled: false
+
+# Gateway
+gateway:
+  enabled: true
+  replicas: 1
+  resources:
+    limits:
+      cpu: 100m
+      memory: 128Mi
+    requests:
+      cpu: 50m
+      memory: 64Mi
+
+# Service Account
+serviceAccount:
+  create: false
+  name: oss-sa
+
+# Monitoring
+monitoring:
+  selfMonitoring:
+    enabled: false
+    grafanaAgent:
+      installOperator: false
+
+# Test pods
+test:
+  enabled: false
+
+# Caching
+chunksCache:
+  enabled: false
+
+resultsCache:
+  enabled: false
+
+# Disable other modes
+singleBinary:
+  replicas: 0
+
+# Disable individual microservices (not used in SimpleScalable)
+ingester:
+  replicas: 0
+
+distributor:
+  replicas: 0
+
+querier:
+  replicas: 0
+
+queryFrontend:
+  replicas: 0
+
+queryScheduler:
+  replicas: 0
+
+compactor:
+  replicas: 0
+
+indexGateway:
+  replicas: 0
+
+ruler:
+  replicas: 0
+
+###############################################################################
+# helm/loki/Chart.yaml
+###############################################################################
+apiVersion: v2
+name: loki
+version: 1.0.0
+dependencies:
+  - name: loki
+    version: 6.31.0
+    repository: https://grafana.github.io/helm-charts
+
+###############################################################################
+# kustomize/base/loki/kustomization.yaml
+###############################################################################
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: monitoring
+
+resources:
+  - service-account.yaml
+  - namespace.yaml
+
+helmCharts:
+  - name: loki
+    repo: https://grafana.github.io/helm-charts
+    version: 6.31.0
+    releaseName: loki
+    namespace: monitoring
+    valuesFile: ../../../helm/loki/values.yaml
+
+###############################################################################
+# kustomize/base/loki/namespace.yaml
+###############################################################################
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: monitoring
+  labels:
+    name: monitoring
+    azure.workload.identity/use: "true"
+
+###############################################################################
+# kustomize/base/loki/service-account.yaml
+###############################################################################
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: oss-sa
+  namespace: monitoring
+  annotations:
+    azure.workload.identity/client-id: "YOUR_MANAGED_IDENTITY_CLIENT_ID"
+  labels:
+    azure.workload.identity/use: "true"
+
+###############################################################################
+# kustomize/overlays/loki/kustomization.yaml
+###############################################################################
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: monitoring
+
+resources:
+  - ../../base/loki
+
+patches:
+  - target:
+      kind: StatefulSet
+      name: loki-write
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/resources
+        value:
+          limits:
+            cpu: 150m
+            memory: 200Mi
+          requests:
+            cpu: 50m
+            memory: 100Mi
+  
+  - target:
+      kind: Deployment
+      name: loki-read
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/resources
+        value:
+          limits:
+            cpu: 150m
+            memory: 200Mi
+          requests:
+            cpu: 50m
+            memory: 100Mi
+  
+  - target:
+      kind: StatefulSet
+      name: loki-backend
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/resources
+        value:
+          limits:
+            cpu: 150m
+            memory: 200Mi
+          requests:
+            cpu: 50m
+            memory: 100Mi
+  
+  - target:
+      kind: Deployment
+      name: loki-gateway
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/resources
+        value:
+          limits:
+            cpu: 50m
+            memory: 64Mi
+          requests:
+            cpu: 25m
+            memory: 32Mi
+  
+  - target:
+      kind: ServiceAccount
+      name: oss-sa
+    patch: |-
+      - op: replace
+        path: /metadata/annotations/azure.workload.identity~1client-id
+        value: "ACTUAL_CLIENT_ID_HERE"
+
+###############################################################################
+# DEPLOYMENT INSTRUCTIONS - SIMPLE SCALABLE MODE
+###############################################################################
+# 
+# SimpleScalable mode uses only 3 components instead of 9:
+# - write: Handles ingestion (distributor + ingester)
+# - read: Handles queries (query-frontend + querier)
+# - backend: Handles maintenance (compactor + index-gateway + ruler)
+# - gateway: Entry point for all requests
+#
+# Benefits:
+# - Simpler to manage (3 components vs 9)
+# - Lower resource usage
+# - Easier troubleshooting
+# - Still scalable when needed
+# - Perfect for small to medium workloads
+#
+# Architecture:
+# Promtail/Agent -> Gateway -> Write (logs in)
+# Grafana -> Gateway -> Read (logs out)
+# Backend -> Azure Blob Storage (compaction, retention)
+#
+# Prerequisites:
+# 1. Azure Workload Identity enabled on AKS:
+#    az aks update --resource-group <RG> --name <CLUSTER> \
+#      --enable-workload-identity --enable-oidc-issuer
+#
+# 2. Get OIDC issuer:
+#    export OIDC_ISSUER=$(az aks show --resource-group <RG> \
+#      --name <CLUSTER> --query "oidcIssuerProfile.issuerUrl" -o tsv)
+#
+# 3. Create managed identity (if not exists):
+#    az identity create --name oss-sa --resource-group <RG>
+#
+# 4. Get client ID:
+#    export CLIENT_ID=$(az identity show --name oss-sa \
+#      --resource-group <RG> --query 'clientId' -o tsv)
+#    export PRINCIPAL_ID=$(az identity show --name oss-sa \
+#      --resource-group <RG> --query 'principalId' -o tsv)
+#
+# 5. Grant Storage Blob Data Contributor:
+#    az role assignment create \
+#      --role "Storage Blob Data Contributor" \
+#      --assignee $PRINCIPAL_ID \
+#      --scope "/subscriptions/<SUB_ID>/resourceGroups/<RG>/providers/Microsoft.Storage/storageAccounts/eddv1sa01"
+#
+# 6. Create federated credential:
+#    az identity federated-credential create \
+#      --name loki-federated-identity \
+#      --identity-name oss-sa \
+#      --resource-group <RG> \
+#      --issuer $OIDC_ISSUER \
+#      --subject system:serviceaccount:monitoring:oss-sa \
+#      --audience api://AzureADTokenExchange
+#
+# 7. Update client ID:
+#    Edit kustomize/overlays/loki/kustomization.yaml
+#    Replace ACTUAL_CLIENT_ID_HERE with $CLIENT_ID
+#
+# 8. Verify containers in storage account eddv1sa01:
+#    - loki
+#    - loki-admin  
+#    - ruler
+#
+# Deploy:
+# cd kustomize/overlays/loki
+# kustomize build --enable-helm . | kubectl apply -f -
+#
+# Verify:
+# kubectl get pods -n monitoring
+# # Should see: loki-write-0, loki-read-*, loki-backend-0, loki-gateway-*
+#
+# kubectl logs -n monitoring loki-write-0 --tail=50
+# kubectl logs -n monitoring loki-backend-0 --tail=50
+#
+# Check workload identity:
+# kubectl describe pod -n monitoring loki-write-0 | grep -A 5 azure.workload.identity
+#
+# Test from pod:
+# kubectl exec -n monitoring loki-write-0 -c loki -- env | grep AZURE
+# # Should see: AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_FEDERATED_TOKEN_FILE
+#
+# Grafana datasource:
+# URL: http://loki-gateway.monitoring.svc.cluster.local
+#
+# Troubleshooting:
+# 1. If "Identity not found":
+#    - Verify federated credential subject: system:serviceaccount:monitoring:oss-sa
+#    - Check service account annotation has correct client ID
+#    - Restart pods: kubectl delete pods -n monitoring -l app.kubernetes.io/name=loki
+#
+# 2. Check all components are running:
+#    kubectl get all -n monitoring -l app.kubernetes.io/name=loki
+#
+# 3. View logs for each component:
+#    kubectl logs -n monitoring -l app.kubernetes.io/component=write
+#    kubectl logs -n monitoring -l app.kubernetes.io/component=read
+#    kubectl logs -n monitoring -l app.kubernetes.io/component=backend
+#
