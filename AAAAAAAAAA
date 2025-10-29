@@ -1,6 +1,6 @@
-error: accumulating resources: accumulation err='accumulating resources from '../../../base/loki': '/azp/agent/_work/8/s/kustomize/base/loki' must resolve to a file': recursed accumulation of path '/azp/agent/_work/8/s/kustomize/base/loki': Error: failed to parse /tmp/kustomize-helm-610760990/loki-kustomize-values.yaml: error converting YAML to JSON: yaml: line 67: could not find expected ':'
-: unable to run: 'helm template loki /azp/agent/_work/8/s/kustomize/base/loki/charts/loki-6.31.0/loki --namespace monitoring -f /tmp/kustomize-helm-610760990/loki-kustomize-values.yaml --include-crds' with env=[HELM_CONFIG_HOME=/root/.config/helm HELM_CACHE_HOME=/root/.config/helm/.cache HELM_DATA_HOME=/root/.config/helm/.data] (is 'helm' installed?): exit status 1
-DONE app loki
+kubectl logs loki-compactor-0 -n monitoring
+failed parsing config: /etc/loki/config/config.yaml: yaml: unmarshal errors:
+  line 98: field use_workload_identity not found in type azure.BlobStorageConfig. Use `-config.expand-env=true` flag if you want to expand environment variables in your config file
 
 
 patches:
