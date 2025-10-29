@@ -1,7 +1,6 @@
-
-level=info ts=2025-10-29T00:02:21.133418797Z caller=memberlist_client.go:626 phase=startup msg="joining memberlist cluster" join_members=loki-memberlist
-adal: Refresh request failed. Status Code = '400'. Response body: {"error":"invalid_request","error_description":"Identity not found"} Endpoint http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=https%3A%2F%2Feddv1sa01.blob.core.windows.net
-
+error: accumulating resources: accumulation err='accumulating resources from '../../../base/loki': '/azp/agent/_work/8/s/kustomize/base/loki' must resolve to a file': recursed accumulation of path '/azp/agent/_work/8/s/kustomize/base/loki': Error: failed to parse /tmp/kustomize-helm-610760990/loki-kustomize-values.yaml: error converting YAML to JSON: yaml: line 67: could not find expected ':'
+: unable to run: 'helm template loki /azp/agent/_work/8/s/kustomize/base/loki/charts/loki-6.31.0/loki --namespace monitoring -f /tmp/kustomize-helm-610760990/loki-kustomize-values.yaml --include-crds' with env=[HELM_CONFIG_HOME=/root/.config/helm HELM_CACHE_HOME=/root/.config/helm/.cache HELM_DATA_HOME=/root/.config/helm/.data] (is 'helm' installed?): exit status 1
+DONE app loki
 
 
 patches:
