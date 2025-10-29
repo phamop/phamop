@@ -1,3 +1,19 @@
+# Restart all Loki deployments
+kubectl rollout restart deployment/loki-distributor -n monitoring
+kubectl rollout restart deployment/loki-querier -n monitoring
+kubectl rollout restart deployment/loki-query-frontend -n monitoring
+kubectl rollout restart deployment/loki-query-scheduler -n monitoring
+kubectl rollout restart deployment/loki-ruler -n monitoring
+kubectl rollout restart deployment/loki-gateway -n monitoring
+
+# Restart all Loki statefulsets
+kubectl rollout restart statefulset/loki-ingester -n monitoring
+kubectl rollout restart statefulset/loki-compactor -n monitoring
+kubectl rollout restart statefulset/loki-index-gateway -n monitoring
+
+kubectl rollout restart deployment,statefulset -n monitoring -l app.kubernetes.io/name=loki
+
+
 kubectl logs loki-compactor-0 -n monitoring
 failed parsing config: /etc/loki/config/config.yaml: yaml: unmarshal errors:
   line 98: field use_workload_identity not found in type azure.BlobStorageConfig. Use `-config.expand-env=true` flag if you want to expand environment variables in your config file
