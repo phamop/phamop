@@ -1,3 +1,94 @@
+level=info ts=2025-10-29T01:30:13.427723416Z caller=server.go:368 msg="server listening on addresses" http=[::]:3100 grpc=[::]:9095
+adal: Refresh request failed. Status Code = '400'. Response body: {"error":"invalid_request","error_description":"Identity not found"} Endpoint http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=https%3A%2F%2Feddv1sa01.blob.core.windows.net
+error creating object client
+github.com/grafana/loki/v3/pkg/storage.(*LokiStore).chunkClientForPeriodlevel=info ts=2025-10-29T01:30:13.427723416Z caller=server.go:368 msg="server listening on addresses" http=[::]:3100 grpc=[::]:9095
+adal: Refresh request failed. Status Code = '400'. Response body: {"error":"invalid_request","error_description":"Identity not found"} Endpoint http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=https%3A%2F%2Feddv1sa01.blob.core.windows.net
+error creating object client
+github.com/grafana/loki/v3/pkg/storage.(*LokiStore).chunkClientForPeriod
+        /src/loki/pkg/storage/store.go:248
+github.com/grafana/loki/v3/pkg/storage.(*LokiStore).init
+        /src/loki/pkg/storage/store.go:197
+github.com/grafana/loki/v3/pkg/storage.NewStore
+        /src/loki/pkg/storage/store.go:189
+github.com/grafana/loki/v3/pkg/loki.(*Loki).initStore
+        /src/loki/pkg/loki/modules.go:930
+github.com/grafana/dskit/modules.(*Manager).initModule
+        /src/loki/vendor/github.com/grafana/dskit/modules/modules.go:136
+github.com/grafana/dskit/modules.(*Manager).InitModuleServices
+        /src/loki/vendor/github.com/grafana/dskit/modules/modules.go:108
+github.com/grafana/loki/v3/pkg/loki.(*Loki).Run
+        /src/loki/pkg/loki/loki.go:531
+main.main
+        /src/loki/cmd/loki/main.go:129
+runtime.main
+        /usr/local/go/src/runtime/proc.go:283
+runtime.goexit
+        /usr/local/go/src/runtime/asm_amd64.s:1700
+error initialising module: store
+github.com/grafana/dskit/modules.(*Manager).initModule
+        /src/loki/vendor/github.com/grafana/dskit/modules/modules.go:138
+github.com/grafana/dskit/modules.(*Manager).InitModuleServices
+        /src/loki/vendor/github.com/grafana/dskit/modules/modules.go:108
+github.com/grafana/loki/v3/pkg/loki.(*Loki).Run
+        /src/loki/pkg/loki/loki.go:531
+main.main
+        /src/loki/cmd/loki/main.go:129
+runtime.main
+        /usr/local/go/src/runtime/proc.go:283
+runtime.goexit
+        /usr/local/go/src/runtime/asm_amd64.s:1700
+level=info ts=2025-10-29T01:30:13.442222963Z caller=modules.go:1974 msg="failed to initialize usage report" err="adal: Refresh request failed. Status Code = '400'. Response body: {\"error\":\"invalid_request\",\"error_description\":\"Identity not found\"} Endpoint http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=https%3A%2F%2Feddv1sa01.blob.core.windows.net"
+level=info ts=2025-10-29T01:30:13.444182842Z caller=memberlist_client.go:463 msg="Using memberlist cluster label and node name" cluster_label= node=loki-querier-5b7694d5cd-jqjrx-3b239263    
+level=error ts=2025-10-29T01:30:13.454164237Z caller=log.go:223 msg="error running loki" err="adal: Refresh request failed. Status Code = '400'. Response body: {\"error\":\"invalid_request\",\"error_description\":\"Identity not found\"} Endpoint http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=https%3A%2F%2Feddv1sa01.blob.core.windows.net\nerror creating object client\ngithub.com/grafana/loki/v3/pkg/storage.(*LokiStore).chunkClientForPeriod\n\t/src/loki/pkg/storage/store.go:248\ngithub.com/grafana/loki/v3/pkg/storage.(*LokiStore).init\n\t/src/loki/pkg/storage/store.go:197\ngithub.com/grafana/loki/v3/pkg/storage.NewStore\n\t/src/loki/pkg/storage/store.go:189\ngithub.com/grafana/loki/v3/pkg/loki.(*Loki).initStore\n\t/src/loki/pkg/loki/modules.go:930\ngithub.com/grafana/dskit/modules.(*Manager).initModule\n\t/src/loki/vendor/github.com/grafana/dskit/modules/modules.go:136\ngithub.com/grafana/dskit/modules.(*Manager).InitModuleServices\n\t/src/loki/vendor/github.com/grafana/dskit/modules/modules.go:108\ngithub.com/grafana/loki/v3/pkg/loki.(*Loki).Run\n\t/src/loki/pkg/loki/loki.go:531\nmain.main\n\t/src/loki/cmd/loki/main.go:129\nruntime.main\n\t/usr/local/go/src/runtime/proc.go:283\nruntime.goexit\n\t/usr/local/go/src/runtime/asm_amd64.s:1700\nerror initialising module: store\ngithub.com/grafana/dskit/modules.(*Manager).initModule\n\t/src/loki/vendor/github.com/grafana/dskit/modules/modules.go:138
+        /src/loki/pkg/storage/store.go:248
+github.com/grafana/loki/v3/pkg/storage.(*LokiStore).init
+        /src/loki/pkg/storage/store.go:197
+github.com/grafana/loki/v3/pkg/storage.NewStore
+        /src/loki/pkg/storage/store.go:189
+github.com/grafana/loki/v3/pkg/loki.(*Loki).initStore
+        /src/loki/pkg/loki/modules.go:930
+github.com/grafana/dskit/modules.(*Manager).initModule
+        /src/loki/vendor/github.com/grafana/dskit/modules/modules.go:136
+github.com/grafana/dskit/modules.(*Manager).InitModuleServices
+        /src/loki/vendor/github.com/grafana/dskit/modules/modules.go:108
+github.com/grafana/loki/v3/pkg/loki.(*Loki).Run
+        /src/loki/pkg/loki/loki.go:531
+main.main
+        /src/loki/cmd/loki/main.go:129
+runtime.main
+        /usr/local/go/src/runtime/proc.go:283
+runtime.goexit
+        /usr/local/go/src/runtime/asm_amd64.s:1700
+error initialising module: store
+github.com/grafana/dskit/modules.(*Manager).initModule
+        /src/loki/vendor/github.com/grafana/dskit/modules/modules.go:138
+github.com/grafana/dskit/modules.(*Manager).InitModuleServices
+        /src/loki/vendor/github.com/grafana/dskit/modules/modules.go:108
+github.com/grafana/loki/v3/pkg/loki.(*Loki).Run
+        /src/loki/pkg/loki/loki.go:531
+main.main
+        /src/loki/cmd/loki/main.go:129
+runtime.main
+        /usr/local/go/src/runtime/proc.go:283
+runtime.goexit
+        /usr/local/go/src/runtime/asm_amd64.s:1700
+level=info ts=2025-10-29T01:30:13.442222963Z caller=modules.go:1974 msg="failed to initialize usage report" err="adal: Refresh request failed. Status Code = '400'. Response body: {\"error\":\"invalid_request\",\"error_description\":\"Identity not found\"} Endpoint http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=https%3A%2F%2Feddv1sa01.blob.core.windows.net"
+level=info ts=2025-10-29T01:30:13.444182842Z caller=memberlist_client.go:463 msg="Using memberlist cluster label and node name" cluster_label= node=loki-querier-5b7694d5cd-jqjrx-3b239263    
+level=error ts=2025-10-29T01:30:13.454164237Z caller=log.go:223 msg="error running loki" err="adal: Refresh request failed. Status Code = '400'. Response body: {\"error\":\"invalid_request\",\"error_description\":\"Identity not found\"} Endpoint http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=https%3A%2F%2Feddv1sa01.blob.core.windows.net\nerror creating object client\ngithub.com/grafana/loki/v3/pkg/storage.(*LokiStore).chunkClientForPeriod\n\t/src/loki/pkg/storage/store.go:248\ngithub.com/grafana/loki/v3/pkg/storage.(*LokiStore).init\n\t/src/loki/pkg/storage/store.go:197\ngithub.com/grafana/loki/v3/pkg/storage.NewStore\n\t/src/loki/pkg/storage/store.go:189\ngithub.com/grafana/loki/v3/pkg/loki.(*Loki).initStore\n\t/src/loki/pkg/loki/modules.go:930\ngithub.com/grafana/dskit/modules.(*Manager).initModule\n\t/src/loki/vendor/github.com/grafana/dskit/modules/modules.go:136\ngithub.com/grafana/dskit/modules.(*Manager).InitModuleServices\n\t/src/loki/vendor/github.com/grafana/dskit/modules/modules.go:108\ngithub.com/grafana/loki/v3/pkg/loki.(*Loki).Run\n\t/src/loki/pkg/loki/loki.go:531\nmain.main\n\t/src/loki/cmd/loki/main.go:129\nruntime.main\n\t/usr/local/go/src/runtime/proc.go:283\nruntime.goexit\n\t/usr/local/go/src/runtime/asm_amd64.s:1700\nerror initialising module: store\ngithub.com/grafana/dskit/modules.(*Manager).initModule\n\t/src/loki/vendor/github.com/grafana/dskit/modules/modules.go:138
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ###############################################################################
 # helm/loki/values.yaml
 ###############################################################################
