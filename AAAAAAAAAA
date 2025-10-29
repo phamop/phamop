@@ -1,3 +1,20 @@
+# Get your cluster's OIDC issuer
+az aks show --resource-group <RG> --name <CLUSTER> --query "oidcIssuerProfile.issuerUrl" -o tsv
+
+# List federated credentials
+az identity federated-credential list --identity-name oss-sa --resource-group <RG> -o table
+
+# Verify the subject matches: system:serviceaccount:monitoring:oss-sa
+
+
+kubectl delete pods -n monitoring -l app.kubernetes.io/name=loki
+
+
+
+
+
+
+
 level=info ts=2025-10-29T01:30:13.427723416Z caller=server.go:368 msg="server listening on addresses" http=[::]:3100 grpc=[::]:9095
 adal: Refresh request failed. Status Code = '400'. Response body: {"error":"invalid_request","error_description":"Identity not found"} Endpoint http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=https%3A%2F%2Feddv1sa01.blob.core.windows.net
 error creating object client
