@@ -2,6 +2,10 @@ kubectl logs loki-compactor-0 -n monitoring
 failed parsing config: /etc/loki/config/config.yaml: yaml: unmarshal errors:
   line 98: field use_workload_identity not found in type azure.BlobStorageConfig. Use `-config.expand-env=true` flag if you want to expand environment variables in your config file
 
+ logs loki-distributor-6777875b4f-vsv6b  -n monitoring
+failed parsing config: /etc/loki/config/config.yaml: yaml: unmarshal errors:
+  line 98: field use_workload_identity not found in type azure.BlobStorageConfig. Use `-config.expand-env=true` flag if you want to expand environment variables in your config file
+
 
 patches:
   - target:
