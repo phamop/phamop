@@ -1,5 +1,6 @@
 
-level=error ts=2025-10-28T23:46:40.526681965Z caller=main.go:70 msg="validating config" err="CONFIG ERROR: invalid compactor config: compactor.delete-request-store should be configured when retention is enabled"
+level=info ts=2025-10-29T00:02:21.133418797Z caller=memberlist_client.go:626 phase=startup msg="joining memberlist cluster" join_members=loki-memberlist
+adal: Refresh request failed. Status Code = '400'. Response body: {"error":"invalid_request","error_description":"Identity not found"} Endpoint http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=https%3A%2F%2Feddv1sa01.blob.core.windows.net
 
 
 
