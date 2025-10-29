@@ -1,3 +1,728 @@
+###############################################################################
+# helm/loki/values.yaml
+###############################################################################
+deploymentMode: Distributed
+
+loki:
+  auth_enabled: false
+  commonConfig:
+    replication_factor: 1
+  storage:
+    type: azure
+    azure:
+      accountName: eddv1sa01
+      useManagedIdentity: true
+      useWorkloadIdentity: true
+      containerName: loki
+      endpointSuffix: blob.core.windows.net
+    bucketNames:
+      chunks: loki
+      ruler: ruler
+      admin: loki-admin
+  schemaConfig:
+    configs:
+      - from: "2024-01-01"
+        store: tsdb
+        object_store: azure
+        schema: v13
+        index:
+          prefix: loki_index_
+          period: 24h
+  limits_config:
+    retention_period: 744h
+    ingestion_rate_mb: 10
+    ingestion_burst_size_mb: 20
+    max_global_streams_per_user: 10000
+    per_stream_rate_limit: 5MB
+    per_stream_rate_limit_burst: 15MB
+  compactor:
+    working_directory: /var/loki/compactor
+    compaction_interval: 10m
+    retention_enabled: true
+    retention_delete_delay: 2h
+    retention_delete_worker_count: 150
+    delete_request_store: azure
+  ingester:
+    chunk_encoding: snappy
+    chunk_target_size: 1536000
+    chunk_retain_period: 30s
+    max_chunk_age: 2h
+  querier:
+    max_concurrent: 2
+  query_scheduler:
+    max_outstanding_requests_per_tenant: 256
+  storage_config:
+    tsdb_shipper:
+      active_index_directory: /var/loki/index
+      cache_location: /var/loki/cache
+    azure:
+      account_name: eddv1sa01
+      use_managed_identity: true
+      use_workload_identity: true
+      container_name: loki
+      endpoint_suffix: blob.core.windows.net
+
+enterprise:
+  enabled: false
+
+global:
+  podAnnotations:
+    azure.workload.identity/use: "true"
+
+ingester:
+  replicas: 1
+  podAnnotations:
+    azure.workload.identity/use: "true"
+  resources:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+  persistence:
+    enabled: false
+
+distributor:
+  replicas: 1
+  podAnnotations:
+    azure.workload.identity/use: "true"
+  resources:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+querier:
+  replicas: 1
+  podAnnotations:
+    azure.workload.identity/use: "true"
+  resources:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+queryFrontend:
+  replicas: 1
+  podAnnotations:
+    azure.workload.identity/use: "true"
+  resources:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+queryScheduler:
+  replicas: 1
+  podAnnotations:
+    azure.workload.identity/use: "true"
+  resources:
+    limits:
+      cpu: 100m
+      memory: 128Mi
+    requests:
+      cpu: 50m
+      memory: 64Mi
+
+compactor:
+  replicas: 1
+  podAnnotations:
+    azure.workload.identity/use: "true"
+  resources:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+indexGateway:
+  replicas: 1
+  podAnnotations:
+    azure.workload.identity/use: "true"
+  resources:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+ruler:
+  enabled: true
+  replicas: 1
+  podAnnotations:
+    azure.workload.identity/use: "true"
+  resources:
+    limits:
+      cpu: 100m
+      memory: 128Mi
+    requests:
+      cpu: 50m
+      memory: 64Mi
+
+gateway:
+  enabled: true
+  replicas: 1
+  resources:
+    limits:
+      cpu: 100m
+      memory: 128Mi
+    requests:
+      cpu: 50m
+      memory: 64Mi
+
+serviceAccount:
+  create: false
+  name: oss-sa
+
+monitoring:
+  selfMonitoring:
+    enabled: false
+    grafanaAgent:
+      installOperator: false
+
+test:
+  enabled: false
+
+chunksCache:
+  enabled: false
+
+resultsCache:
+  enabled: false
+
+singleBinary:
+  replicas: 0
+
+backend:
+  replicas: 0
+
+read:
+  replicas: 0
+
+write:
+  replicas: 0
+
+###############################################################################
+# helm/loki/Chart.yaml
+###############################################################################
+apiVersion: v2
+name: loki
+version: 1.0.0
+dependencies:
+  - name: loki
+    version: 6.31.0
+    repository: https://grafana.github.io/helm-charts
+
+###############################################################################
+# kustomize/base/loki/kustomization.yaml
+###############################################################################
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: monitoring
+
+resources:
+  - service-account.yaml
+  - namespace.yaml
+
+helmCharts:
+  - name: loki
+    repo: https://grafana.github.io/helm-charts
+    version: 6.31.0
+    releaseName: loki
+    namespace: monitoring
+    valuesFile: ../../../helm/loki/values.yaml
+
+###############################################################################
+# kustomize/base/loki/namespace.yaml
+###############################################################################
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: monitoring
+  labels:
+    name: monitoring
+    azure.workload.identity/use: "true"
+
+###############################################################################
+# kustomize/base/loki/service-account.yaml
+###############################################################################
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: oss-sa
+  namespace: monitoring
+  annotations:
+    azure.workload.identity/client-id: "YOUR_MANAGED_IDENTITY_CLIENT_ID"
+  labels:
+    azure.workload.identity/use: "true"
+
+###############################################################################
+# kustomize/overlays/loki/kustomization.yaml
+###############################################################################
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: monitoring
+
+resources:
+  - ../../base/loki
+
+patches:
+  - target:
+      kind: StatefulSet
+      name: loki-ingester
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/resources
+        value:
+          limits:
+            cpu: 150m
+            memory: 200Mi
+          requests:
+            cpu: 50m
+            memory: 100Mi
+  
+  - target:
+      kind: Deployment
+      name: loki-distributor
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/resources
+        value:
+          limits:
+            cpu: 150m
+            memory: 200Mi
+          requests:
+            cpu: 50m
+            memory: 100Mi
+  
+  - target:
+      kind: Deployment
+      name: loki-querier
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/resources
+        value:
+          limits:
+            cpu: 150m
+            memory: 200Mi
+          requests:
+            cpu: 50m
+            memory: 100Mi
+  
+  - target:
+      kind: Deployment
+      name: loki-query-frontend
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/resources
+        value:
+          limits:
+            cpu: 150m
+            memory: 200Mi
+          requests:
+            cpu: 50m
+            memory: 100Mi
+  
+  - target:
+      kind: Deployment
+      name: loki-query-scheduler
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/resources
+        value:
+          limits:
+            cpu: 50m
+            memory: 100Mi
+          requests:
+            cpu: 25m
+            memory: 50Mi
+  
+  - target:
+      kind: StatefulSet
+      name: loki-compactor
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/resources
+        value:
+          limits:
+            cpu: 150m
+            memory: 200Mi
+          requests:
+            cpu: 50m
+            memory: 100Mi
+  
+  - target:
+      kind: StatefulSet
+      name: loki-index-gateway
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/resources
+        value:
+          limits:
+            cpu: 150m
+            memory: 200Mi
+          requests:
+            cpu: 50m
+            memory: 100Mi
+  
+  - target:
+      kind: Deployment
+      name: loki-ruler
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/resources
+        value:
+          limits:
+            cpu: 100m
+            memory: 128Mi
+          requests:
+            cpu: 50m
+            memory: 64Mi
+  
+  - target:
+      kind: Deployment
+      name: loki-gateway
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/resources
+        value:
+          limits:
+            cpu: 50m
+            memory: 64Mi
+          requests:
+            cpu: 25m
+            memory: 32Mi
+  
+  - target:
+      kind: ServiceAccount
+      name: oss-sa
+    patch: |-
+      - op: replace
+        path: /metadata/annotations/azure.workload.identity~1client-id
+        value: "ACTUAL_CLIENT_ID_HERE"
+
+###############################################################################
+# kustomize/overlays/loki/resource-limits-patch.yaml
+###############################################################################
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: loki-ingester
+  namespace: monitoring
+spec:
+  template:
+    spec:
+      containers:
+      - name: loki
+        resources:
+          limits:
+            cpu: 150m
+            memory: 200Mi
+          requests:
+            cpu: 50m
+            memory: 100Mi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: loki-distributor
+  namespace: monitoring
+spec:
+  template:
+    spec:
+      containers:
+      - name: loki
+        resources:
+          limits:
+            cpu: 150m
+            memory: 200Mi
+          requests:
+            cpu: 50m
+            memory: 100Mi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: loki-querier
+  namespace: monitoring
+spec:
+  template:
+    spec:
+      containers:
+      - name: loki
+        resources:
+          limits:
+            cpu: 150m
+            memory: 200Mi
+          requests:
+            cpu: 50m
+            memory: 100Mi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: loki-query-frontend
+  namespace: monitoring
+spec:
+  template:
+    spec:
+      containers:
+      - name: loki
+        resources:
+          limits:
+            cpu: 150m
+            memory: 200Mi
+          requests:
+            cpu: 50m
+            memory: 100Mi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: loki-query-scheduler
+  namespace: monitoring
+spec:
+  template:
+    spec:
+      containers:
+      - name: loki
+        resources:
+          limits:
+            cpu: 50m
+            memory: 100Mi
+          requests:
+            cpu: 25m
+            memory: 50Mi
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: loki-compactor
+  namespace: monitoring
+spec:
+  template:
+    spec:
+      containers:
+      - name: loki
+        resources:
+          limits:
+            cpu: 150m
+            memory: 200Mi
+          requests:
+            cpu: 50m
+            memory: 100Mi
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: loki-index-gateway
+  namespace: monitoring
+spec:
+  template:
+    spec:
+      containers:
+      - name: loki
+        resources:
+          limits:
+            cpu: 150m
+            memory: 200Mi
+          requests:
+            cpu: 50m
+            memory: 100Mi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: loki-ruler
+  namespace: monitoring
+spec:
+  template:
+    spec:
+      containers:
+      - name: loki
+        resources:
+          limits:
+            cpu: 100m
+            memory: 128Mi
+          requests:
+            cpu: 50m
+            memory: 64Mi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: loki-gateway
+  namespace: monitoring
+spec:
+  template:
+    spec:
+      containers:
+      - name: nginx
+        resources:
+          limits:
+            cpu: 50m
+            memory: 64Mi
+          requests:
+            cpu: 25m
+            memory: 32Mi
+
+###############################################################################
+# kustomize/overlays/loki/service-account-patch.yaml
+###############################################################################
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: oss-sa
+  namespace: monitoring
+  annotations:
+    azure.workload.identity/client-id: "ACTUAL_CLIENT_ID_HERE"
+
+###############################################################################
+# DEPLOYMENT INSTRUCTIONS
+###############################################################################
+# 
+# Loki Helm Chart Version: 6.31.0
+# 
+# Directory Structure:
+# .
+# ├── helm/
+# │   └── loki/
+# │       ├── Chart.yaml
+# │       └── values.yaml
+# ├── kustomize/
+# │   ├── base/
+# │   │   └── loki/
+# │   │       ├── kustomization.yaml
+# │   │       ├── namespace.yaml
+# │   │       └── service-account.yaml
+# │   └── overlays/
+# │       └── loki/
+# │           └── kustomization.yaml (includes inline JSON patches)
+#
+# Key Changes:
+# - Removed separate patch files (resource-limits-patch.yaml, service-account-patch.yaml)
+# - All patches are now inline JSON patches in kustomization.yaml
+# - Uses JSON Patch (RFC 6902) format which works better with Helm + Kustomize
+# - Added workload identity configuration to all components
+# - Added useWorkloadIdentity flag in storage config
+#
+# Prerequisites:
+# 1. Azure Workload Identity enabled on AKS cluster:
+#    az aks update --resource-group <RG> --name <CLUSTER> --enable-workload-identity --enable-oidc-issuer
+#
+# 2. Get OIDC issuer URL:
+#    az aks show --resource-group <RG> --name <CLUSTER> --query "oidcIssuerProfile.issuerUrl" -o tsv
+#
+# 3. Create managed identity 'oss-sa' if not exists:
+#    az identity create --name oss-sa --resource-group <RG>
+#
+# 4. Get managed identity details:
+#    export USER_ASSIGNED_CLIENT_ID=$(az identity show --name oss-sa --resource-group <RG> --query 'clientId' -o tsv)
+#    export USER_ASSIGNED_PRINCIPAL_ID=$(az identity show --name oss-sa --resource-group <RG> --query 'principalId' -o tsv)
+#
+# 5. Grant Storage Blob Data Contributor role:
+#    az role assignment create \
+#      --role "Storage Blob Data Contributor" \
+#      --assignee $USER_ASSIGNED_PRINCIPAL_ID \
+#      --scope "/subscriptions/<SUBSCRIPTION_ID>/resourceGroups/<RG>/providers/Microsoft.Storage/storageAccounts/eddv1sa01"
+#
+# 6. Create federated credential:
+#    az identity federated-credential create \
+#      --name loki-federated-identity \
+#      --identity-name oss-sa \
+#      --resource-group <RG> \
+#      --issuer <OIDC_ISSUER_URL> \
+#      --subject system:serviceaccount:monitoring:oss-sa \
+#      --audience api://AzureADTokenExchange
+#
+# 7. Update ACTUAL_CLIENT_ID_HERE in kustomize/overlays/loki/kustomization.yaml
+#    with the value from $USER_ASSIGNED_CLIENT_ID
+#
+# 8. Verify containers exist in storage account eddv1sa01:
+#    - loki
+#    - loki-admin
+#    - ruler
+#
+# Deploy:
+# cd kustomize/overlays/loki
+# kustomize build --enable-helm . | kubectl apply -f -
+#
+# Or:
+# kubectl apply -k kustomize/overlays/loki --enable-helm
+#
+# Verify:
+# kubectl get pods -n monitoring
+# kubectl get statefulsets -n monitoring
+# kubectl logs -n monitoring -l app.kubernetes.io/name=loki --tail=50
+#
+# Check workload identity is working:
+# kubectl describe pod -n monitoring -l app.kubernetes.io/component=ingester | grep -A 5 "azure.workload.identity"
+#
+# Verify service account:
+# kubectl get sa oss-sa -n monitoring -o yaml
+#
+# Check resources applied correctly:
+# kubectl get deployment loki-querier -n monitoring -o yaml | grep -A 5 resources
+# kubectl get statefulset loki-ingester -n monitoring -o yaml | grep -A 5 resources
+#
+# Test Azure Blob Storage access from pod:
+# kubectl exec -n monitoring statefulset/loki-ingester -c loki -- sh -c \
+#   'echo "Checking workload identity env vars:" && env | grep AZURE'
+#
+# Troubleshooting:
+# 
+# If you see "Identity not found" error:
+# 1. Verify federated credential exists and matches:
+#    az identity federated-credential list --identity-name oss-sa --resource-group <RG>
+#    - Check subject matches: system:serviceaccount:monitoring:oss-sa
+#    - Check issuer matches your cluster's OIDC issuer
+#
+# 2. Verify service account has correct annotation:
+#    kubectl get sa oss-sa -n monitoring -o jsonpath='{.metadata.annotations}'
+#
+# 3. Verify pods have workload identity annotation:
+#    kubectl get pod -n monitoring -l app.kubernetes.io/component=ingester -o jsonpath='{.items[0].metadata.annotations}'
+#
+# 4. Check webhook is injecting tokens:
+#    kubectl get pod -n monitoring -l app.kubernetes.io/component=ingester -o yaml | grep -A 10 volumes
+#    # Should see azure-identity-token volume
+#
+# 5. Restart pods after updating service account:
+#    kubectl rollout restart statefulset/loki-ingester -n monitoring
+#    kubectl rollout restart deployment/loki-distributor -n monitoring
+#
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # Restart all Loki deployments
 kubectl rollout restart deployment/loki-distributor -n monitoring
 kubectl rollout restart deployment/loki-querier -n monitoring
