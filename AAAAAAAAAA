@@ -1,3 +1,226 @@
+#!/bin/bash
+# Loki Azure Workload Identity Verification Script
+
+echo "========================================"
+echo "Azure Workload Identity Verification"
+echo "========================================"
+echo ""
+
+# Variables
+NAMESPACE="monitoring"
+SA_NAME="oss-sa"
+STORAGE_ACCOUNT="eddv1sa01"
+
+echo "1. Checking Service Account..."
+echo "-----------------------------------"
+kubectl get sa $SA_NAME -n $NAMESPACE &>/dev/null
+if [ $? -eq 0 ]; then
+    echo "✅ Service account '$SA_NAME' exists"
+    
+    # Check annotations
+    CLIENT_ID=$(kubectl get sa $SA_NAME -n $NAMESPACE -o jsonpath='{.metadata.annotations.azure\.workload\.identity/client-id}')
+    if [ -n "$CLIENT_ID" ]; then
+        echo "✅ Client ID annotation found: $CLIENT_ID"
+    else
+        echo "❌ Client ID annotation missing!"
+    fi
+    
+    # Check labels
+    USE_LABEL=$(kubectl get sa $SA_NAME -n $NAMESPACE -o jsonpath='{.metadata.labels.azure\.workload\.identity/use}')
+    if [ "$USE_LABEL" == "true" ]; then
+        echo "✅ Workload identity label set correctly"
+    else
+        echo "⚠️  Workload identity label missing or incorrect"
+    fi
+else
+    echo "❌ Service account '$SA_NAME' not found!"
+fi
+echo ""
+
+echo "2. Checking Loki Pods..."
+echo "-----------------------------------"
+PODS=$(kubectl get pods -n $NAMESPACE -l app.kubernetes.io/name=loki -o name 2>/dev/null)
+if [ -z "$PODS" ]; then
+    echo "❌ No Loki pods found!"
+else
+    echo "✅ Loki pods found:"
+    kubectl get pods -n $NAMESPACE -l app.kubernetes.io/name=loki
+    echo ""
+    
+    # Check first pod in detail
+    FIRST_POD=$(kubectl get pods -n $NAMESPACE -l app.kubernetes.io/name=loki -o jsonpath='{.items[0].metadata.name}')
+    
+    echo "3. Checking Pod Configuration ($FIRST_POD)..."
+    echo "-----------------------------------"
+    
+    # Check pod annotations
+    POD_ANNOTATION=$(kubectl get pod $FIRST_POD -n $NAMESPACE -o jsonpath='{.metadata.annotations.azure\.workload\.identity/use}')
+    if [ "$POD_ANNOTATION" == "true" ]; then
+        echo "✅ Pod has workload identity annotation"
+    else
+        echo "❌ Pod missing workload identity annotation!"
+    fi
+    
+    # Check service account
+    POD_SA=$(kubectl get pod $FIRST_POD -n $NAMESPACE -o jsonpath='{.spec.serviceAccountName}')
+    if [ "$POD_SA" == "$SA_NAME" ]; then
+        echo "✅ Pod using correct service account: $POD_SA"
+    else
+        echo "❌ Pod using wrong service account: $POD_SA (expected: $SA_NAME)"
+    fi
+    
+    # Check for projected token volume
+    TOKEN_VOLUME=$(kubectl get pod $FIRST_POD -n $NAMESPACE -o jsonpath='{.spec.volumes[?(@.name=="azure-identity-token")].projected}')
+    if [ -n "$TOKEN_VOLUME" ]; then
+        echo "✅ Azure identity token volume injected by webhook"
+    else
+        echo "❌ Azure identity token volume NOT found - webhook may not be working!"
+    fi
+    
+    # Check environment variables
+    echo ""
+    echo "4. Checking Environment Variables in Pod..."
+    echo "-----------------------------------"
+    kubectl exec $FIRST_POD -n $NAMESPACE -c loki -- env 2>/dev/null | grep AZURE | while read line; do
+        echo "✅ $line"
+    done
+    
+    ENV_CHECK=$(kubectl exec $FIRST_POD -n $NAMESPACE -c loki -- env 2>/dev/null | grep -c AZURE)
+    if [ $ENV_CHECK -eq 0 ]; then
+        echo "❌ No AZURE environment variables found!"
+        echo "   Expected: AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_FEDERATED_TOKEN_FILE"
+    fi
+    
+    # Check token file
+    echo ""
+    echo "5. Checking Federated Token File..."
+    echo "-----------------------------------"
+    TOKEN_FILE=$(kubectl exec $FIRST_POD -n $NAMESPACE -c loki -- cat /var/run/secrets/azure/tokens/azure-identity-token 2>/dev/null | head -c 50)
+    if [ -n "$TOKEN_FILE" ]; then
+        echo "✅ Token file exists and contains: ${TOKEN_FILE}..."
+    else
+        echo "❌ Token file not found or empty!"
+    fi
+fi
+
+echo ""
+echo "6. Checking Azure Managed Identity (requires Azure CLI)..."
+echo "-----------------------------------"
+if command -v az &> /dev/null; then
+    if [ -n "$CLIENT_ID" ]; then
+        # Get identity details
+        IDENTITY_INFO=$(az identity show --ids $(az identity list --query "[?clientId=='$CLIENT_ID'].id" -o tsv) 2>/dev/null)
+        if [ $? -eq 0 ]; then
+            IDENTITY_NAME=$(echo $IDENTITY_INFO | jq -r '.name')
+            PRINCIPAL_ID=$(echo $IDENTITY_INFO | jq -r '.principalId')
+            echo "✅ Managed Identity found:"
+            echo "   Name: $IDENTITY_NAME"
+            echo "   Client ID: $CLIENT_ID"
+            echo "   Principal ID: $PRINCIPAL_ID"
+            
+            # Check federated credentials
+            echo ""
+            echo "7. Checking Federated Credentials..."
+            echo "-----------------------------------"
+            FED_CREDS=$(az identity federated-credential list --identity-name $IDENTITY_NAME --resource-group $(az identity show --ids $(az identity list --query "[?clientId=='$CLIENT_ID'].id" -o tsv) --query resourceGroup -o tsv) 2>/dev/null)
+            if [ $? -eq 0 ]; then
+                echo "$FED_CREDS" | jq -r '.[] | "Name: \(.name)\nIssuer: \(.issuer)\nSubject: \(.subject)\nAudience: \(.audiences[])\n"'
+                
+                # Verify subject matches
+                EXPECTED_SUBJECT="system:serviceaccount:$NAMESPACE:$SA_NAME"
+                ACTUAL_SUBJECT=$(echo "$FED_CREDS" | jq -r '.[0].subject')
+                if [ "$ACTUAL_SUBJECT" == "$EXPECTED_SUBJECT" ]; then
+                    echo "✅ Federated credential subject matches: $ACTUAL_SUBJECT"
+                else
+                    echo "❌ Subject mismatch!"
+                    echo "   Expected: $EXPECTED_SUBJECT"
+                    echo "   Actual: $ACTUAL_SUBJECT"
+                fi
+            else
+                echo "❌ Failed to list federated credentials"
+            fi
+            
+            # Check role assignments
+            echo ""
+            echo "8. Checking Role Assignments..."
+            echo "-----------------------------------"
+            ROLE_ASSIGNMENTS=$(az role assignment list --assignee $PRINCIPAL_ID --scope "/subscriptions/$(az account show --query id -o tsv)/resourceGroups/*/providers/Microsoft.Storage/storageAccounts/$STORAGE_ACCOUNT" 2>/dev/null)
+            if [ $? -eq 0 ]; then
+                ROLES=$(echo "$ROLE_ASSIGNMENTS" | jq -r '.[].roleDefinitionName')
+                if echo "$ROLES" | grep -q "Storage Blob Data Contributor"; then
+                    echo "✅ Has 'Storage Blob Data Contributor' role on $STORAGE_ACCOUNT"
+                else
+                    echo "❌ Missing 'Storage Blob Data Contributor' role!"
+                    echo "   Current roles: $ROLES"
+                fi
+            else
+                echo "⚠️  Could not verify role assignments (check manually)"
+            fi
+        else
+            echo "❌ Managed Identity not found with client ID: $CLIENT_ID"
+        fi
+    else
+        echo "⚠️  Skipping - no client ID found from service account"
+    fi
+else
+    echo "⚠️  Azure CLI not installed - skipping Azure checks"
+    echo "   Install: https://docs.microsoft.com/en-us/cli/azure/install-azure-cli"
+fi
+
+echo ""
+echo "9. Testing Azure Storage Access..."
+echo "-----------------------------------"
+if [ -n "$FIRST_POD" ]; then
+    echo "Attempting to access Azure Blob Storage from pod..."
+    ACCESS_TEST=$(kubectl exec $FIRST_POD -n $NAMESPACE -c loki -- wget -q -O- --timeout=10 "https://$STORAGE_ACCOUNT.blob.core.windows.net/loki?restype=container&comp=list" 2>&1)
+    if echo "$ACCESS_TEST" | grep -q "EnumerationResults\|Blobs"; then
+        echo "✅ Successfully accessed Azure Blob Storage!"
+    else
+        echo "❌ Failed to access Azure Blob Storage"
+        echo "   Response: $ACCESS_TEST"
+    fi
+else
+    echo "⚠️  No pod available for testing"
+fi
+
+echo ""
+echo "10. Checking Pod Logs for Errors..."
+echo "-----------------------------------"
+if [ -n "$FIRST_POD" ]; then
+    ERRORS=$(kubectl logs $FIRST_POD -n $NAMESPACE -c loki --tail=50 2>/dev/null | grep -i "error\|failed\|identity not found" | head -5)
+    if [ -z "$ERRORS" ]; then
+        echo "✅ No recent errors found in logs"
+    else
+        echo "⚠️  Recent errors found:"
+        echo "$ERRORS"
+    fi
+fi
+
+echo ""
+echo "========================================"
+echo "Summary"
+echo "========================================"
+echo "Run this command to view detailed pod info:"
+echo "kubectl describe pod $FIRST_POD -n $NAMESPACE"
+echo ""
+echo "To fix issues:"
+echo "1. Update service account client ID"
+echo "2. Verify federated credential"
+echo "3. Restart pods: kubectl delete pods -n $NAMESPACE -l app.kubernetes.io/name=loki"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 # gRPC Ingress (OTLP gRPC :4317)
 apiVersion: networking.k8s.io/v1
