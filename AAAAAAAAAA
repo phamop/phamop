@@ -1,55 +1,57 @@
-# gRPC Ingress
+
+# gRPC Ingress (OTLP gRPC :4317)
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: otel-collector-grpc-ingress
   namespace: monitoring
   annotations:
-    kubernetes.io/ingress.class: nginx
+    # Use either this annotation OR spec.ingressClassName below
+    # kubernetes.io/ingress.class: nginx
     nginx.ingress.kubernetes.io/backend-protocol: "GRPC"
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
 spec:
   ingressClassName: nginx
   tls:
-  - hosts:
-    - dashboard  # Replace with your actual hostname
-    secretName: tls-secret  # You need to create this secret with TLS certs
+    - hosts:
+        - dashboard.example.com   # <-- replace with your hostname
+      secretName: tls-secret       # <-- must exist in "monitoring"
   rules:
-  - host: dashboard  # Replace with your actual hostname
-    http:
-      paths:
-      - path: /otel
-        pathType: Prefix
-        backend:
-          service:
-            name: otel-collector-collector
-            port:
-              number: 4317
+    - host: dashboard.example.com  # <-- same hostname as above
+      http:
+        paths:
+          - path: /otel
+            pathType: Prefix
+            backend:
+              service:
+                name: otel-collector-collector
+                port:
+                  number: 4317
 
 ---
-# HTTP Ingress
+# HTTP Ingress (OTLP HTTP :4318)
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: otel-collector-http-ingress
   namespace: monitoring
   annotations:
-    kubernetes.io/ingress.class: nginx
+    # kubernetes.io/ingress.class: nginx
     nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
 spec:
   ingressClassName: nginx
   tls:
-  - hosts:
-    - dashboard  # Replace with your actual hostname
-    secretName: tls-secret  # You need to create this secret with TLS certs
+    - hosts:
+        - dashboard.example.com
+      secretName: tls-secret
   rules:
-  - host: dashboard  # Replace with your actual hostname
-    http:
-      paths:
-      - path: /otel
-        pathType: Prefix
-        backend:
-          service:
-            name: otel-collector-collector
-            port:
-              number: 4318  # OTLP HTTP port
+    - host: dashboard.example.com
+      http:
+        paths:
+          - path: /otel
+            pathType: Prefix
+            backend:
+              service:
+                name: otel-collector-collector
+                port:
+                  number: 4318
