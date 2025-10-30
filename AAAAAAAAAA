@@ -1,3 +1,21 @@
+# Check if workload identity addon is enabled
+az aks show --resource-group <RG> --name <CLUSTER> --query "oidcIssuerProfile.enabled"
+az aks show --resource-group <RG> --name <CLUSTER> --query "securityProfile.workloadIdentity.enabled"
+
+# Enable if not enabled
+az aks update \
+  --resource-group <RG> \
+  --name <CLUSTER> \
+  --enable-oidc-issuer \
+  --enable-workload-identity
+
+
+
+
+
+
+
+
 #!/bin/bash
 # Loki Azure Workload Identity Verification Script
 
