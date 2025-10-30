@@ -1,5 +1,3 @@
-Error from server (BadRequest): error when creating "../../otel-ingress.yaml": Ingress in version "v1" cannot be handled as a Ingress: json: cannot unmarshal object into Go struct field IngressSpec.spec.tls of type []v1.IngressTLS
-
 # gRPC Ingress
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -13,9 +11,11 @@ metadata:
 spec:
   ingressClassName: nginx
   tls:
-    - dashboard
+  - hosts:
+    - dashboard  # Replace with your actual hostname
+    secretName: tls-secret  # You need to create this secret with TLS certs
   rules:
-  - host: dashboard
+  - host: dashboard  # Replace with your actual hostname
     http:
       paths:
       - path: /otel
@@ -39,9 +39,11 @@ metadata:
 spec:
   ingressClassName: nginx
   tls:
-    - dashboard
+  - hosts:
+    - dashboard  # Replace with your actual hostname
+    secretName: tls-secret  # You need to create this secret with TLS certs
   rules:
-  - host: dashboard
+  - host: dashboard  # Replace with your actual hostname
     http:
       paths:
       - path: /otel
@@ -51,4 +53,3 @@ spec:
             name: otel-collector-collector
             port:
               number: 4318  # OTLP HTTP port
-
