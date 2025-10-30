@@ -1,3 +1,20 @@
+POD=loki-backend-0 
+
+
+$ kubectl -n monitoring exec -it $POD -- ls -l /var/run/secrets/azure/tokens/ || echo "no token"
+Defaulted container "loki-sc-rules" out of: loki-sc-rules, loki
+ls: C:/Program Files/Git/var/run/secrets/azure/tokens/: No such file or directory
+command terminated with exit code 1
+no token
+
+
+$ kubectl -n monitoring describe $POD | sed -n '/Volumes:/,/Conditions:/p'
+error: the server doesn't have a resource type "loki-backend-0"
+
+
+
+
+
 POD=$(kubectl -n monitoring get po -l app=loki -o name | head -1)
 
 
