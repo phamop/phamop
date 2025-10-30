@@ -22,6 +22,19 @@ kubectl describe pod -n monitoring loki-write-0 | grep -A 5 "azure-identity-toke
 
 
 
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: oss-sa
+  namespace: monitoring
+  annotations:
+    azure.workload.identity/client-id: "YOUR_MANAGED_IDENTITY_CLIENT_ID"
+  labels:
+    azure.workload.identity/use: "true"
+automountServiceAccountToken: true
+
+
+
 
 
 
