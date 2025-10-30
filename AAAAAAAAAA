@@ -1,3 +1,46 @@
+# ✓ Namespace label
+kubectl get ns monitoring --show-labels | grep azure.workload.identity/use=true
+
+# ✓ Service account annotation
+kubectl get sa oss-sa -n monitoring -o jsonpath='{.metadata.annotations.azure\.workload\.identity/client-id}'
+
+# ✓ Pod annotation (should be injected by webhook)
+kubectl get pod loki-write-0 -n monitoring -o jsonpath='{.metadata.annotations.azure\.workload\.identity/use}'
+
+# ✓ Token volume (should be injected by webhook)
+kubectl describe pod loki-write-0 -n monitoring | grep -A 5 "azure-identity-token"
+
+# ✓ Environment variables (should be injected by webhook)
+kubectl exec loki-write-0 -n monitoring -c loki -- env | grep AZURE
+
+
+
+# Check webhook configuration
+kubectl get mutatingwebhookconfigurations azure-wi-webhook-mutating-webhook-configuration -o yaml
+
+# Check if webhook is receiving requests
+kubectl logs -n azure-workload-identity-system -l app.kubernetes.io/name=workload-identity-webhook --tail=100 -f
+
+# Check webhook endpoint
+kubectl get endpoints -n azure-workload-identity-system
+
+
+
+
+# Delete existing pods to force recreation with webhook injection
+kubectl delete pods -n monitoring -l app.kubernetes.io/name=loki
+
+# Wait for pods to restart
+kubectl get pods -n monitoring -w
+
+# Verify token volume is now injected
+kubectl get pod -n monitoring loki-write-0 -o jsonpath='{.spec.volumes[?(@.name=="azure-identity-token")]}' | jq .
+
+
+
+
+
+
 # Check if workload identity addon is enabled
 az aks show --resource-group <RG> --name <CLUSTER> --query "oidcIssuerProfile.enabled"
 az aks show --resource-group <RG> --name <CLUSTER> --query "securityProfile.workloadIdentity.enabled"
