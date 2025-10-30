@@ -1,8 +1,15 @@
-# Add the required label to the namespace
+# Apply the label directly
 kubectl label namespace monitoring azure.workload.identity/use=true --overwrite
 
-# Verify the label was added
-kubectl get namespace monitoring --show-labels | grep azure.workload.identity
+# Or reapply the namespace configuration
+kubectl apply -f kustomize/base/loki/namespace.yaml
+
+# Verify it's set
+kubectl get namespace monitoring -o yaml | grep -A 3 "labels:"
+
+
+
+
 
 # Delete all Loki pods to force recreation
 kubectl delete pods -n monitoring -l app.kubernetes.io/name=loki
