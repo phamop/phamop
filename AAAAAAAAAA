@@ -1,3 +1,7 @@
+ kubectl label namespace monitoring azure.workload.identity/use=true --overwrite
+namespace/monitoring not labeled
+
+
 # Apply the label directly
 kubectl label namespace monitoring azure.workload.identity/use=true --overwrite
 
