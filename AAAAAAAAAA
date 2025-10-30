@@ -1,3 +1,54 @@
+kubectl -n monitoring get pod loki-backend-0 -o jsonpath='{.spec.serviceAccountName}{"\n"}{.spec.automountServiceAccountToken}{"\n"}'
+oss-sa
+true
+
+kubectl -n monitoring get pod loki-backend-0 -o jsonpath='{range .spec.containers[*]}{.name}{"\n"}{end}'
+loki-sc-rules
+loki
+
+kubectl -n monitoring logs loki-backend-0 -c loki --previous --tail=200
+level=info ts=2025-10-30T21:18:26.930671436Z caller=main.go:126 msg="Starting Loki" version="(version=3.5.1, branch=release-3.5.x, revision=d4e637ce)"
+level=info ts=2025-10-30T21:18:26.930763336Z caller=main.go:127 msg="Loading configuration file" filename=/etc/loki/config/config.yaml
+level=info ts=2025-10-30T21:18:26.933789918Z caller=server.go:368 msg="server listening on addresses" http=[::]:3100 grpc=[::]:9095
+adal: Refresh request failed. Status Code = '400'. Response body: {"error":"invalid_request","error_description":"Identity not found"} Endpoint http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=https%3A%2F%2Feddv1sa01.blob.core.windows.net
+error initialising module: ruler-storage
+github.com/grafana/dskit/modules.(*Manager).initModule
+        /src/loki/vendor/github.com/grafana/dskit/modules/modules.go:138
+github.com/grafana/dskit/modules.(*Manager).InitModuleServices
+        /src/loki/vendor/github.com/grafana/dskit/modules/modules.go:108
+github.com/grafana/loki/v3/pkg/loki.(*Loki).Run
+        /src/loki/pkg/loki/loki.go:531
+main.main
+        /src/loki/cmd/loki/main.go:129
+runtime.main
+        /usr/local/go/src/runtime/proc.go:283
+runtime.goexit
+        /usr/local/go/src/runtime/asm_amd64.s:1700
+level=info ts=2025-10-30T21:18:27.033590533Z caller=modules.go:1974 msg="failed to initialize usage report" err="adal: Refresh request failed. Status Code = '400'. Response body: {\"error\":\"invalid_request\",\"error_description\":\"Identity not found\"} Endpoint http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=https%3A%2F%2Feddv1sa01.blob.core.windows.net"
+level=error ts=2025-10-30T21:18:27.042047784Z caller=log.go:223 msg="error running loki" err="adal: Refresh request failed. Status Code = '400'. Response body: {\"error\":\"invalid_request\",\"error_description\":\"Identity not found\"} Endpoint http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=https%3A%2F%2Feddv1sa01.blob.core.windows.net\nerror initialising module: ruler-storage\ngithub.com/grafana/dskit/modules.(*Manager).initModule\n\t/src/loki/vendor/github.com/grafana/dskit/modules/modules.go:138\ngithub.com/grafana/dskit/modules.(*Manager).InitModuleServices\n\t/src/loki/vendor/github.com/grafana/dskit/modules/modules.go:108\ngithub.com/grafana/loki/v3/pkg/loki.(*Loki).Run\n\t/src/loki/pkg/loki/loki.go:531\nmain.main\n\t/src/loki/cmd/loki/main.go:129\nruntime.main\n\t/usr/local/go/src/runtime/proc.go:283\nruntime.goexit\n\t/usr/local/go/src/runtime/asm_amd64.s:1700"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # Which ServiceAccount is the pod actually using?
 kubectl -n monitoring get pod loki-backend-0 -o jsonpath='{.spec.serviceAccountName}{"\n"}{.spec.automountServiceAccountToken}{"\n"}'
 
