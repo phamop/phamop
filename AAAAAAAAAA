@@ -1,3 +1,28 @@
+# Add the required label to the namespace
+kubectl label namespace monitoring azure.workload.identity/use=true --overwrite
+
+# Verify the label was added
+kubectl get namespace monitoring --show-labels | grep azure.workload.identity
+
+# Delete all Loki pods to force recreation
+kubectl delete pods -n monitoring -l app.kubernetes.io/name=loki
+
+# Watch them come back up
+kubectl get pods -n monitoring -w
+
+# Once running, verify token volume is injected
+kubectl describe pod -n monitoring loki-write-0 | grep -A 5 "azure-identity-token"
+
+
+
+
+
+
+
+
+
+
+
 # ✓ Namespace label
 kubectl get ns monitoring --show-labels | grep azure.workload.identity/use=true
 
