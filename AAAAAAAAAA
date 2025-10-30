@@ -1,3 +1,62 @@
+using git-bash
+==============
+
+export MSYS2_ARG_CONV_EXCL="*"
+
+
+$ kubectl -n monitoring exec -it loki-backend-0 -c loki -- sh -c "ls -l /var/run/secrets/azure/tokens || echo no-token"
+error: Internal error occurred: unable to upgrade connection: container not found ("loki")
+
+
+$ kubectl -n monitoring describe pod loki-backend-0 | sed -n '/Volumes:/,/Conditions:/p'
+Volumes:
+  data:
+    Type:       PersistentVolumeClaim (a reference to a PersistentVolumeClaim in the same namespace)
+    ClaimName:  data-loki-backend-0
+    ReadOnly:   false
+  tmp:
+    Type:       EmptyDir (a temporary directory that shares a pod's lifetime)
+    Medium:
+    SizeLimit:  <unset>
+  config:
+    Type:      ConfigMap (a volume populated by a ConfigMap)
+    Name:      loki
+    Optional:  false
+  runtime-config:
+    Type:      ConfigMap (a volume populated by a ConfigMap)
+    Name:      loki-runtime
+    Optional:  false
+  sc-rules-volume:
+    Type:       EmptyDir (a temporary directory that shares a pod's lifetime)
+    Medium:
+    SizeLimit:  <unset>
+  kube-api-access-n7t4h:
+    Type:                    Projected (a volume that contains injected data from multiple sources)
+    TokenExpirationSeconds:  3607
+    ConfigMapName:           kube-root-ca.crt
+    Optional:                false
+    DownwardAPI:             true
+QoS Class:                   Burstable
+Node-Selectors:              <none>
+Tolerations:                 node.kubernetes.io/memory-pressure:NoSchedule op=Exists
+                             node.kubernetes.io/not-ready:NoExecute op=Exists for 300s
+                             node.kubernetes.io/unreachable:NoExecute op=Exists for 300s
+Events:
+  Type     Reason     Age                  From               Message
+  ----     ------     ----                 ----               -------
+  Normal   Scheduled  10m                  default-scheduler  Successfully assigned monitoring/loki-backend-0 to aks-eddv-17069543-vmss000000
+  Normal   Pulled     10m                  kubelet            Container image "kiwigrid/k8s-sidecar:1.30.6" already present on machine
+  Normal   Created    10m                  kubelet            Created container: loki-sc-rules
+  Normal   Started    10m                  kubelet            Started container loki-sc-rules
+  Normal   Pulled     4m55s (x7 over 10m)  kubelet            Container image "docker.io/grafana/loki:3.5.1" already present on machine
+  Normal   Created    4m55s (x7 over 10m)  kubelet            Created container: loki
+  Normal   Started    4m55s (x7 over 10m)  kubelet            Started container loki
+  Warning  BackOff    35s (x50 over 10m)   kubelet            Back-off restarting failed container loki in pod loki-backend-0_monitoring(9168216d-883c-4a84-a105-b1fd1c18a971)
+
+
+
+
+
 export MSYS2_ARG_CONV_EXCL="*"
 
 
