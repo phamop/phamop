@@ -1,3 +1,16 @@
+kubectl -n monitoring exec -it $POD -- ls -l /var/run/secrets/azure/tokens/ || echo "no token"
+
+kubectl -n monitoring describe pod $POD | sed -n '/Volumes:/,/Conditions:/p'
+
+
+
+
+kubectl -n monitoring get sa oss-sa -o yaml | grep -A3 azure.workload.identity
+kubectl -n monitoring get pod $POD -o jsonpath='{.spec.serviceAccountName}'; echo
+kubectl -n monitoring get pod $POD -o jsonpath='{.spec.automountServiceAccountToken}'; echo
+
+
+
 POD=loki-backend-0 
 
 
