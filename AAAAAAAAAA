@@ -1,4 +1,55 @@
- kubectl label namespace monitoring azure.workload.identity/use=true --overwrite
+kubectl get ns monitoring --show-labels
+# or, precise:
+kubectl get ns monitoring -o jsonpath='{.metadata.labels.azure\.workload\.identity/use}'; echo
+
+
+kubectl patch namespace monitoring -p '{"metadata":{"labels":{"azure.workload.identity/use":"true"}}}'
+kubectl get ns monitoring --show-labels
+
+
+
+kubectl get mutatingwebhookconfigurations | grep -Ei 'workload|identity|azure'
+
+
+kubectl -n monitoring get sa oss-sa -o yaml
+# look for:
+# metadata.annotations["azure.workload.identity/client-id"] == <UAMI_CLIENT_ID>
+
+
+
+kubectl -n monitoring annotate sa oss-sa azure.workload.identity/client-id=<UAMI_CLIENT_ID> --overwrite
+
+
+# Make sure the workloads use that SA
+kubectl -n monitoring get deploy,sts -o yaml | grep -nE 'serviceAccountName:|name: oss-sa'
+
+# Restart to force re-creation & mutation
+kubectl -n monitoring rollout restart deploy,sts
+
+
+
+POD=$(kubectl -n monitoring get po -l app=loki -o name | head -1)
+kubectl -n monitoring exec -it $POD -- ls -l /var/run/secrets/azure/tokens/ || echo "no token"
+kubectl -n monitoring describe $POD | sed -n '/Service Account:/,/Conditions:/p'
+
+
+
+
+kubectl -n monitoring exec -it $POD -- printenv | grep AZURE_CLIENT_ID
+
+
+
+
+
+
+
+
+
+
+
+
+
+kubectl label namespace monitoring azure.workload.identity/use=true --overwrite
 namespace/monitoring not labeled
 
 
