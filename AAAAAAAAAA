@@ -1,3 +1,46 @@
+# Which ServiceAccount is the pod actually using?
+kubectl -n monitoring get pod loki-backend-0 -o jsonpath='{.spec.serviceAccountName}{"\n"}{.spec.automountServiceAccountToken}{"\n"}'
+
+# Show all containers (names/positions matter for patching)
+kubectl -n monitoring get pod loki-backend-0 -o jsonpath='{range .spec.containers[*]}{.name}{"\n"}{end}'
+
+# Get last crash logs (the important ones for auth)
+kubectl -n monitoring logs loki-backend-0 -c loki --previous --tail=200
+
+
+# Replace with your UAMI client ID (GUID), not the ARM resource ID
+kubectl -n monitoring annotate sa oss-sa \
+  azure.workload.identity/client-id=<UAMI_CLIENT_ID> --overwrite
+
+# (Optional, only if you changed audience in Entra)
+kubectl -n monitoring annotate sa oss-sa \
+  azure.workload.identity/service-account-token-audience="api://AzureADTokenExchange" --overwrite
+
+
+# values.yaml (relevant bits)
+loki:
+  serviceAccount:
+    create: false
+    name: oss-sa
+
+  extraEnv:
+    - name: AZURE_CLIENT_ID
+      value: "<UAMI_CLIENT_ID>"   # critical hint to the SDK
+    # optional but fine to add:
+    - name: AZURE_TENANT_ID
+      value: "<TENANT_ID>"
+
+
+
+
+
+
+
+
+
+
+
+
 using git-bash
 ==============
 
