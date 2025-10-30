@@ -1,4 +1,58 @@
- kubectl get ns monitoring --show-labels
+kubectl -n monitoring get sa oss-sa -o yaml | sed -n '/annotations:/,+5p'
+# expect: azure.workload.identity/client-id: <GUID of your UAMI>
+
+
+
+
+kubectl -n monitoring annotate sa oss-sa \
+  azure.workload.identity/client-id=<UAMI_CLIENT_ID> --overwrite
+# (Optional) only if you changed audience in Entra:
+kubectl -n monitoring annotate sa oss-sa \
+  azure.workload.identity/service-account-token-audience="api://AzureADTokenExchange" --overwrite
+
+
+
+# Confirm SA usage
+kubectl -n monitoring get deploy,sts -o yaml | grep -nE 'serviceAccountName:|name: oss-sa'
+
+# Ensure token will mount
+kubectl -n monitoring get deploy,sts -o yaml | grep -n 'automountServiceAccountToken'
+# should be either absent (defaults to true) or explicitly true
+
+
+
+kubectl get mutatingwebhookconfigurations | grep -Ei 'workload|identity|azure'
+
+
+# values snippet
+loki:
+  serviceAccount:
+    create: false
+    name: oss-sa
+  extraEnv:
+    - name: AZURE_CLIENT_ID
+      value: "<UAMI_CLIENT_ID>"
+
+kubectl -n monitoring rollout restart deploy,sts
+
+
+
+POD=$(kubectl -n monitoring get po -l app=loki -o name | head -1)
+kubectl -n monitoring exec -it $POD -- ls -l /var/run/secrets/azure/tokens/ || echo "no token"
+kubectl -n monitoring describe $POD | sed -n '/Volumes:/,/Conditions:/p'
+
+
+
+
+
+
+
+
+
+
+
+
+kubectl get ns monitoring --show-labels
 NAME         STATUS   AGE   LABELS
 monitoring   Active   3d    azure.workload.identity/use=true,kubernetes.io/metadata.name=monitoring,name=monitoring
 
