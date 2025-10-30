@@ -1,3 +1,52 @@
+export MSYS2_ARG_CONV_EXCL="*"
+
+
+# List containers in the pod (just to be sure)
+kubectl -n monitoring get pod loki-backend-0 -o jsonpath='{.spec.containers[*].name}{"`n"}'
+
+# Check if the projected WI token volume exists (target the 'loki' container)
+kubectl -n monitoring exec -it loki-backend-0 -c loki -- sh -c 'ls -l /var/run/secrets/azure/tokens || echo no-token'
+
+# Describe the pod (note the explicit "pod" type)
+kubectl -n monitoring describe pod loki-backend-0 | Select-String -SimpleMatch "Volumes:" -Context 0,50
+
+
+git-bash
+
+export MSYS2_ARG_CONV_EXCL="*"
+
+kubectl -n monitoring exec -it loki-backend-0 -c loki -- sh -c "ls -l /var/run/secrets/azure/tokens || echo no-token"
+
+kubectl -n monitoring describe pod loki-backend-0 | sed -n '/Volumes:/,/Conditions:/p'
+
+
+
+
+
+
+# Is the pod actually running as the expected SA?
+kubectl -n monitoring get pod loki-backend-0 -o jsonpath='{.spec.serviceAccountName}{"`n"}{.spec.automountServiceAccountToken}{"`n"}'
+
+# Does the SA have the clientId annotation?
+kubectl -n monitoring get sa oss-sa -o yaml | Select-String -SimpleMatch "azure.workload.identity/client-id"
+
+# Is the container telling the SDK which UAMI to use?
+kubectl -n monitoring exec -it loki-backend-0 -c loki -- sh -c 'printenv | grep AZURE_CLIENT_ID || echo AZURE_CLIENT_ID-missing'
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 kubectl -n monitoring exec -it $POD -- ls -l /var/run/secrets/azure/tokens/ || echo "no token"
 
 kubectl -n monitoring describe pod $POD | sed -n '/Volumes:/,/Conditions:/p'
