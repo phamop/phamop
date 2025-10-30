@@ -1,3 +1,106 @@
+kubectl -n monitoring describe pod loki-backend-0 | sed -n '/Volumes:/,/Conditions:/p'
+Volumes:
+  data:
+    Type:       PersistentVolumeClaim (a reference to a PersistentVolumeClaim in the same namespace)
+    ClaimName:  data-loki-backend-0
+    ReadOnly:   false
+  tmp:
+    Type:       EmptyDir (a temporary directory that shares a pod's lifetime)
+    Medium:
+    SizeLimit:  <unset>
+  config:
+    Type:      ConfigMap (a volume populated by a ConfigMap)
+    Name:      loki
+    Optional:  false
+  runtime-config:
+    Type:      ConfigMap (a volume populated by a ConfigMap)
+    Name:      loki-runtime
+    Optional:  false
+  sc-rules-volume:
+    Type:       EmptyDir (a temporary directory that shares a pod's lifetime)
+    Medium:
+    SizeLimit:  <unset>
+  kube-api-access-n7t4h:
+    Type:                    Projected (a volume that contains injected data from multiple sources)
+    TokenExpirationSeconds:  3607
+    ConfigMapName:           kube-root-ca.crt
+    Optional:                false
+    DownwardAPI:             true
+QoS Class:                   Burstable
+Node-Selectors:              <none>
+Tolerations:                 node.kubernetes.io/memory-pressure:NoSchedule op=Exists
+                             node.kubernetes.io/not-ready:NoExecute op=Exists for 300s
+                             node.kubernetes.io/unreachable:NoExecute op=Exists for 300s
+Events:
+  Type     Reason     Age                    From               Message
+  ----     ------     ----                   ----               -------
+  Normal   Scheduled  33m                    default-scheduler  Successfully assigned monitoring/loki-backend-0 to aks-eddv
+  Normal   Pulled     33m                    kubelet            Container image "kiwigrid/k8s-sidecar:1.30.6" already present on machine
+  Normal   Created    33m                    kubelet            Created container: loki-sc-rules
+  Normal   Started    33m                    kubelet            Started container loki-sc-rules
+  Normal   Created    22m (x8 over 33m)      kubelet            Created container: loki
+  Normal   Started    22m (x8 over 33m)      kubelet            Started container loki
+  Warning  BackOff    3m45s (x144 over 33m)  kubelet            Back-off restarting failed container loki in pod loki-backend-0_monitoring(9168216d-883c-4a84-a105-b1fd1c18a971)
+  Normal   Pulled     2m20s (x12 over 33m)   kubelet            Container image "docker.io/grafana/loki:3.5.1" already present on machine
+
+$ kubectl -n monitoring describe pod loki-read-5bb78876d-ddzvl | sed -n '/Volumes:/,/Conditions:/p'
+Volumes:
+  tmp:
+    Type:       EmptyDir (a temporary directory that shares a pod's lifetime)
+    Medium:
+    SizeLimit:  <unset>
+  data:
+    Type:       EmptyDir (a temporary directory that shares a pod's lifetime)
+    Medium:
+    SizeLimit:  <unset>
+  config:
+    Type:      ConfigMap (a volume populated by a ConfigMap)
+    Name:      loki
+    Optional:  false
+  runtime-config:
+    Type:      ConfigMap (a volume populated by a ConfigMap)
+    Name:      loki-runtime
+    Optional:  false
+  kube-api-access-rbj7h:
+    Type:                    Projected (a volume that contains injected data from multiple sources)
+    TokenExpirationSeconds:  3607
+    ConfigMapName:           kube-root-ca.crt
+    Optional:                false
+    DownwardAPI:             true
+QoS Class:                   Burstable
+Node-Selectors:              <none>
+Tolerations:                 node.kubernetes.io/memory-pressure:NoSchedule op=Exists
+                             node.kubernetes.io/not-ready:NoExecute op=Exists for 300s
+                             node.kubernetes.io/unreachable:NoExecute op=Exists for 300s
+Events:
+  Type     Reason     Age                From               Message
+  ----     ------     ----               ----               -------
+  Normal   Scheduled  67s                default-scheduler  Successfully assigned monitoring/loki-read-5bb78876d-ddzvl to aks-eddv
+  Normal   Pulled     20s (x4 over 67s)  kubelet            Container image "docker.io/grafana/loki:3.5.1" already present on machine
+  Normal   Created    20s (x4 over 67s)  kubelet            Created container: loki
+  Normal   Started    20s (x4 over 67s)  kubelet            Started container loki
+  Warning  BackOff    6s (x5 over 61s)   kubelet            Back-off restarting failed container loki in pod loki-read-5bb78876d-ddzvl_monitoring(2072c454-8435-48d9-847d-eeef287acbbd)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 kubectl -n monitoring get pod loki-backend-0 -o jsonpath='{.spec.serviceAccountName}{"\n"}{.spec.automountServiceAccountToken}{"\n"}'
 oss-sa
 true
