@@ -1,22 +1,21 @@
 
-# gRPC Ingress
+# gRPC Ingress (OTLP gRPC :4317)
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: otel-collector-grpc-ingress
   namespace: monitoring
   annotations:
-    kubernetes.io/ingress.class: nginx
     nginx.ingress.kubernetes.io/backend-protocol: "GRPC"
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
 spec:
   ingressClassName: nginx
   tls:
     - hosts:
-        - dashboard  # Replace with your actual hostname
-      secretName: tls-secret  # You need to create this secret with TLS certs
+        - dashboard
+      secretName: tls-secret
   rules:
-    - host: dashboard  # Replace with your actual hostname
+    - host: dashboard
       http:
         paths:
           - path: /otel
@@ -27,23 +26,22 @@ spec:
                 port:
                   number: 4317
 ---
-# HTTP Ingress
+# HTTP Ingress (OTLP HTTP :4318)
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: otel-collector-http-ingress
   namespace: monitoring
   annotations:
-    kubernetes.io/ingress.class: nginx
     nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
 spec:
   ingressClassName: nginx
   tls:
     - hosts:
-        - dashboard  # Replace with your actual hostname
-      secretName: tls-secret  # You need to create this secret with TLS certs
+        - dashboard
+      secretName: tls-secret
   rules:
-    - host: dashboard  # Replace with your actual hostname
+    - host: dashboard
       http:
         paths:
           - path: /otel
@@ -52,4 +50,4 @@ spec:
               service:
                 name: otel-collector-collector
                 port:
-                  number: 4318  # OTLP HTTP port
+                  number: 4318
