@@ -1,3 +1,18 @@
+POD=$(kubectl -n monitoring get po -l app=loki -o name | head -1)
+
+
+$ kubectl -n monitoring exec -it $POD -- ls -l /var/run/secrets/azure/tokens/ || echo "no token"
+error: pod, type/name or --filename must be specified
+no token
+
+
+$ kubectl -n monitoring describe $POD | sed -n '/Volumes:/,/Conditions:/p'
+error: You must specify the type of resource to describe. Use "kubectl api-resources" for a complete list of supported resources.
+
+
+
+
+
 kubectl -n monitoring get sa oss-sa -o yaml | sed -n '/annotations:/,+5p'
 # expect: azure.workload.identity/client-id: <GUID of your UAMI>
 
