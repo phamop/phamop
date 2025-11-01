@@ -1,3 +1,17 @@
+├── cluster
+│   ├── base
+│   │   ├── loki
+│   └── overlays
+├── helm
+│       ├── loki
+├── kustomize
+│   ├── base
+│   │   ├── loki
+│   └── overlays
+│       │   ├── loki
+
+
+
 # values-loki-azure-mi.yaml
 loki:
   auth_enabled: true
