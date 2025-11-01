@@ -1,120 +1,57 @@
-kubectl logs  loki-write-0 -n monitoring 
-level=info ts=2025-11-01T14:37:58.908192609Z caller=main.go:126 msg="Starting Loki" version="(version=3.5.1, branch=release-3.5.x, revision=d4e637ce)"
-level=info ts=2025-11-01T14:37:58.908237308Z caller=main.go:127 msg="Loading configuration file" filename=/etc/loki/config/config.yaml
-level=info ts=2025-11-01T14:37:58.910660294Z caller=server.go:368 msg="server listening on addresses" http=[::]:3100 grpc=[::]:9095
-level=info ts=2025-11-01T14:37:58.921133232Z caller=memberlist_client.go:463 msg="Using memberlist cluster label and node name" cluster_label= node=loki-write-0-012d15b3
-level=info ts=2025-11-01T14:37:58.921600029Z caller=memberlist_client.go:594 msg="memberlist fast-join starting" nodes_found=1 to_join=4
-level=info ts=2025-11-01T14:37:58.933096561Z caller=memberlist_client.go:614 msg="memberlist fast-join finished" joined_nodes=1 elapsed_time=11.500632ms
-level=info ts=2025-11-01T14:37:58.933134461Z caller=memberlist_client.go:626 phase=startup msg="joining memberlist cluster" join_members=loki-memberlist
-level=info ts=2025-11-01T14:37:58.938544529Z caller=memberlist_client.go:633 phase=startup msg="joining memberlist cluster succeeded" reached_nodes=1 elapsed_time=5.397568ms
-adal: Refresh request failed. Status Code = '404'. Response body:  Endpoint https://login.microsoftonline.com/oauth2/token?api-version=1.0
-error creating object client
-github.com/grafana/loki/v3/pkg/storage.(*LokiStore).chunkClientForPeriod
-        /src/loki/pkg/storage/store.go:248
-github.com/grafana/loki/v3/pkg/storage.(*LokiStore).init
-        /src/loki/pkg/storage/store.go:197
-github.com/grafana/loki/v3/pkg/storage.NewStore
-        /src/loki/pkg/storage/store.go:189
-github.com/grafana/loki/v3/pkg/loki.(*Loki).initStore
-        /src/loki/pkg/loki/modules.go:930
-github.com/grafana/dskit/modules.(*Manager).initModule
-        /src/loki/vendor/github.com/grafana/dskit/modules/modules.go:136
-github.com/grafana/dskit/modules.(*Manager).InitModuleServices
-        /src/loki/vendor/github.com/grafana/dskit/modules/modules.go:108
-github.com/grafana/loki/v3/pkg/loki.(*Loki).Run
-        /src/loki/pkg/loki/loki.go:531
-main.main
-        /src/loki/cmd/loki/main.go:129
-runtime.main
-        /usr/local/go/src/runtime/proc.go:283
-runtime.goexit
-        /usr/local/go/src/runtime/asm_amd64.s:1700
-error initialising module: store
-github.com/grafana/dskit/modules.(*Manager).initModule
-        /src/loki/vendor/github.com/grafana/dskit/modules/modules.go:138
-github.com/grafana/dskit/modules.(*Manager).InitModuleServices
-        /src/loki/vendor/github.com/grafana/dskit/modules/modules.go:108
-github.com/grafana/loki/v3/pkg/loki.(*Loki).Run
-        /src/loki/pkg/loki/loki.go:531
-main.main
-        /src/loki/cmd/loki/main.go:129
-runtime.main
-        /usr/local/go/src/runtime/proc.go:283
-runtime.goexit
-        /usr/local/go/src/runtime/asm_amd64.s:1700
-level=error ts=2025-11-01T14:37:59.253437867Z caller=log.go:223 msg="error running loki" err="adal: Refresh request failed. Status Code = '404'. Response body:  Endpoint https://login.microsoftonline.com/oauth2/token?api-version=1.0\nerror creating object client\ngithub.com/grafana/loki/v3/pkg/storage.(*LokiStore).chunkClientForPeriod\n\t/src/loki/pkg/storage/store.go:248\ngithub.com/grafana/loki/v3/pkg/storage.(*LokiStore).init\n\t/src/loki/pkg/storage/store.go:197\ngithub.com/grafana/loki/v3/pkg/storage.NewStore\n\t/src/loki/pkg/storage/store.go:189\ngithub.com/grafana/loki/v3/pkg/loki.(*Loki).initStore\n\t/src/loki/pkg/loki/modules.go:930\ngithub.com/grafana/dskit/modules.(*Manager).initModule\n\t/src/loki/vendor/github.com/grafana/dskit/modules/modules.go:136\ngithub.com/grafana/dskit/modules.(*Manager).InitModuleServices\n\t/src/loki/vendor/github.com/grafana/dskit/modules/modules.go:108\ngithub.com/grafana/loki/v3/pkg/loki.(*Loki).Run\n\t/src/loki/pkg/loki/loki.go:531\nmain.main\n\t/src/loki/cmd/loki/main.go:129\nruntime.main\n\t/usr/local/go/src/runtime/proc.go:283\nruntime.goexit\n\t/usr/local/go/src/runtime/asm_amd64.s:1700\nerror initialising module: store\ngithub.com/grafana/dskit/modules.(*Manager).initModule\n\t/src/loki/vendor/github.com/grafana/dskit/modules/modules.go:138\ngithub.com/grafana/dskit/modules.(*Manager).InitModuleServices\n\t/src/loki/vendor/github.com/grafana/dskit/modules/modules.go:108\ngithub.com/grafana/loki/v3/pkg/loki.(*Loki).Run\n\t/src/loki/pkg/loki/loki.go:531\nmain.main\n\t/src/loki/cmd/loki/main.go:129\nruntime.main\n\t/usr/local/go/src/runtime/proc.go:283\nruntime.goexit\n\t/usr/local/go/src/runtime/asm_amd64.s:1700"
+# --- BEGIN manual WI token projection + tenant fix ---
+global:
+  podLabels:
+    azure.workload.identity/use: "true"
 
+serviceAccount:
+  create: false
+  name: oss-sa
 
-kubectl logs  loki-read-7b87c7b9c4-bsjrr -n monitoring
-level=info ts=2025-11-01T14:42:28.855573833Z caller=main.go:126 msg="Starting Loki" version="(version=3.5.1, branch=release-3.5.x, revision=d4e637ce)"
-level=info ts=2025-11-01T14:42:28.855651733Z caller=main.go:127 msg="Loading configuration file" filename=/etc/loki/config/config.yaml
-level=info ts=2025-11-01T14:42:29.022842686Z caller=modules.go:1974 msg="failed to initialize usage report" err="adal: Refresh request failed. Status Code = '404'. Response body:  Endpoint https://login.microsoftonline.com/oauth2/token?api-version=1.0"
-level=info ts=2025-11-01T14:42:29.026450375Z caller=server.go:368 msg="server listening on addresses" http=[::]:3100 grpc=[::]:9095
-level=info ts=2025-11-01T14:42:29.029920263Z caller=memberlist_client.go:463 msg="Using memberlist cluster label and node name" cluster_label= node=loki-read-7b87c7b9c4-bsjrr-a9119d81
-level=info ts=2025-11-01T14:42:29.030318862Z caller=memberlist_client.go:594 msg="memberlist fast-join starting" nodes_found=1 to_join=4
-level=info ts=2025-11-01T14:42:29.036523842Z caller=memberlist_client.go:614 msg="memberlist fast-join finished" joined_nodes=1 elapsed_time=6.20928ms
-level=info ts=2025-11-01T14:42:29.036549142Z caller=memberlist_client.go:626 phase=startup msg="joining memberlist cluster" join_members=loki-memberlist
-level=info ts=2025-11-01T14:42:29.042593922Z caller=memberlist_client.go:633 phase=startup msg="joining memberlist cluster succeeded" reached_nodes=1 elapsed_time=6.03308ms
-adal: Refresh request failed. Status Code = '404'. Response body:  Endpoint https://login.microsoftonline.com/oauth2/token?api-version=1.0
-error creating object client
-github.com/grafana/loki/v3/pkg/storage.(*LokiStore).chunkClientForPeriod
-        /src/loki/pkg/storage/store.go:248
-github.com/grafana/loki/v3/pkg/storage.(*LokiStore).init
-        /src/loki/pkg/storage/store.go:197
-github.com/grafana/loki/v3/pkg/storage.NewStore
-        /src/loki/pkg/storage/store.go:189
-github.com/grafana/loki/v3/pkg/loki.(*Loki).initStore
-        /src/loki/pkg/loki/modules.go:930
-github.com/grafana/dskit/modules.(*Manager).initModule
-        /src/loki/vendor/github.com/grafana/dskit/modules/modules.go:136
-github.com/grafana/dskit/modules.(*Manager).InitModuleServices
-        /src/loki/vendor/github.com/grafana/dskit/modules/modules.go:108
-github.com/grafana/loki/v3/pkg/loki.(*Loki).Run
-        /src/loki/pkg/loki/loki.go:531
-main.main
-        /src/loki/cmd/loki/main.go:129
-runtime.main
-        /usr/local/go/src/runtime/proc.go:283
-runtime.goexit
-        /usr/local/go/src/runtime/asm_amd64.s:1700
-error initialising module: store
-github.com/grafana/dskit/modules.(*Manager).initModule
-        /src/loki/vendor/github.com/grafana/dskit/modules/modules.go:138
-github.com/grafana/dskit/modules.(*Manager).InitModuleServices
-        /src/loki/vendor/github.com/grafana/dskit/modules/modules.go:108
-github.com/grafana/loki/v3/pkg/loki.(*Loki).Run
-        /src/loki/pkg/loki/loki.go:531
-main.main
-        /src/loki/cmd/loki/main.go:129
-runtime.main
-        /usr/local/go/src/runtime/proc.go:283
-runtime.goexit
-        /usr/local/go/src/runtime/asm_amd64.s:1700
-level=error ts=2025-11-01T14:42:29.095574949Z caller=log.go:223 msg="error running loki" err="adal: Refresh request failed. Status Code = '404'. Response body:  Endpoint https://login.microsoftonline.com/oauth2/token?api-version=1.0\nerror creating object client\ngithub.com/grafana/loki/v3/pkg/storage.(*LokiStore).chunkClientForPeriod\n\t/src/loki/pkg/storage/store.go:248\ngithub.com/grafana/loki/v3/pkg/storage.(*LokiStore).init\n\t/src/loki/pkg/storage/store.go:197\ngithub.com/grafana/loki/v3/pkg/storage.NewStore\n\t/src/loki/pkg/storage/store.go:189\ngithub.com/grafana/loki/v3/pkg/loki.(*Loki).initStore\n\t/src/loki/pkg/loki/modules.go:930\ngithub.com/grafana/dskit/modules.(*Manager).initModule\n\t/src/loki/vendor/github.com/grafana/dskit/modules/modules.go:136\ngithub.com/grafana/dskit/modules.(*Manager).InitModuleServices\n\t/src/loki/vendor/github.com/grafana/dskit/modules/modules.go:108\ngithub.com/grafana/loki/v3/pkg/loki.(*Loki).Run\n\t/src/loki/pkg/loki/loki.go:531\nmain.main\n\t/src/loki/cmd/loki/main.go:129\nruntime.main\n\t/usr/local/go/src/runtime/proc.go:283\nruntime.goexit\n\t/usr/local/go/src/runtime/asm_amd64.s:1700\nerror initialising module: store\ngithub.com/grafana/dskit/modules.(*Manager).initModule\n\t/src/loki/vendor/github.com/grafana/dskit/modules/modules.go:138\ngithub.com/grafana/dskit/modules.(*Manager).InitModuleServices\n\t/src/loki/vendor/github.com/grafana/dskit/modules/modules.go:108\ngithub.com/grafana/loki/v3/pkg/loki.(*Loki).Run\n\t/src/loki/pkg/loki/loki.go:531\nmain.main\n\t/src/loki/cmd/loki/main.go:129\nruntime.main\n\t/usr/local/go/src/runtime/proc.go:283\nruntime.goexit\n\t/usr/local/go/src/runtime/asm_amd64.s:1700"
+# Common anchors
+x-wi-env: &wi_env
+  - name: AZURE_CLIENT_ID
+    value: "YOUR_UAMI_CLIENT_ID"
+  - name: AZURE_TENANT_ID          # <<< ADD THIS
+    value: "YOUR_TENANT_GUID"      # e.g., "72f988bf-86f1-41af-91ab-2d7cd011db47"
+  - name: AZURE_FEDERATED_TOKEN_FILE
+    value: /var/run/secrets/azure/tokens/azure-identity-token
+  # Optional but harmless; some libs look at it:
+  - name: AZURE_AUTHORITY_HOST
+    value: "https://login.microsoftonline.com"
 
-kubectl logs  loki-backend-0 -n monitoring 
-Defaulted container "loki-sc-rules" out of: loki-sc-rules, loki
-{"time": "2025-11-01T14:11:40.439271+00:00", "level": "INFO", "msg": "Starting collector"}
-{"time": "2025-11-01T14:11:40.439719+00:00", "level": "INFO", "msg": "No folder annotation was provided, defaulting to k8s-sidecar-target-directory"}
-{"time": "2025-11-01T14:11:40.440224+00:00", "level": "INFO", "msg": "Loading incluster config ..."}
-{"time": "2025-11-01T14:11:40.441697+00:00", "level": "INFO", "msg": "Config for cluster api at 'https://10.0.0.1:443' loaded."}
-{"time": "2025-11-01T14:11:40.441970+00:00", "level": "INFO", "msg": "Unique filenames will not be enforced."}
-{"time": "2025-11-01T14:11:40.442182+00:00", "level": "INFO", "msg": "5xx response content will not be enabled."}
+x-wi-vols: &wi_vols
+  - name: azure-identity-token
+    projected:
+      sources:
+        - serviceAccountToken:
+            path: azure-identity-token
+            audience: api://AzureADTokenExchange
+            expirationSeconds: 3600
 
-kubectl get pod -n monitoring  | grep -i  loki 
-loki-backend-0                                      1/2     CrashLoopBackOff   11 (119s ago)    33m
-loki-backend-1                                      1/2     CrashLoopBackOff   11 (2m3s ago)    33m
-loki-backend-2                                      0/2     Pending            0                33m
-loki-canary-dvk2f                                   1/1     Running            0                33m
-loki-canary-lvxlb                                   1/1     Running            0                33m
-loki-gateway-69c78ffffd-9wrbm                       1/1     Running            0                33m
-loki-helm-test                                      0/1     Error              0                33m
-loki-read-7b87c7b9c4-bsjrr                          0/1     CrashLoopBackOff   11 (2m33s ago)   33m
-loki-read-7b87c7b9c4-kkpfz                          0/1     Pending            0                33m
-loki-read-7b87c7b9c4-vv7pz                          0/1     CrashLoopBackOff   11 (2m42s ago)   33m
-loki-write-0                                        0/1     CrashLoopBackOff   11 (113s ago)    33m
-loki-write-1                                        0/1     CrashLoopBackOff   11 (2m30s ago)   33m
-loki-write-2                                        0/1     Pending            0                33m
+x-wi-mounts: &wi_mounts
+  - name: azure-identity-token
+    mountPath: /var/run/secrets/azure/tokens
+    readOnly: true
+
+backend:
+  automountServiceAccountToken: true
+  extraEnv: *wi_env
+  extraVolumes: *wi_vols
+  extraVolumeMounts: *wi_mounts
+
+read:
+  automountServiceAccountToken: true
+  extraEnv: *wi_env
+  extraVolumes: *wi_vols
+  extraVolumeMounts: *wi_mounts
+
+write:
+  automountServiceAccountToken: true
+  extraEnv: *wi_env
+  extraVolumes: *wi_vols
+  extraVolumeMounts: *wi_mounts
+# --- END manual WI token projection + tenant fix ---
+
 
 
 
