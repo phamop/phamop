@@ -1,3 +1,9 @@
+error: accumulating resources: accumulation err='accumulating resources from '../../../base/loki': '/azp/agent/_work/12/s/kustomize/base/loki' must resolve to a file': recursed accumulation of path '/azp/agent/_work/12/s/kustomize/base/loki': accumulating resources: accumulation err='accumulating resources from 'namespace.yaml': evalsymlink failure on '/azp/agent/_work/12/s/kustomize/base/loki/namespace.yaml' : lstat /azp/agent/_work/12/s/kustomize/base/loki/namespace.yaml: no such file or directory': must build at directory: not a valid directory: evalsymlink failure on '/azp/agent/_work/12/s/kustomize/base/loki/namespace.yaml' : lstat /azp/agent/_work/12/s/kustomize/base/loki/namespace.yaml: no such file or directory
+DONE app loki
+
+
+
+
 level=info ts=2025-11-01T12:42:28.197204492Z caller=server.go:368 msg="server listening on addresses" http=[::]:3100 grpc=[::]:9095
 level=info ts=2025-11-01T12:42:28.199093192Z caller=memberlist_client.go:463 msg="Using memberlist cluster label and node name" cluster_label= node=loki-write-0-1e088a6d
 level=info ts=2025-11-01T12:42:28.199488192Z caller=memberlist_client.go:594 msg="memberlist fast-join starting" nodes_found=1 to_join=4
