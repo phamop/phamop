@@ -1,3 +1,17 @@
+level=info ts=2025-11-01T12:42:28.197204492Z caller=server.go:368 msg="server listening on addresses" http=[::]:3100 grpc=[::]:9095
+level=info ts=2025-11-01T12:42:28.199093192Z caller=memberlist_client.go:463 msg="Using memberlist cluster label and node name" cluster_label= node=loki-write-0-1e088a6d
+level=info ts=2025-11-01T12:42:28.199488192Z caller=memberlist_client.go:594 msg="memberlist fast-join starting" nodes_found=1 to_join=4
+level=error ts=2025-11-01T12:42:28.29537512Z caller=resolver.go:100 msg="failed to lookup SRV records" host=_memcached-client._tcp.loki-chunks-cache.monitoring.svc err="lookup _memcached-client._tcp.loki-chunks-cache.monitoring.svc on 10.0.0.10:53: no such host"
+ts=2025-11-01T12:42:28.394097648Z caller=memberlist_logger.go:74 level=warn msg="Failed to resolve loki-memberlist: lookup loki-memberlist on 10.0.0.10:53: no such host"
+level=info ts=2025-11-01T12:42:28.394166948Z caller=memberlist_client.go:600 msg="fast-joining node failed" node=loki-memberlist err="1 error occurred:\n\t* Failed to resolve loki-memberlist: lookup loki-memberlist on 10.0.0.10:53: no such host\n\n"
+level=warn ts=2025-11-01T12:42:28.394189648Z caller=memberlist_client.go:614 msg="memberlist fast-join finished" joined_nodes=0 elapsed_time=194.705156ms
+level=info ts=2025-11-01T12:42:28.394215648Z caller=memberlist_client.go:626 phase=startup msg="joining memberlist cluster" join_members=loki-memberlist
+ts=2025-11-01T12:42:28.498601377Z caller=memberlist_logger.go:74 level=warn msg="Failed to resolve loki-memberlist: lookup loki-memberlist on 10.0.0.10:53: no such host"
+level=warn ts=2025-11-01T12:42:28.498638577Z caller=memberlist_client.go:660 phase=startup msg="joining memberlist cluster" attempts=1 max_attempts=10 err="1 error occurred:\n\t* Failed to resolve loki-memberlist: lookup loki-memberlist on 10.0.0.10:53: no such host\n\n"
+open : no such file or directory
+error creating object client
+github.com/grafana/loki/v3/pkg/storage.(*LokiStore).chunkClientForPeriod
+
 ├── cluster
 │   ├── base
 │   │   ├── loki
