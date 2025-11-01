@@ -1,124 +1,121 @@
-  0/4 nodes are available: pod has unbound immediate PersistentVolumeClaims.
-  preemption: 0/4 nodes are available: 4 Preemption is not helpful for
-  scheduling.
-
-
-accessKey:
-  password: loki-access-key
-
-secretKey:
-  password: loki-secret-key
-
-defaultBuckets: loki
-
-persistence:
-  enabled: true
-  size: 10Gi
-  storageClass: standard
-
-service:
-  type: ClusterIP
-  port: 9000
-
-##################
-
-
-helm repo add bitnami https://charts.bitnami.com/bitnami
-helm repo update
-
-helm install minio bitnami/minio \
-  --namespace loki --create-namespace \
-  -f minio-values.yaml
-
-
-#######################
-
-
-
-deploymentMode: SimpleScalable
-
+# values-loki-azure-mi.yaml
 loki:
-  auth_enabled: false
-
-  commonConfig:
-    replication_factor: 2
-
-  storage:
-    type: s3
-    s3:
-      endpoint: minio.loki.svc.cluster.local:9000
-      bucketnames: loki
-      access_key_id: loki-access-key
-      secret_access_key: loki-secret-key
-      s3forcepathstyle: true
-      insecure: true
+  auth_enabled: true
 
   schemaConfig:
     configs:
-      - from: "2024-01-01"
+      - from: "2024-04-01"
         store: tsdb
-        object_store: s3
+        object_store: azure
         schema: v13
         index:
-          prefix: index_
+          prefix: loki_index_
           period: 24h
 
-  compactor:
-    working_directory: /var/loki/compactor
-    shared_store: s3
+  storage:
+    type: azure
+    azure:
+      accountName: eddv1sa
+      # Workload Identity (no keys)
+      useManagedIdentity: true
+      useFederatedToken: true
+      # Client ID of your user-assigned MI
+      userAssignedId: "YOUR_UAMI_CLIENT_ID"
+      # Reasonable defaults:
+      requestTimeout: 60
+      endpointSuffix: core.windows.net
+    bucketNames:
+      chunks: "chunks"
+      ruler:  "ruler"
+      admin:  "admin"
 
-  limits_config:
-    retention_period: 7d
-    reject_old_samples: true
-    reject_old_samples_max_age: 168h
+  # Keep chunks small & cheap to move
+  ingester:
+    chunk_encoding: snappy
 
-  chunk_store_config:
-    max_look_back_period: 24h
+  tracing:
+    enabled: true
 
-write:
-  enabled: true
-  replicas: 2
-  resources:
-    requests:
-      cpu: 200m
-      memory: 512Mi
-    limits:
-      cpu: 500m
-      memory: 1Gi
+  querier:
+    max_concurrent: 4
 
-read:
-  enabled: true
-  replicas: 2
-  resources:
-    requests:
-      cpu: 200m
-      memory: 256Mi
-    limits:
-      cpu: 500m
-      memory: 512Mi
+# Microservices with tiny floors + HPA to scale up
+deploymentMode: SimpleScalable
+
+serviceAccount:
+  create: false        # we're providing it
+  name: oss-sa
+
+# Minimal resources across components
+resources:
+  limits: {}
+  requests: {}
 
 backend:
-  enabled: true
-  replicas: 1
-  resources:
-    requests:
-      cpu: 200m
-      memory: 512Mi
-    limits:
-      cpu: 500m
-      memory: 1Gi
-
-gateway:
-  enabled: true
   replicas: 1
   resources:
     requests:
       cpu: 100m
-      memory: 128Mi
-    limits:
-      cpu: 200m
       memory: 256Mi
+  autoscaling:
+    enabled: true
+    minReplicas: 1
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 60
 
-service:
-  type: ClusterIP
-  port: 3100
+read:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+  autoscaling:
+    enabled: true
+    minReplicas: 1
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 60
+
+write:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+  autoscaling:
+    enabled: true
+    minReplicas: 1
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 60
+
+# No in-cluster MinIO — we use Azure Blob
+minio:
+  enabled: false
+
+# Extra runtime safety for large queries
+limits_config:
+  ingestion_rate_mb: 8
+  ingestion_burst_size_mb: 16
+  max_cache_freshness_per_query: 10m
+
+# Ruler + compactor use the same azure buckets
+ruler:
+  enabled: true
+  storage:
+    type: azure
+  rule_path: /tmp/loki/rules
+  ring:
+    kvstore:
+      store: memberlist
+
+compactor:
+  working_directory: /data/loki/boltdb-shipper-compactor
+  shared_store: azure
+
+# Memberlist for internal discovery (keeps it simple)
+memberlist:
+  join_members:
+    - "loki-memberlist"
+
+# Network
+ingress:
+  enabled: false
