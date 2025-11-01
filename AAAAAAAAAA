@@ -1,3 +1,13 @@
+storageClass: ""
+  autoscaling:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 9
+    targetCPUUtilizationPercentage: 80
+    targetMemoryUtilizationPercentage: 80
+
+
+
 kubectl -n monitoring describe pod loki-backend-0 | sed -n '/Volumes:/,/Conditions:/p'
 Volumes:
   data:
