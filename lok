@@ -1,3 +1,13 @@
+ kubectl get pod -n monitoring  | grep -i  loki 
+loki-backend-0                                      1/2     CrashLoopBackOff   5 (79s ago)    4m50s
+loki-canary-gwqdr                                   1/1     Running            0              4m50s
+loki-canary-sds8w                                   1/1     Running            0              4m50s
+loki-gateway-69c78ffffd-cz9nj                       1/1     Running            0              4m51s
+loki-helm-test                                      0/1     Error              0              4m50s
+loki-read-7f955bcdd8-whnns                          0/1     CrashLoopBackOff   5 (115s ago)   4m50s
+loki-write-0                                        0/1     CrashLoopBackOff   5 (89s ago)    4m50s
+
+
 kubectl logs  loki-backend-0 -n monitoring -f
 Defaulted container "loki-sc-rules" out of: loki-sc-rules, loki
 {"time": "2025-11-01T13:51:39.159102+00:00", "level": "INFO", "msg": "Starting collector"}
